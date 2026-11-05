@@ -1,0 +1,28 @@
+{
+  "name": "fortnight",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "description": "Real-time continent strategy game (browser, 2.5D).",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc -p tsconfig.json && vite build",
+    "preview": "vite preview --port 4173 --strictPort",
+    "typecheck": "tsc -p tsconfig.json",
+    "test": "vitest run",
+    "test:e2e": "playwright test",
+    "check": "node tools/check-sim-purity.mjs && node tools/check-tuning.mjs && node tools/check-assets.mjs && node tools/check-repo.mjs"
+  },
+  "dependencies": {
+    "preact": "10.29.8",
+    "three": "0.186.1"
+  },
+  "devDependencies": {
+    "@playwright/test": "1.64.1",
+    "@types/node": "24.19.1",
+    "@types/three": "0.186.0",
+    "typescript": "7.0.2",
+    "vite": "8.3.5",
+    "vitest": "5.0.5"
+  }
+}

@@ -1,0 +1,34 @@
+{
+  "sim": {
+    "tickHz": 10,
+    "maxCatchUpTicks": 8,
+    "speeds": { "slow": 0.5, "normal": 1, "fast": 2, "veryFast": 4 }
+  },
+  "map": {
+    "sizes": {
+      "small":  { "tiles": 128, "maxPlayers": 4,  "rivers": 5,  "lakes": 2 },
+      "medium": { "tiles": 192, "maxPlayers": 9,  "rivers": 8,  "lakes": 4 },
+      "large":  { "tiles": 288, "maxPlayers": 16, "rivers": 12, "lakes": 7 },
+      "huge":   { "tiles": 384, "maxPlayers": 32, "rivers": 16, "lakes": 10 }
+    },
+    "landFraction": 0.42,
+    "borderOcean": 6,
+    "minIslandTiles": 40,
+    "islandKeepFractionOfMain": 0.03,
+    "heightLevels": 7,
+    "mountainPercentile": 0.9,
+    "coldPercentile": 0.12,
+    "hotPercentile": 0.85,
+    "swampMoisturePercentile": 0.9,
+    "forestMoisturePercentile": 0.55,
+    "desertMaxMoisturePercentile": 0.6,
+    "seaIceRange": 3,
+    "startMinCoastDistance": 3,
+    "startClaimRadius": 4
+  },
+  "dayNight": { "dayLengthTicks": 3600, "nightTicks": 1260 },
+  "units": {
+    "scout": { "speed": 358, "vision": 7 }
+  },
+  "fog": { "explored": 128, "visible": 255 }
+}

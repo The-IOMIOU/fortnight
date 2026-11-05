@@ -1,6 +1,13 @@
 # Phase 0 Plan — Real-Time Continent Strategy Game
 
-Status: **awaiting approval** (Phase 0 gate). No gameplay code has been written.
+Status: **approved 2026-11-05** ("okay do phase 1") with these owner amendments:
+
+1. **Multiplayer is peer-to-peer.** WebRTC between browsers, no game server. The host-ordered lockstep in §4 stays P2P: the host is just one of the peers.
+2. **Fewer races for the web version.** The web build ships a small hand-made set. The 100-race target becomes "unbounded" for a later app version, including **player-made races**.
+3. **Race builder rule (new, F-112):** every power-up has a point score and every power-down a negative score. A race is valid only when its total is exactly 0.
+4. **Compute:** the owner's Kaggle account may be used for heavy headless runs (balance harness) if local cores aren't enough. It's only used with the owner's go-ahead at that time; not needed before Phase 8.
+
+Items in §7 that weren't commented on are taken as accepted. Proposals P-001…P-005 stay open until answered.
 
 Companion files: [FEATURES.md](FEATURES.md) (feature ledger), [CONTINENT_STRATEGY_GAME.md](CONTINENT_STRATEGY_GAME.md) (master spec).
 

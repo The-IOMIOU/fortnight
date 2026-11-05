@@ -1,4 +1,4 @@
-# FEATURES.md — Feature Ledger
+in progress | Core written (PRNG, fixed-point, hash, Sim, scripted run); tests written but not yet run |in progress | Generation time measured (Node): Small 16 ms, Medium 37, Large 89, Huge 170. Menu default not built yet |in progress | Node: 20 seeds × 4 sizes give identical hashes/arrays on repeat runs, 30 seeds all distinct. Browser comparison not yet run |done-verified | 2026-11-05 same test: tundra, snow, desert and sea ice present on all 200 maps |done-verified | 2026-11-05 `tests/mapgen.test.ts`: 50 seeds × 4 sizes passed, every biome above its minimum, main continent 100 % of land on all 200 maps, ocean border on all |# FEATURES.md — Feature Ledger
 
 Rules (from spec §0): a feature is `done-verified` only after its acceptance test has been **run** and the observation recorded under Evidence. Statuses: `not started` / `in progress` / `done-verified` / `blocked`. Work not listed here goes to **PROPOSALS** first.
 
@@ -13,7 +13,7 @@ Phase column = phase in which the feature is built (spec §10).
 
 | ID | Ph | Feature | Acceptance test | Status | Evidence |
 |---|---|---|---|---|---|
-| F-001 | 0 | Feature ledger covering every requirement | Traceability table (bottom of file) maps every spec section/bullet to ≥1 F-id; reviewed and approved by owner | in progress | Ledger + traceability table written; awaiting approval |
+| F-001 | 0 | Feature ledger covering every requirement | Traceability table (bottom of file) maps every spec section/bullet to ≥1 F-id; reviewed and approved by owner | done-verified | Owner approved Phase 0 on 2026-11-05 ("okay do phase 1"), amendments recorded in PLAN.md header and F-097/F-112 |
 | F-002 | 1 | `TUNING.md` lists every tuned balance/physics constant with value and reason | `tools/check-tuning` compares constants in `src/data/tuning*.json` with `TUNING.md`; zero missing entries | not started | — |
 | F-003 | 1 | `ASSETS.md` records licenses for all art/audio | `tools/check-assets` finds every non-code asset file listed in ASSETS.md with a license | not started | — |
 | F-004 | 1 | Repo stays small and clean: no large binaries | `tools/check-repo` fails on any tracked file > 200 KB or binary asset outside an allow-list; total tracked size reported | not started | — |
@@ -25,7 +25,7 @@ Phase column = phase in which the feature is built (spec §10).
 
 | ID | Ph | Feature | Acceptance test | Status | Evidence |
 |---|---|---|---|---|---|
-| F-010 | 1 | Deterministic sim: seeded PRNG streams, fixed 10 Hz tick, integer/fixed-point state | Same seed + same command log run twice in Node and once in Chrome and Firefox → identical state hash at ticks 100, 1 000, 10 000; ban-list script finds no `Math.random`/`Date`/`performance.now`/trig in `src/sim` | not started | — |
+| F-010 | 1 | Deterministic sim: seeded PRNG streams, fixed 10 Hz tick, integer/fixed-point state | Same seed + same command log run twice in Node and once in Chrome and Firefox → identical state hash at ticks 100, 1 000, 10 000; ban-list script finds no `Math.random`/`Date`/`performance.now`/trig in `src/sim` | in progress | Core written (PRNG, fixed-point, hash, Sim, scripted run). Tests written, **not yet run** |
 | F-011 | 1 | Simulation runs in a Web Worker, separate from rendering | Performance trace shows sim tick on worker thread; injecting a 200 ms stall in the worker keeps render loop ≥ 55 FPS | not started | — |
 | F-012 | 1 | Data-oriented entity storage (SoA typed arrays) | Benchmark: 10 000 moving entities, movement system ≤ 2 ms/tick in Node on dev machine (T:) | not started | — |
 | F-013 | 1 | Game speed controls: pause, slow 0.5×, normal 1×, fast 2×, very fast 4× | Measured ticks/s at each setting within ±5 % of target over 20 s; pause → tick counter unchanged for 10 s | not started | — |
@@ -38,9 +38,9 @@ Phase column = phase in which the feature is built (spec §10).
 
 | ID | Ph | Feature | Acceptance test | Status | Evidence |
 |---|---|---|---|---|---|
-| F-020 | 1 | Procedural continent per seed: land, coast, mountains, forests, plains, desert, swamp, rivers, lakes, surrounding ocean | For 50 seeds × 4 sizes: every listed biome present above min tile count; one main continent ≥ 80 % of land (T:); map border is ocean | not started | — |
-| F-021 | 1 | Same seed → same map | Tile-array hash identical across 2 runs and across Node vs browser for 20 seeds | not started | — |
-| F-022 | 1 | Map sizes Small / Medium / Large / Huge; Small default and fast | Menu defaults to Small; generation time measured per size; Small ≤ 1 s (T:) | not started | — |
+| F-020 | 1 | Procedural continent per seed: land, coast, mountains, forests, plains, desert, swamp, rivers, lakes, surrounding ocean | For 50 seeds × 4 sizes: every listed biome present above min tile count; one main continent ≥ 80 % of land (T:); map border is ocean | done-verified | 2026-11-05 `tests/mapgen.test.ts` passed: 50 seeds × 4 sizes, every biome above its minimum, main continent = 100 % of land on all 200 maps, ocean border on all |
+| F-021 | 1 | Same seed → same map | Tile-array hash identical across 2 runs and across Node vs browser for 20 seeds | in progress | Node only: 20 seeds × 4 sizes repeat-identical, 30 seeds all distinct. Browser comparison not run yet |
+| F-022 | 1 | Map sizes Small / Medium / Large / Huge; Small default and fast | Menu defaults to Small; generation time measured per size; Small ≤ 1 s (T:) | in progress | Measured in Node: Small 16 ms, Medium 37, Large 89, Huge 170. Menu default not built yet |
 | F-023 | 2 | Biomes affect resources, food and movement | Scripted unit crosses N swamp tiles vs N plains tiles: time ratio matches movement-cost table ±5 %; deposit/food yield per biome matches table | not started | — |
 | F-024 | 1 | 2.5D rendering with height (angled view, terraced elevation) | Screenshot of Small and Medium maps shows distinct elevation levels, coastline, rivers, biome colors | not started | — |
 | F-025 | 1 | Camera: pan (drag + keys), zoom (wheel), edge-scroll, bounds clamped | Automated input test: drag/keys/edge/wheel each change camera state in the expected direction; camera cannot leave map bounds | not started | — |
@@ -48,7 +48,7 @@ Phase column = phase in which the feature is built (spec §10).
 | F-027 | 1 | Minimap with ownership overlay, click-to-jump | Minimap matches tile data (pixel sample test); ownership colors match territory array; click moves camera to that tile | not started | — |
 | F-028 | 1 | 60 FPS on Small and Medium (Phase 1 gate) | Perf HUD over a 30 s scripted camera sweep: avg ≥ 60 FPS, p95 frame time ≤ 20 ms on dev machine; also reported under 4× CPU throttle | not started | — |
 | F-029 | 1 | **Derived:** day/night cycle (Tidal folk, visuals) | `isNight` toggles on configured period; visual tint changes; sun-dependent abilities read the flag | not started | — |
-| F-030 | 1 | **Derived:** temperature zones incl. cold biome (tundra/snow) and sea ice; hot zones (desert) | 50 seeds: every map has cold and hot tiles; ice tiles exist on cold coasts | not started | — |
+| F-030 | 1 | **Derived:** temperature zones incl. cold biome (tundra/snow) and sea ice; hot zones (desert) | 50 seeds: every map has cold and hot tiles; ice tiles exist on cold coasts | done-verified | 2026-11-05 `tests/mapgen.test.ts`: tundra, snow, desert and sea ice present on all 200 maps |
 | F-031 | 2 | **Derived:** wild animals (huntable; tameable later) | Animals spawn by biome, wander, can be hunted for food at the TUNING rate | not started | — |
 
 ## D. Terrain modification (spec §2)
@@ -106,7 +106,8 @@ Phase column = phase in which the feature is built (spec §10).
 | F-094 | 5 | Shared tech tree gates buildings, units, gear | Locked items unbuildable before research, buildable after | not started | — |
 | F-095 | 5 | Tech/evolution screen (UI) | Shows tree, costs, prerequisites; research started from UI appears in sim | not started | — |
 | F-096 | 5 | First 6–8 fully designed races (original names); each plays distinctly (Phase 5 gate) | Per race: scripted test for ability and weakness (F-100–F-107) + recorded playtest notes; harness shows distinct stat/behavior profiles | not started | — |
-| F-097 | 8 | Remaining starter seeds (F-108–F-111) and batches toward 100 races, same data format | Race count reported; all validate; harness distinctness checks pass (PLAN §7-G) | not started | — |
+| F-097 | 8 | Remaining starter seeds (F-108–F-111) and more races in batches, same data format. *Amended 2026-11-05: web version ships fewer races; an unbounded count (incl. player-made) is the later app target* | Race count reported; all validate; harness distinctness checks pass (PLAN §7-G) | not started | — |
+| F-112 | 5 | **Owner-requested:** point-buy race builder. Each power-up (ability, stat bonus) has a positive score, each power-down (weakness, stat penalty) a negative score; a race is valid only when the total is exactly 0. Hand-made races follow the same rule | Validator rejects a race whose total ≠ 0, naming the total; all shipped races total 0; builder UI shows a running total and blocks saving at ≠ 0 | not started | — |
 | F-098 | 8 | Balance harness: headless bot-vs-bot, random races and seeds, win rates per race, outlier flags | `npm run harness -- --matches 500` completes in parallel, outputs per-race win rate + confidence interval, flags races outside bounds (T: 35–65 % in 1v1 pools) | not started | — |
 | F-099 | 2 | Race selection in New Game | Selected race's starting units/buildings appear at match start | not started | — |
 
