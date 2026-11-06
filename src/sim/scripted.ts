@@ -2,6 +2,7 @@
 // identical code path on every JS engine, so hashes must match exactly.
 // Each player's script exercises the economy: scouting, gathering, hunting, training, building.
 import { Sim } from './sim';
+import type { MapOpts } from './world/mapgen';
 import { Rng } from './core/prng';
 import { FP_ONE } from './core/fixed';
 import type { MapSize } from './core/tuning';
@@ -59,8 +60,8 @@ export function issue(sim: Sim, p: number, body: CommandBody): void {
 }
 
 /** Runs a match with a seeded scripted command log; returns state hash at each checkpoint tick. */
-export function scriptedRun(seed: string, size: MapSize, players: number, checkpoints: number[], onTick?: (sim: Sim) => void): Record<number, number> {
-  const sim = new Sim({ seed, size, players });
+export function scriptedRun(seed: string, size: MapSize, players: number, checkpoints: number[], onTick?: (sim: Sim) => void, world?: MapOpts): Record<number, number> {
+  const sim = new Sim(world ? { seed, size, players, world } : { seed, size, players });
   addStartingArmy(sim);
   const rng = Rng.stream(seed, 'script');
   const out: Record<number, number> = {};

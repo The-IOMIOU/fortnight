@@ -10,7 +10,7 @@ export class RtsCamera {
   readonly minDist = 8;
   readonly maxDist: number;
 
-  constructor(readonly mapW: number, readonly mapH: number, aspect: number) {
+  constructor(readonly mapW: number, readonly mapH: number, aspect: number, readonly wrap = false) {
     this.camera = new THREE.PerspectiveCamera(40, aspect, 0.5, 2000);
     this.targetX = mapW / 2; this.targetZ = mapH / 2;
     this.maxDist = Math.max(mapW, mapH) * 1.15;
@@ -32,7 +32,8 @@ export class RtsCamera {
   resize(aspect: number): void { this.camera.aspect = aspect; this.camera.updateProjectionMatrix(); }
 
   apply(): void {
-    this.targetX = Math.max(0, Math.min(this.mapW, this.targetX));
+    // globe: the camera circles the world east–west; flat: clamped to the map
+    this.targetX = this.wrap ? ((this.targetX % this.mapW) + this.mapW) % this.mapW : Math.max(0, Math.min(this.mapW, this.targetX));
     this.targetZ = Math.max(0, Math.min(this.mapH, this.targetZ));
     const y = Math.sin(this.pitch) * this.distance, back = Math.cos(this.pitch) * this.distance;
     this.camera.position.set(this.targetX, y + 1, this.targetZ + back);

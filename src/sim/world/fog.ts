@@ -1,5 +1,6 @@
 // Per-player fog of war. Values double as the renderer's fog texture: 0 unexplored, 128 explored, 255 visible.
 import { TUNING } from '../core/tuning';
+import { tileAt } from '../core/topo';
 
 export const FOG_UNEXPLORED = 0;
 export const FOG_EXPLORED = TUNING.fog.explored;
@@ -22,7 +23,7 @@ export class FogLayer {
   private visible: Int32Array;
   private visibleCount = 0;
   dirty = true;
-  constructor(readonly w: number, readonly h: number) {
+  constructor(readonly w: number, readonly h: number, readonly wrap = false) {
     this.data = new Uint8Array(w * h);
     this.visible = new Int32Array(1024);
   }
@@ -47,8 +48,8 @@ export class FogLayer {
   stampCircle(tx: number, ty: number, r: number): void {
     const off = circleOffsets(r), w = this.w, h = this.h;
     for (let k = 0; k < off.length; k += 2) {
-      const x = tx + off[k], y = ty + off[k + 1];
-      if (x >= 0 && y >= 0 && x < w && y < h) this.mark(y * w + x);
+      const t = tileAt(tx + off[k], ty + off[k + 1], w, h, this.wrap);
+      if (t >= 0) this.mark(t);
     }
   }
   stampTile(i: number): void { this.mark(i); }

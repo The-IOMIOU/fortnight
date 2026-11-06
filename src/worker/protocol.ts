@@ -13,6 +13,8 @@ export interface MapPayload {
   resType: Uint8Array;
   continent: Uint8Array;
   riverCount: number; lakeCount: number;
+  /** Globe world: x wraps (F-195). */
+  wrap: boolean;
 }
 
 export type ToWorker =
@@ -41,6 +43,9 @@ export interface Snapshot {
   tiles: Int32Array | null;
   pending: { tick: number; type: string }[];
   stats: PlayerStats | null;
+  /** A test option was used in this run (F-198), and the viewer's active test options. */
+  modified: boolean;
+  opts: number;
   events: SimEvent[];
   buildings: BuildingInfo[];
   /** Ranged shots since the last snapshot the viewer can see: [ax, ay, tx, ty] fixed-point quads. */

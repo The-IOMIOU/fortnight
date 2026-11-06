@@ -39,7 +39,20 @@ export interface GameMap {
   continent: Uint8Array;
   /** Tile count of each continent, largest first. */
   continentSizes: number[];
+  /** Globe world: the map wraps east–west (the seam always lies in open ocean). */
+  wrap: boolean;
   hash: number;
+}
+
+export type SeaWidth = 'close' | 'mixed' | 'far';
+/** Generation options from the match settings (F-193–F-196). Omitted = the original flat layout. */
+export interface MapOpts { globe?: boolean; continents?: number; sea?: SeaWidth }
+
+/** Integer cos/sin ×4096 of a whole-degree angle (deterministic table-free approximation). */
+function cosSin(deg: number): [number, number] {
+  // Bhaskara I sine approximation on integers, accurate to ~0.2 %
+  const sin = (d: number): number => { d = ((d % 360) + 360) % 360; const neg = d >= 180; if (neg) d -= 180; const v = Math.floor((4 * d * (180 - d) * 4096) / (40500 - d * (180 - d))); return neg ? -v : v; };
+  return [sin(deg + 90), sin(deg)];
 }
 
 const NB4X = [1, -1, 0, 0];
@@ -94,9 +107,12 @@ function quantile(values: Int32Array, p: number): number {
   return s[Math.min(s.length - 1, Math.floor(s.length * p))];
 }
 
-export function generateMap(seed: string, size: MapSize): GameMap {
+export function generateMap(seed: string, size: MapSize, opts: MapOpts = {}): GameMap {
   const cfg = TUNING.map;
   const sz = cfg.sizes[size];
+  const globe = !!opts.globe;
+  // Globe: no land within seamBand tiles of the east–west seam, so only ships ever cross it.
+  const seamBand = globe ? cfg.globeSeamOcean : 0;
   const W = sz.tiles, H = sz.tiles, N = W * H;
   const rng = Rng.stream(seed, 'mapgen');
   const sElev = rng.nextU32() | 0, sWarpX = rng.nextU32() | 0, sWarpY = rng.nextU32() | 0;
@@ -106,37 +122,80 @@ export function generateMap(seed: string, size: MapSize): GameMap {
   // ---- 1. Elevation: several continents. Each tile belongs to its nearest continent centre
   //         (warped Voronoi); elevation = fractal noise minus that continent's elliptical falloff,
   //         and a forced ocean channel runs along every border between two continents. ----
-  const K = sz.continents;
+  const K = Math.max(1, Math.min(8, opts.continents ?? sz.continents));
   const border = cfg.borderOcean;
   const inset = border + Math.floor(W * 0.14);
+  const insetX = globe ? seamBand + Math.floor(W * 0.1) : inset;
   const ccx: number[] = [], ccy: number[] = [], crx: number[] = [], cry: number[] = [];
-  for (let k = 0; k < K; k++) {
-    let bx = 0, by = 0, bestD = -1;
-    for (let t = 0; t < (k === 0 ? 1 : 40); t++) {
-      const x = rng.range(inset, W - 1 - inset), y = rng.range(inset, H - 1 - inset);
-      let d = Number.MAX_SAFE_INTEGER;
-      for (let j = 0; j < k; j++) d = Math.min(d, (x - ccx[j]) * (x - ccx[j]) + (y - ccy[j]) * (y - ccy[j]));
-      if (d > bestD) { bestD = d; bx = x; by = y; }
+  if (!opts.sea) {
+    for (let k = 0; k < K; k++) {
+      let bx = 0, by = 0, bestD = -1;
+      for (let t = 0; t < (k === 0 ? 1 : 40); t++) {
+        const x = rng.range(insetX, W - 1 - insetX), y = rng.range(inset, H - 1 - inset);
+        let d = Number.MAX_SAFE_INTEGER;
+        for (let j = 0; j < k; j++) d = Math.min(d, (x - ccx[j]) * (x - ccx[j]) + (y - ccy[j]) * (y - ccy[j]));
+        if (d > bestD) { bestD = d; bx = x; by = y; }
+      }
+      ccx.push(bx); ccy.push(by);
+      const base = Math.floor((W * 62) / (100 * isqrt(K * 100) / 10));
+      crx.push(Math.max(8, Math.floor((base * rng.range(85, 115)) / 100)));
+      cry.push(Math.max(8, Math.floor((base * rng.range(85, 115)) / 100)));
     }
-    ccx.push(bx); ccy.push(by);
+  } else {
+    // Earth-like layout (F-194): "partner" continents sit right next to the previous one (narrow
+    // strait between them); the others are spread as far apart as possible (open ocean).
     const base = Math.floor((W * 62) / (100 * isqrt(K * 100) / 10));
-    crx.push(Math.max(8, Math.floor((base * rng.range(85, 115)) / 100)));
-    cry.push(Math.max(8, Math.floor((base * rng.range(85, 115)) / 100)));
+    for (let k = 0; k < K; k++) {
+      const rx = Math.max(8, Math.floor((base * rng.range(85, 115)) / 100)), ry = Math.max(8, Math.floor((base * rng.range(85, 115)) / 100));
+      const partner = k > 0 && (opts.sea === 'close' || (opts.sea === 'mixed' && k % 2 === 1));
+      let bx = 0, by = 0, bestD = -1;
+      for (let t = 0; t < (k === 0 ? 1 : 40); t++) {
+        let x: number, y: number;
+        if (partner) {
+          // a spot touching continent k−1 (or any earlier one in 'close' mode), away from the others
+          const j = opts.sea === 'close' ? rng.int(k) : k - 1;
+          const want = Math.floor(((crx[j] + cry[j] + rx + ry) * cfg.partnerDistPct) / 400);
+          const ang = rng.int(360), [cs, sn] = cosSin(ang);
+          x = Math.min(W - 1 - insetX, Math.max(insetX, ccx[j] + ((want * cs) >> 12)));
+          y = Math.min(H - 1 - inset, Math.max(inset, ccy[j] + ((want * sn) >> 12)));
+        } else { x = rng.range(insetX, W - 1 - insetX); y = rng.range(inset, H - 1 - inset); }
+        let d = Number.MAX_SAFE_INTEGER;
+        for (let j = 0; j < k; j++) { let ddx = Math.abs(x - ccx[j]); if (globe) ddx = Math.min(ddx, W - ddx); d = Math.min(d, ddx * ddx + (y - ccy[j]) * (y - ccy[j])); }
+        if (d > bestD) { bestD = d; bx = x; by = y; }
+      }
+      ccx.push(bx); ccy.push(by); crx.push(rx); cry.push(ry);
+    }
   }
   const baseCell = Math.max(8, Math.floor(W / (6 + K))), warpCell = Math.max(8, W >> 2), warpAmp = W >> 4;
   const channel = cfg.channelWidth;
+  // Earth-like seas (F-194): each pair of neighbouring continents gets its own strait width.
+  const pairCh: number[] = [];
+  if (opts.sea) {
+    const [narrow, medium, wide] = cfg.seaWidths;
+    for (let a = 0; a < K; a++) for (let b = 0; b < K; b++) {
+      if (b <= a) { pairCh.push(b === a ? 0 : pairCh[b * K + a]); continue; }
+      const roll = rng.int(100);
+      // mixed: partners get a narrow strait (below); between clusters open ocean, sometimes medium on big maps
+      const wdt = opts.sea === 'close' ? narrow : opts.sea === 'far' ? wide : K >= 6 && roll < 30 ? medium : wide;
+      pairCh.push(wdt);
+    }
+    if (opts.sea === 'mixed') for (let k = 1; k < K; k += 2) pairCh[(k - 1) * K + k] = pairCh[k * K + k - 1] = narrow; // partners
+  }
   const elev = new Int32Array(N);
   for (let y = 0; y < H; y++) {
     for (let x = 0; x < W; x++) {
       const i = y * W + x;
-      if (x < border || y < border || x >= W - border || y >= H - border) { elev[i] = -1000000; continue; }
+      if (y < border || y >= H - border || (globe ? x < seamBand || x >= W - seamBand : x < border || x >= W - border)) { elev[i] = -1000000; continue; }
       const wx = x + (((valueNoise(sWarpX, x, y, warpCell) - 2048) * warpAmp) >> 11);
       const wy = y + (((valueNoise(sWarpY, x, y, warpCell) - 2048) * warpAmp) >> 11);
       // nearest and second-nearest continent centre (by warped position)
-      let k1 = 0, d1 = Number.MAX_SAFE_INTEGER, d2nd = Number.MAX_SAFE_INTEGER;
+      let k1 = 0, k2 = 0, d1 = Number.MAX_SAFE_INTEGER, d2nd = Number.MAX_SAFE_INTEGER;
       for (let k = 0; k < K; k++) {
-        const d = (wx - ccx[k]) * (wx - ccx[k]) + (wy - ccy[k]) * (wy - ccy[k]);
-        if (d < d1) { d2nd = d1; d1 = d; k1 = k; } else if (d < d2nd) d2nd = d;
+        let d = (wx - ccx[k]) * (wx - ccx[k]) + (wy - ccy[k]) * (wy - ccy[k]);
+        // sea modes: borders weighted by continent size (scaled to a 64-tile radius), so the coasts of a
+        // big and a small neighbour both reach the strait instead of the big one being cut in two
+        if (pairCh.length) { const rk = (crx[k] + cry[k]) >> 1; d = Math.floor((d * 4096) / (rk * rk)); }
+        if (d < d1) { d2nd = d1; k2 = k1; d1 = d; k1 = k; } else if (d < d2nd) { d2nd = d; k2 = k; }
       }
       const n = fbm(sElev, wx, wy, baseCell, 5);
       const dx = wx - ccx[k1], dy = wy - ccy[k1];
@@ -144,7 +203,13 @@ export function generateMap(seed: string, size: MapSize): GameMap {
       let e = n + (n >> 1) - fall;
       if (K > 1) {
         const gap = isqrt(d2nd) - isqrt(d1); // ≈ 2 × distance to the border between two continents
-        if (gap < channel) e -= (channel - gap) * 3000; // ocean strip ≈ `channel` tiles wide
+        const ch = pairCh.length ? pairCh[k1 * K + k2] : channel;
+        if (gap < ch) e -= (ch - gap) * 3000; // ocean strip ≈ `ch` tiles wide
+        // narrow straits: the continent's falloff fades out near the strait so both coasts reach it
+        else if (pairCh.length && ch === cfg.seaWidths[0] && gap < ch + cfg.straitReach) {
+          const k = ch + cfg.straitReach - gap; // 1 .. straitReach
+          e = n + (n >> 1) - Math.floor((fall * (cfg.straitReach - k)) / cfg.straitReach);
+        }
       }
       elev[i] = e;
     }
@@ -302,7 +367,8 @@ export function generateMap(seed: string, size: MapSize): GameMap {
   const moist = new Int32Array(N), temp = new Int32Array(N);
   for (let y = 0; y < H; y++) {
     const lat = coldNorth ? y : H - 1 - y;
-    const latT = Math.floor((lat * 4095) / (H - 1));
+    // flat: one cold edge; globe: cold at both poles, hot at the equator
+    const latT = globe ? 4095 - Math.floor((Math.abs(2 * y - (H - 1)) * 4095) / (H - 1)) : Math.floor((lat * 4095) / (H - 1));
     for (let x = 0; x < W; x++) {
       const i = y * W + x;
       const near = distWater[i] < 7 ? (7 - distWater[i]) * 220 : 0;
@@ -400,7 +466,7 @@ export function generateMap(seed: string, size: MapSize): GameMap {
       for (let c = 0; c < cand.length; c++) {
         const x = cand[c] % W, y = (cand[c] - x) / W;
         let md = Number.MAX_SAFE_INTEGER;
-        for (const s of chosen) { const sx = s % W, sy = (s - sx) / W; md = Math.min(md, (x - sx) * (x - sx) + (y - sy) * (y - sy)); }
+        for (const s of chosen) { const sx = s % W, sy = (s - sx) / W; let ddx = Math.abs(x - sx); if (globe) ddx = Math.min(ddx, W - ddx); md = Math.min(md, ddx * ddx + (y - sy) * (y - sy)); }
         if (md > best) { best = md; pick = c; }
       }
     }
@@ -416,7 +482,7 @@ export function generateMap(seed: string, size: MapSize): GameMap {
   const lakeCount = components(W, H, lakeMask).sizes.length - 1;
   const map: GameMap = {
     seed, size, w: W, h: H, height, biome, temp: temp8, moisture: moist8, starts,
-    riverCount, lakeCount, landTiles: totalLand, continent, continentSizes: contLabels.map((l) => landSizes[l]), hash: 0,
+    riverCount, lakeCount, landTiles: totalLand, continent, continentSizes: contLabels.map((l) => landSizes[l]), wrap: globe, hash: 0,
   };
   map.hash = hashMap(map);
   return map;

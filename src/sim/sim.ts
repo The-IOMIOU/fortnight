@@ -5,7 +5,8 @@ import { TUNING, type MapSize } from './core/tuning';
 import { Hasher } from './core/hash';
 import { Rng } from './core/prng';
 import { FP_ONE, FP_SHIFT, isqrt, tileCenter } from './core/fixed';
-import { Biome, generateMap, isWaterBiome, type GameMap } from './world/mapgen';
+import { Biome, generateMap, isWaterBiome, type GameMap, type MapOpts } from './world/mapgen';
+import { inSpanX, wdelta, wrapX } from './core/topo';
 import { FogLayer, circleOffsets, FOG_VISIBLE, FOG_UNEXPLORED } from './world/fog';
 import { animalSpawns, placeResources, type ResourceLayer } from './world/deposits';
 import { Entities } from './entities/entities';
@@ -31,7 +32,24 @@ export interface SimSettings {
   incomeBonusPct?: number[];
   /** Which victories are enabled (default: both) and the domination share in %. */
   victory?: { domination?: boolean; conquest?: boolean; dominationPct?: number };
+  // ---- Phase 4b (F-193–F-197) ----
+  /** World generation: globe (east–west wrap), continent count, sea width. Omitted = original flat map. */
+  world?: MapOpts;
+  /** Wild animals in % of the default amount (0 = none). */
+  wildlifePct?: number;
+  /** Length of a full day in ticks (night is the same share of it as by default). */
+  dayLengthTicks?: number;
+  /** Highest population any player may reach (0 / omitted = only housing limits it). */
+  popLimit?: number;
+  /** Test options switched on from the start, per player (bit mask of TestOpt). */
+  testOptions?: number[];
 }
+
+/** Test options ("cheats", F-197): they change rules, never resources. */
+export const TestOpt = {
+  REVEAL: 1, NO_HOUSING: 2, INSTANT_BUILD: 4, INSTANT_TRAIN: 8, INVULNERABLE: 16, PEACEFUL_BOTS: 32, FAST_SPEEDS: 64,
+} as const;
+export const TEST_OPT_ALL = 127;
 
 export const NO_OWNER = 255;
 export const RING = 60; // one-second income buckets (one minute window)
@@ -44,6 +62,8 @@ export interface PlayerState {
   starving: boolean;
   pop: number;
   housing: number;
+  /** Active test options (TestOpt bits). */
+  opts: number;
   landOwned: number;
   /** Explored deposit tiles per resource. */
   found: number[];
@@ -90,7 +110,7 @@ export class Sim {
   fogForce: Uint8Array;
   private lastTile: Int32Array;
   private pf: PathFinder;
-  private pfWater: PathFinder;
+  readonly pfWater: PathFinder;
   /** Player whose gates count as open during the current land path search. */
   private pathPlayer = -1;
   readonly flows: FlowFields;
@@ -101,12 +121,20 @@ export class Sim {
   rngFire: Rng;
   /** Dry trench tiles (candidates for flooding). */
   trenchList: number[] = [];
-  readonly dayLength = TUNING.dayNight.dayLengthTicks;
-  readonly nightStart = TUNING.dayNight.dayLengthTicks - TUNING.dayNight.nightTicks;
+  readonly dayLength: number;
+  readonly nightStart: number;
+  /** Globe world: x wraps (F-195). */
+  readonly wrap: boolean;
+  /** Set for good once any test option was switched on (the run counts as modified, F-198). */
+  modified = false;
 
   constructor(readonly settings: SimSettings, opts: { skipSetup?: boolean } = {}) {
-    this.map = generateMap(settings.seed, settings.size);
+    this.map = generateMap(settings.seed, settings.size, settings.world);
     const { w, h } = this.map;
+    this.wrap = this.map.wrap;
+    const DN = TUNING.dayNight;
+    this.dayLength = Math.max(600, settings.dayLengthTicks ?? DN.dayLengthTicks);
+    this.nightStart = this.dayLength - Math.floor((this.dayLength * DN.nightTicks) / DN.dayLengthTicks);
     const maxP = TUNING.map.sizes[settings.size].maxPlayers;
     this.players = Math.max(1, Math.min(maxP, settings.players | 0));
     this.ents = new Entities(256);
@@ -117,9 +145,9 @@ export class Sim {
     this.rngAnimals = Rng.stream(settings.seed, 'animals');
     this.fogForce = new Uint8Array(this.players).fill(1);
     this.lastTile = new Int32Array(256).fill(-1);
-    this.pf = new PathFinder(w, h, (t) => this.cost(t, this.pathPlayer));
-    this.pfWater = new PathFinder(w, h, (t) => this.waterCost(t));
-    this.flows = new FlowFields(w, h, TUNING.groups.flowFieldCache);
+    this.pf = new PathFinder(w, h, (t) => this.cost(t, this.pathPlayer), this.wrap);
+    this.pfWater = new PathFinder(w, h, (t) => this.waterCost(t), this.wrap);
+    this.flows = new FlowFields(w, h, TUNING.groups.flowFieldCache, this.wrap);
     this.burning = new Uint16Array(w * h);
     this.rngFire = Rng.stream(settings.seed, 'fire');
     this.mil = new Military(this);
@@ -127,14 +155,15 @@ export class Sim {
     for (let i = 0; i < w * h; i++) if (!isWaterBiome(this.map.biome[i])) land++;
     this.totalLand = land;
     for (let p = 0; p < this.players; p++) {
-      this.fog.push(new FogLayer(w, h));
+      this.fog.push(new FogLayer(w, h, this.wrap));
       this.ownedList.push([]);
       this.ps.push({
         stock: new Array(NUM_RES).fill(0), ring: new Array(NUM_RES * RING).fill(0), upkeepAcc: 0, starving: false, pop: 0, housing: 0,
-        landOwned: 0, found: new Array(NUM_RES).fill(0), foundMask: 0, dominationTicks: 0, housingWarned: false, seq: 0,
+        landOwned: 0, found: new Array(NUM_RES).fill(0), foundMask: 0, dominationTicks: 0, housingWarned: false, seq: 0, opts: settings.testOptions?.[p] ?? 0,
         totalIncome: new Array(NUM_RES).fill(0), eliminated: false, bonusAcc: new Array(NUM_RES).fill(0),
       });
     }
+    if (this.ps.some((ps) => ps.opts)) this.modified = true;
     if (opts.skipSetup) return;
     this.setupStart();
     this.recount();
@@ -159,7 +188,7 @@ export class Sim {
       const cap = this.createBuilding(p, 'capital', (sy - 1) * w + (sx - 1), true);
       for (const [u, n] of Object.entries(race.starting_units)) for (let k = 0; k < n; k++) this.spawnUnitNear(p, u as UnitTypeName, cap);
     }
-    for (const t of animalSpawns(this.map, this.players, this.res)) {
+    for (const t of animalSpawns(this.map, this.players, this.res, this.settings.wildlifePct ?? 100)) {
       const x = t % w, y = (t - x) / w;
       const id = this.ents.spawn(Kind.ANIMAL, NATURE_OWNER, tileCenter(x), tileCenter(y), TUNING.animals.speed, 0);
       this.ents.food[id] = TUNING.animals.food;
@@ -451,7 +480,7 @@ export class Sim {
 
   arrived(id: number): boolean {
     const e = this.ents, t = this.tileOf(id), x = t % this.map.w, y = (t - x) / this.map.w;
-    return x >= e.gx0[id] && x <= e.gx1[id] && y >= e.gy0[id] && y <= e.gy1[id] && !e.moving[id];
+    return inSpanX(x, e.gx0[id], e.gx1[id], this.map.w, this.wrap) && y >= e.gy0[id] && y <= e.gy1[id] && !e.moving[id];
   }
 
   private moveUnits(): void {
@@ -480,9 +509,9 @@ export class Sim {
           tx = tileCenter(x); ty = tileCenter((t - x) / w);
           if (e.pathIdx[id] === path!.length - 1 && e.hasFinal[id]) { tx = e.finX[id]; ty = e.finY[id]; }
         }
-        const dx = tx - e.posX[id], dy = ty - e.posY[id];
+        const dx = wdelta(e.posX[id], tx, w * FP_ONE, this.wrap), dy = ty - e.posY[id];
         const dist = isqrt(dx * dx + dy * dy);
-        if (dist > budget) { e.posX[id] += Math.trunc((dx * budget) / dist); e.posY[id] += Math.trunc((dy * budget) / dist); break; }
+        if (dist > budget) { e.posX[id] = wrapX(e.posX[id] + Math.trunc((dx * budget) / dist), w * FP_ONE, this.wrap); e.posY[id] += Math.trunc((dy * budget) / dist); break; }
         e.posX[id] = tx; e.posY[id] = ty;
         budget -= dist;
         if (last) { e.moving[id] = 0; e.paths[id] = null; break; }
@@ -497,14 +526,14 @@ export class Sim {
   private flowStep(id: number): boolean {
     const e = this.ents, w = this.map.w, here = this.tileOf(id);
     const gt = e.gy0[id] * w + e.gx0[id], x = here % w, y = (here - x) / w;
-    if (Math.max(Math.abs(x - e.gx0[id]), Math.abs(y - e.gy0[id])) <= 3) {
+    if (Math.max(Math.abs(wdelta(x, e.gx0[id], w, this.wrap)), Math.abs(y - e.gy0[id])) <= 3) {
       e.flowGoal[id] = -1;
       this.goTo(id, { x0: e.gx0[id], y0: e.gy0[id], x1: e.gx1[id], y1: e.gy1[id] }, e.hasFinal[id] ? e.finX[id] : -1, e.finY[id]);
       return false;
     }
     const p = e.owner[id];
     const field = this.flows.get(e.flowGoal[id], 'L' + p, (t) => this.cost(t, p));
-    const nxt = FlowFields.next(field, here, w, this.map.h, (t) => this.cost(t, p));
+    const nxt = FlowFields.next(field, here, w, this.map.h, (t) => this.cost(t, p), this.wrap);
     if (nxt < 0) { e.flowGoal[id] = -1; this.goTo(id, { x0: e.gx0[id], y0: e.gy0[id], x1: e.gx1[id], y1: e.gy1[id] }, e.hasFinal[id] ? e.finX[id] : -1, e.finY[id]); return false; }
     e.paths[id] = [nxt]; e.pathIdx[id] = 0;
     void gt;
@@ -541,8 +570,15 @@ export class Sim {
     if (p < 0 || p >= this.players || this.ps[p].eliminated) return;
     if (this.mil.apply(c)) return;
     switch (c.type) {
+      case 'testOption': {
+        const flag = c.flag & TEST_OPT_ALL;
+        if (!flag) return;
+        if (c.on) { this.ps[p].opts |= flag; this.modified = true; } else this.ps[p].opts &= ~flag;
+        this.emit(p, 'testOption', flag, c.on ? 1 : 0);
+        return;
+      }
       case 'move': {
-        let x = Math.max(0, Math.min(w * FP_ONE - 1, c.x | 0)), y = Math.max(0, Math.min(h * FP_ONE - 1, c.y | 0));
+        let x = this.wrap ? wrapX(c.x | 0, w * FP_ONE, true) : Math.max(0, Math.min(w * FP_ONE - 1, c.x | 0)), y = Math.max(0, Math.min(h * FP_ONE - 1, c.y | 0));
         const raw = (y >> FP_SHIFT) * w + (x >> FP_SHIFT);
         let t = raw;
         const all = this.ownUnits(p, c.ids);
@@ -626,7 +662,7 @@ export class Sim {
         if (why) { this.emit(p, 'cantPlace', c.btype); return; }
         if (!this.canAfford(p, cost)) { this.emit(p, 'cantAfford', c.btype); return; }
         this.pay(p, cost);
-        const b = this.createBuilding(p, bt, c.tile, false);
+        const b = this.createBuilding(p, bt, c.tile, (this.ps[p].opts & TestOpt.INSTANT_BUILD) !== 0);
         for (const id of this.ownUnits(p, c.ids, (k) => k === Kind.WORKER)) { this.stop(id); e.task[id] = Task.BUILD; e.taskEnt[id] = b; this.goTo(id, this.footprintRect(b, 1)); }
         break;
       }
@@ -945,12 +981,13 @@ export class Sim {
       const q = e.queues[b];
       if (!q.length) continue;
       const ut = UNIT_TYPES[q[0]], d = unitDef(ut);
-      if (e.trainProgress[b] < d.trainTicks) {
+      if (e.trainProgress[b] < ((this.ps[p].opts & TestOpt.INSTANT_TRAIN) ? 1 : d.trainTicks)) {
         if (this.ps[p].starving) continue;
         e.trainProgress[b]++;
         continue;
       }
-      if (this.ps[p].pop + d.pop > this.ps[p].housing) {
+      const lim = this.settings.popLimit ?? 0;
+      if ((this.ps[p].pop + d.pop > this.ps[p].housing && !(this.ps[p].opts & TestOpt.NO_HOUSING)) || (lim > 0 && this.ps[p].pop + d.pop > lim)) {
         if (!this.ps[p].housingWarned) { this.ps[p].housingWarned = true; this.emit(p, 'housing'); }
         continue;
       }
@@ -1105,7 +1142,7 @@ export class Sim {
       let seen = false;
       for (let o = 0; o < e.count && !seen; o++) {
         if (!e.alive[o] || e.owner[o] !== viewer || e.carrier[o] >= 0) continue;
-        const dx = e.posX[o] - e.posX[id], dy = e.posY[o] - e.posY[id];
+        const dx = wdelta(e.posX[id], e.posX[o], this.map.w * FP_ONE, this.wrap), dy = e.posY[o] - e.posY[id];
         seen = dx * dx + dy * dy <= R * R;
       }
       if (!seen) return false;
@@ -1131,6 +1168,7 @@ export class Sim {
       for (const q of this.ents.queues[id] ?? []) hs.u32(q);
     }
     for (const f of this.fog) hs.bytes(f.data);
+    if (this.modified) { hs.u32(0x7e57); for (const ps of this.ps) hs.u32(ps.opts); } // test options (absent → old hashes unchanged)
     hs.bytes(this.tileOwner); hs.bytes(this.occ); hs.bytes(this.map.biome); hs.bytes(this.res.type); hs.bytes(this.res.amount);
     for (const ps of this.ps) {
       for (const v of ps.stock) hs.u32(v);

@@ -33,10 +33,13 @@ export interface IgniteCommand extends Base { type: 'ignite'; ids: number[]; til
 /** A transport sails next to a shore tile and lets its passengers off. */
 export interface UnloadCommand extends Base { type: 'unload'; ship: number; tile: number }
 
+/** Turn a test option (F-197) on or off for the issuing player. Never touches resources. */
+export interface TestOptionCommand extends Base { type: 'testOption'; flag: number; on: boolean }
+
 export type Command =
   | MoveCommand | GatherCommand | InteractCommand | PlaceCommand | PlaceLineCommand | TrainCommand | CancelTrainCommand | UpgradeCommand
   | AttackCommand | StopCommand | HoldCommand | RetreatCommand | PatrolCommand | RallyCommand | DemolishCommand | UngarrisonCommand
-  | DigCommand | IgniteCommand | UnloadCommand;
+  | DigCommand | IgniteCommand | UnloadCommand | TestOptionCommand;
 
 /** A command as sent by a client, before the sim stamps tick/player/seq. */
 export type CommandBody = Command extends infer C ? (C extends Command ? Omit<C, 'tick' | 'player' | 'seq'> : never) : never;

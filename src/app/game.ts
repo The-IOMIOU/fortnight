@@ -27,8 +27,12 @@ import { qualityParams } from './settings';
 import { BUILDING_NAMES, RES_LABELS, UNIT_NAMES } from '../ui/names';
 import { actionsFor, eventKey, keyFor } from './keymap';
 import { EffectsLayer } from '../render/effects';
+import { CURVE, curveFor, curveScene } from '../render/curve';
 
 THREE.ColorManagement.enabled = false;
+
+/** Speeds offered to the player: above 4× only with the 'extra speeds' test option. */
+export const availableSpeeds = (opts: number): SpeedName[] => SPEED_NAMES.filter((n) => TUNING.sim.speeds[n] <= 4 || (opts & 64) !== 0);
 
 export interface NewGameOptions {
   seed: string; size: MapSize; speed: SpeedName; players: number; spectator?: boolean;
@@ -38,6 +42,14 @@ export interface NewGameOptions {
   victory?: SimSettings['victory'];
   /** Optional Impossible-bot income bonus (shown in settings when enabled). */
   impossibleBonus?: boolean;
+  // ---- Phase 4b ----
+  mode?: string;
+  world?: SimSettings['world'];
+  wildlifePct?: number;
+  dayLengthTicks?: number;
+  popLimit?: number;
+  /** Test options for you (player 0) from the start; the run counts as modified. */
+  testOptions?: number;
 }
 export type StartOptions = { kind: 'new'; opts: NewGameOptions } | { kind: 'load'; save: SaveData };
 
@@ -104,7 +116,13 @@ export class Game {
       const o = start.opts;
       this.viewer = o.spectator ? -1 : 0;
       const bonus = Array.from({ length: o.players }, (_, p) => (o.impossibleBonus && o.bots?.find((b) => b.player === p)?.difficulty === 'impossible' ? TUNING.bots.impossibleIncomeBonusPct : 0));
-      this.send({ type: 'init', settings: { seed: o.seed, size: o.size, players: o.players, teams: o.teams, victory: o.victory, incomeBonusPct: bonus }, viewer: this.viewer, speed: o.speed, paused: false, bots: o.bots ?? [] });
+      const settings: SimSettings = { seed: o.seed, size: o.size, players: o.players, teams: o.teams, victory: o.victory, incomeBonusPct: bonus };
+      if (o.world) settings.world = o.world;
+      if (o.wildlifePct !== undefined && o.wildlifePct !== 100) settings.wildlifePct = o.wildlifePct;
+      if (o.dayLengthTicks && o.dayLengthTicks !== TUNING.dayNight.dayLengthTicks) settings.dayLengthTicks = o.dayLengthTicks;
+      if (o.popLimit) settings.popLimit = o.popLimit;
+      if (o.testOptions) settings.testOptions = [o.testOptions];
+      this.send({ type: 'init', settings, viewer: this.viewer, speed: o.speed, paused: false, bots: o.bots ?? [] });
       store.set({ myTeam: o.teams?.[0] ?? 0, impossibleBonusOn: !!o.impossibleBonus && !!o.bots?.some((b) => b.difficulty === 'impossible') });
       store.set({ screen: 'loading', seed: o.seed, size: o.size, speed: o.speed, paused: false, winner: -1, feed: [], stats: null, error: '' });
     } else {
@@ -150,7 +168,8 @@ export class Game {
     this.effects = new EffectsLayer(map);
     this.scene.add(this.terrain.group, this.nature.group, this.units.group, this.effects.group);
     const r = this.host.getBoundingClientRect();
-    this.cam = new RtsCamera(map.w, map.h, r.width / Math.max(1, r.height));
+    this.cam = new RtsCamera(map.w, map.h, r.width / Math.max(1, r.height), map.wrap);
+    this.applyCurve();
     this.jumpToStart();
     this.minimap = new Minimap(map, (x, z) => this.cam.setTarget(x, z));
     this.host.appendChild(this.minimap.root);
@@ -188,7 +207,7 @@ export class Game {
     const perf = store.state.perf;
     store.set({
       tick: s.tick, isNight: s.isNight, dayPhase: s.dayPhase, dayLength: s.dayLength, speed: s.speed, paused: s.paused,
-      pendingOrders: s.pending.length, stats: s.stats, winner: s.winner, winnerTeam: s.winnerTeam, bots: s.bots,
+      pendingOrders: s.pending.length, stats: s.stats, winner: s.winner, winnerTeam: s.winnerTeam, bots: s.bots, modified: s.modified, opts: s.opts,
       perf: { ...perf, simMs: s.simMsPerTick, tps: s.ticksPerSec, dropped: s.droppedTicks, entities: s.ents.length / 9 },
     });
   }
@@ -252,15 +271,40 @@ export class Game {
     this.terrain.setLighting(night, now / 1000);
     this.sun.intensity = 0.75 - 0.5 * night;
     this.amb.intensity = 0.8 - 0.42 * night;
+    if (this.map.wrap && ++this.curveFrames % 30 === 1) curveScene(this.scene);
+    const corners = this.viewCorners();
     this.renderer.render(this.scene, this.cam.camera);
+    if (this.map.wrap) {
+      // globe: draw the copies of the world east and west of the seam by moving the camera one map
+      // width over (same depth buffer, so the copies overlap correctly); only when the view crosses it
+      const xs = corners.map((c) => (c ? c.x : NaN));
+      const open = xs.some((x) => Number.isNaN(x)), m = CURVE.value > 0 ? this.cam.distance : 2; // the bend shows more ground
+      const offs: number[] = [];
+      if (open || Math.min(...xs) < m) offs.push(this.map.w);
+      if (open || Math.max(...xs) > this.map.w - m) offs.push(-this.map.w);
+      if (offs.length) {
+        const c = this.cam.camera, x0 = c.position.x, auto = this.renderer.autoClear;
+        this.renderer.autoClear = false;
+        for (const off of offs) { c.position.x = x0 + off; c.updateMatrixWorld(); this.renderer.render(this.scene, c); }
+        c.position.x = x0; c.updateMatrixWorld();
+        this.renderer.autoClear = auto;
+      }
+    }
     if (now - this.lastHud > 200) {
       this.lastHud = now;
       this.minimap.redraw();
       const feed = store.state.feed.filter((f) => now - f.at < 12000);
       store.set({ perf: { ...store.state.perf, ...this.perfNow() }, selected: this.units.selected.size, selection: this.selectionInfo(), feed: feed.length === store.state.feed.length ? store.state.feed : feed });
     }
-    this.minimap.drawView(this.viewCorners(), this.units.visible.filter((v) => v.owner !== 254 && v.owner !== 255));
+    this.minimap.drawView(corners, this.units.visible.filter((v) => v.owner !== 254 && v.owner !== 255));
   };
+
+  private curveFrames = 0;
+  /** Curved globe look on (display setting) for globe maps only. */
+  /** Test hooks: current curve strength and the share of tiles the fog shows as visible. */
+  curveValue(): number { return CURVE.value; }
+  fogVisibleShare(): number { const f = this.terrain.fogData(); let n = 0; for (let i = 0; i < f.length; i++) if (f[i] === 255) n++; return n / f.length; }
+  applyCurve(): void { CURVE.value = this.map?.wrap && store.state.settings.globeCurve ? curveFor(this.map.w, TUNING.map.globeCurveStrength) : 0; }
 
   private perfNow(): { fps: number; p95Ms: number; drawCalls: number; triangles: number } {
     const recent = this.frameTimes.slice(-120);
@@ -307,18 +351,28 @@ export class Game {
     const [nx, ny] = this.ndc(clientX, clientY);
     const ray = this.cam.ray(nx, ny);
     const p = ray.origin.clone(), step = ray.direction.clone().multiplyScalar(0.15);
+    const W = this.map.w, wrap = this.map.wrap, c = CURVE.value, view = this.cam.camera.matrixWorldInverse, world = this.cam.camera.matrixWorld;
+    const g = new THREE.Vector3();
     for (let k = 0; k < 8000; k++) {
       p.add(step);
-      if (p.x < 0 || p.z < 0 || p.x >= this.map.w || p.z >= this.map.h) { if (p.y < 0) return null; continue; }
-      const i = Math.floor(p.z) * this.map.w + Math.floor(p.x);
-      if (p.y <= tileTopY(this.map, i)) return { x: p.x, z: p.z };
+      g.copy(p);
+      if (c > 0) { g.applyMatrix4(view); g.y += c * (g.x * g.x + g.z * g.z); g.applyMatrix4(world); } // undo the globe bend
+      let gx = g.x;
+      if (wrap) gx = ((gx % W) + W) % W;
+      if (gx < 0 || g.z < 0 || gx >= W || g.z >= this.map.h) { if (g.y < -50) return null; continue; }
+      const i = Math.floor(g.z) * W + Math.floor(gx);
+      if (g.y <= tileTopY(this.map, i)) return { x: gx, z: g.z };
     }
     return null;
   }
 
   screenOf(v: { x: number; y: number; z: number }, lift = 0.4): { x: number; y: number } {
     const r = this.renderer.domElement.getBoundingClientRect();
-    const p = new THREE.Vector3(v.x, v.y + lift, v.z).project(this.cam.camera);
+    // globe: project the copy of the entity nearest the camera; curved view: apply the same bend
+    const W = this.map.w, x = this.map.wrap ? v.x + W * Math.round((this.cam.targetX - v.x) / W) : v.x;
+    const p = new THREE.Vector3(x, v.y + lift, v.z);
+    if (CURVE.value > 0) { p.applyMatrix4(this.cam.camera.matrixWorldInverse); p.y -= CURVE.value * (p.x * p.x + p.z * p.z); p.applyMatrix4(this.cam.camera.matrixWorld); }
+    p.project(this.cam.camera);
     return { x: ((p.x + 1) / 2) * r.width + r.left, y: ((1 - p.y) / 2) * r.height + r.top };
   }
 
@@ -644,9 +698,15 @@ export class Game {
 
   setSpeed(speed: SpeedName): void { this.send({ type: 'speed', speed }); store.set({ speed }); }
   setPaused(paused: boolean): void { this.send({ type: 'pause', paused }); store.set({ paused }); }
+  /** Switch test options for you (F-197); the HUD asks for confirmation first. */
+  setTestOptions(mask: number): void {
+    const cur = store.state.opts;
+    for (const flag of [1, 2, 4, 8, 16, 32, 64]) if ((cur & flag) !== (mask & flag)) this.cmd({ type: 'testOption', flag, on: (mask & flag) !== 0 });
+    store.set({ opts: mask, modified: store.state.modified || mask !== 0 });
+  }
   stepSpeed(dir: number): void {
-    const i = SPEED_NAMES.indexOf(store.state.speed);
-    this.setSpeed(SPEED_NAMES[Math.max(0, Math.min(SPEED_NAMES.length - 1, i + dir))]);
+    const names = availableSpeeds(store.state.opts), i = names.indexOf(store.state.speed);
+    this.setSpeed(names[Math.max(0, Math.min(names.length - 1, i + dir))]);
   }
   setOwnerOverlay(on: boolean): void {
     this.terrain.material.uniforms.uOwnerOverlay.value = on ? 1 : 0;

@@ -11,7 +11,8 @@ import {
   BUILDING_TYPES, DEFENSIVE, Kind, Res, RES_NONE, TOWN_CENTERS, Task, UNIT_TYPES, buildingDef, buildingTypeOfKind, isBuildingKind, isUnitKind,
   unitDef, unitTypeOfKind, type BuildingTypeName, type UnitDef,
 } from './defs';
-import { NO_OWNER, costOf, type Sim } from './sim';
+import { NO_OWNER, TestOpt, costOf, type Sim } from './sim';
+import { wdelta } from './core/topo';
 
 const C = TUNING.combat, M = TUNING.morale, T = TUNING.terrainEdit, F = TUNING.fire, GRP = TUNING.groups;
 const CELL = 8;
@@ -44,16 +45,20 @@ export class Military {
   }
   /** Squared fixed-point distance from entity a's centre to entity b (unit centre or building footprint). */
   dist2(a: number, b: number): number {
-    const e = this.s.ents, ax = e.posX[a], ay = e.posY[a];
+    const e = this.s.ents, ay = e.posY[a], span = this.s.map.w * FP_ONE, wrap = this.s.wrap;
+    let ax = e.posX[a];
     if (isBuildingKind(e.kind[b])) {
       const r = this.s.footprintRect(b);
       const x0 = r.x0 << FP_SHIFT, y0 = r.y0 << FP_SHIFT, x1 = (r.x1 + 1) << FP_SHIFT, y1 = (r.y1 + 1) << FP_SHIFT;
+      ax = x0 + wdelta(x0, ax, span, wrap); // the attacker's x on the building's side of the seam
       const dx = ax < x0 ? x0 - ax : ax > x1 ? ax - x1 : 0, dy = ay < y0 ? y0 - ay : ay > y1 ? ay - y1 : 0;
       return dx * dx + dy * dy;
     }
-    const dx = e.posX[b] - ax, dy = e.posY[b] - ay;
+    const dx = wdelta(ax, e.posX[b], span, wrap), dy = e.posY[b] - ay;
     return dx * dx + dy * dy;
   }
+  /** Is entity id protected by its owner's invulnerability test option? */
+  invulnerable(id: number): boolean { const o = this.s.ents.owner[id]; return o < this.s.players && (this.s.ps[o].opts & TestOpt.INVULNERABLE) !== 0; }
   /** Weapon range (fixed-point) of an attacker. */
   range(id: number): number {
     const e = this.s.ents;
@@ -110,7 +115,10 @@ export class Military {
     const cx = (e.posX[id] >> FP_SHIFT) >> 3, cy = (e.posY[id] >> FP_SHIFT) >> 3, cr = Math.ceil(radiusTiles / CELL) + 1;
     const r2 = (radiusTiles * FP_ONE) * (radiusTiles * FP_ONE), stealthR2 = (2 * FP_ONE) * (2 * FP_ONE);
     let bestU = -1, bdU = 0, bestB = -1, bdB = 0;
-    for (let gy = Math.max(0, cy - cr); gy <= Math.min(this.gh - 1, cy + cr); gy++) for (let gx = Math.max(0, cx - cr); gx <= Math.min(this.gw - 1, cx + cr); gx++) {
+    const wrap = this.s.wrap;
+    for (let gy = Math.max(0, cy - cr); gy <= Math.min(this.gh - 1, cy + cr); gy++) for (let gxr = wrap ? cx - cr : Math.max(0, cx - cr); gxr <= (wrap ? cx + cr : Math.min(this.gw - 1, cx + cr)); gxr++) {
+      if (wrap && 2 * cr + 1 > this.gw && (gxr < 0 || gxr >= this.gw)) continue; // tiny map: don't visit a cell twice
+      const gx = wrap ? ((gxr % this.gw) + this.gw) % this.gw : gxr;
       for (const t of this.grid[gy * this.gw + gx]) {
         if (!this.isEnemy(id, t) || e.hp[t] <= 0) continue;
         const d = this.dist2(id, t);
@@ -174,7 +182,8 @@ export class Military {
   }
 
   private hit(a: number, t: number): void {
-    const e = this.s.ents, dmg = this.damage(a, t);
+    const e = this.s.ents, o = e.owner[t];
+    const dmg = o < this.s.players && (this.s.ps[o].opts & TestOpt.INVULNERABLE) ? 0 : this.damage(a, t);
     e.hp[t] -= dmg;
     e.lastHit[t] = this.s.tick;
     if (isUnitKind(e.kind[t]) && e.maxHp[t] > 0) {
@@ -299,7 +308,7 @@ export class Military {
     const e = this.s.ents, p = e.owner[id], R = M.allyDeathRadius * FP_ONE;
     for (let o = 0; o < e.count; o++) {
       if (o === id || !e.alive[o] || e.owner[o] !== p || !isMilitaryKind(e.kind[o])) continue;
-      const dx = e.posX[o] - e.posX[id], dy = e.posY[o] - e.posY[id];
+      const dx = wdelta(e.posX[id], e.posX[o], this.s.map.w * FP_ONE, this.s.wrap), dy = e.posY[o] - e.posY[id];
       if (dx * dx + dy * dy <= R * R) e.morale[o] = Math.max(0, e.morale[o] - M.allyDeathLoss);
     }
   }
@@ -663,9 +672,9 @@ export class Military {
     const out: number[] = [];
     for (const t of list) {
       if (second) {
-        for (const id of unitsByTile!.get(t) ?? []) { e.hp[id] -= F.unitDamagePerSecond; e.lastHit[id] = s.tick; }
+        for (const id of unitsByTile!.get(t) ?? []) { if (!this.invulnerable(id)) e.hp[id] -= F.unitDamagePerSecond; e.lastHit[id] = s.tick; }
         const o = s.occ[t];
-        if (o) { e.hp[o - 1] -= F.buildingDamagePerSecond; e.lastHit[o - 1] = s.tick; }
+        if (o) { if (!this.invulnerable(o - 1)) e.hp[o - 1] -= F.buildingDamagePerSecond; e.lastHit[o - 1] = s.tick; }
       }
       if (spread) {
         const x = t % w, y = (t - x) / w;

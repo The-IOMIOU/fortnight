@@ -13,8 +13,11 @@ import { DIFFICULTIES, PERSONALITIES, type Difficulty } from '../ai/utility';
 import { Rng } from '../sim/core/prng';
 import type { BotConfig } from '../ai/manager';
 import { sfxPlayed } from '../audio/sfx';
+import { MODES, modeDef, type ModeId } from '../app/modes';
+import type { MapOpts, SeaWidth } from '../sim/world/mapgen';
+import { TestOptionList } from './testOptions';
 
-const SPEED_LABEL: Record<SpeedName, string> = { slow: '0.5×', normal: '1×', fast: '2×', veryFast: '4×' };
+const SPEED_LABEL: Record<SpeedName, string> = { slow: '0.5×', normal: '1×', fast: '2×', veryFast: '4×', x8: '8×', x16: '16×' };
 const WORDS_A = ['amber', 'quiet', 'rust', 'salt', 'ember', 'misty', 'iron', 'bright', 'hollow', 'wild', 'frost', 'golden'];
 const WORDS_B = ['ridge', 'delta', 'fjord', 'mesa', 'marsh', 'vale', 'cove', 'steppe', 'basin', 'reef', 'crag', 'grove'];
 const RACES = [baseline];
@@ -37,6 +40,8 @@ function readUrl(): Partial<NewGameOptions> & { play: boolean; botCount?: number
     difficulty: (q.get('difficulty') as Difficulty | null) ?? undefined,
     personality: q.get('personality') ?? undefined,
     allies: q.get('allies') !== null ? +q.get('allies')! : undefined,
+    world: q.get('world') ? { globe: q.get('world') === 'globe', sea: (q.get('sea') ?? 'mixed') as SeaWidth, continents: q.get('continents') ? +q.get('continents')! : TUNING.map.sizes[size && MAP_SIZES.includes(size) ? size : 'small'].continents } : undefined,
+    testOptions: q.get('opts') ? +q.get('opts')! : undefined,
     play: q.get('play') === '1',
     spectator: q.get('reveal') === '1',
   };
@@ -93,8 +98,8 @@ export function App() {
       stall: (ms: number) => g.stallWorker(ms),
       sweep: (sec: number, dist?: number) => g.sweep(sec, dist),
       // Runs the shared deterministic code path on this page's JS engine (F-010 / F-021 cross-engine check).
-      scripted: (seed: string, size: MapSize, players: number, cps: number[]) => scriptedRun(seed, size, players, cps),
-      mapHashOf: (seed: string, size: MapSize) => hex(generateMap(seed, size).hash),
+      scripted: (seed: string, size: MapSize, players: number, cps: number[], world?: MapOpts) => scriptedRun(seed, size, players, cps, undefined, world),
+      mapHashOf: (seed: string, size: MapSize, opts?: MapOpts) => hex(generateMap(seed, size, opts).hash),
       sfxCount: () => sfxPlayed(),
     };
   };
@@ -124,7 +129,7 @@ export function App() {
     if (u.play && u.seed) {
       const size = u.size ?? 'small';
       const m = u.botCount !== undefined ? makeMatch(u.seed, size, u.botCount, u.difficulty ?? 'hard', u.personality ?? 'random', u.allies ?? 0) : { players: u.players ?? defaultPlayers(size) };
-      start({ kind: 'new', opts: { seed: u.seed, size, speed: 'normal', spectator: u.spectator, ...m } });
+      start({ kind: 'new', opts: { seed: u.seed, size, speed: 'normal', spectator: u.spectator, ...m, world: u.world, testOptions: u.testOptions } });
     }
   }, []);
 
@@ -138,16 +143,24 @@ export function App() {
   );
 }
 
-interface MenuPrefs { size: MapSize; speed: SpeedName; rivals: number; difficulty: Difficulty; pers: string; allies: number; conquest: boolean; domination: boolean; domPct: number; bonus: boolean }
+interface MenuPrefs {
+  mode: ModeId; size: MapSize; speed: SpeedName; rivals: number; difficulty: Difficulty; pers: string; allies: number; conquest: boolean; domination: boolean; domPct: number; bonus: boolean;
+  globe: boolean; continents: number; sea: SeaWidth; wildlife: number; dayLen: number; popLimit: number; perBot: boolean; botRows: { difficulty: Difficulty; personality: string }[]; testOpts: number;
+}
 const MENU_KEY = 'fortnight.menu.v1';
 function loadMenuPrefs(): Partial<MenuPrefs> { try { return JSON.parse(localStorage.getItem(MENU_KEY) ?? '{}') as Partial<MenuPrefs>; } catch { return {}; } }
 function saveMenuPrefs(p: MenuPrefs): void { try { localStorage.setItem(MENU_KEY, JSON.stringify(p)); } catch { /* storage unavailable */ } }
+const MENU_SPEEDS = SPEED_NAMES.filter((n) => TUNING.sim.speeds[n] <= 4);
+const WILDLIFE: [number, string][] = [[0, 'None'], [50, 'Few'], [100, 'Normal'], [200, 'Many']];
+const DAY_LENGTHS: [number, string][] = [[1800, 'Short (3 min)'], [TUNING.dayNight.dayLengthTicks, 'Normal (6 min)'], [7200, 'Long (12 min)']];
+const POP_LIMITS: [number, string][] = [[0, 'No limit (housing only)'], [50, '50'], [100, '100'], [200, '200'], [400, '400']];
 
 function Menu({ initial, onStart }: { initial: Partial<NewGameOptions>; onStart: (s: StartOptions) => void }) {
   const saved = useMemo(loadMenuPrefs, []);
+  const [mode, setModeRaw] = useState<ModeId>(saved.mode ?? 'short');
   const [seed, setSeed] = useState(initial.seed ?? randomSeed());
   const [size, setSize] = useState<MapSize>(initial.size ?? (saved.size && MAP_SIZES.includes(saved.size) ? saved.size : 'small'));
-  const [speed, setSpeed] = useState<SpeedName>(saved.speed ?? 'normal');
+  const [speed, setSpeed] = useState<SpeedName>(saved.speed && MENU_SPEEDS.includes(saved.speed) ? saved.speed : 'normal');
   const [rivals, setRivals] = useState(saved.rivals ?? defaultPlayers(initial.size ?? 'small') - 1);
   const [difficulty, setDifficulty] = useState<Difficulty>(saved.difficulty && DIFFICULTIES.includes(saved.difficulty) ? saved.difficulty : 'hard');
   const [pers, setPers] = useState(saved.pers ?? 'random');
@@ -156,20 +169,56 @@ function Menu({ initial, onStart }: { initial: Partial<NewGameOptions>; onStart:
   const [domination, setDomination] = useState(saved.domination ?? true);
   const [domPct, setDomPct] = useState(saved.domPct ?? TUNING.economy.dominationPct);
   const [bonus, setBonus] = useState(saved.bonus ?? false);
+  const [globe, setGlobe] = useState(saved.globe ?? true);
+  const [continents, setContinents] = useState(saved.continents ?? TUNING.modes.short.continents);
+  const [sea, setSea] = useState<SeaWidth>(saved.sea ?? 'close');
+  const [wildlife, setWildlife] = useState(saved.wildlife ?? 100);
+  const [dayLen, setDayLen] = useState(saved.dayLen ?? TUNING.dayNight.dayLengthTicks);
+  const [popLimit, setPopLimit] = useState(saved.popLimit ?? 0);
+  const [perBot, setPerBot] = useState(saved.perBot ?? false);
+  const [botRows, setBotRows] = useState<MenuPrefs['botRows']>(saved.botRows ?? []);
+  const [testOpts, setTestOpts] = useState(saved.testOpts ?? 0);
   const [clampMsg, setClampMsg] = useState('');
   const [race, setRace] = useState(RACES[0].id);
   const [cont, setCont] = useState<{ label: string; blob: Blob } | null>(null);
   const error = useStore((s) => s.error);
   const fileRef = useRef<HTMLInputElement>(null);
-  const maxRivals = TUNING.map.sizes[size].maxPlayers - 1;
+  const md = modeDef(mode);
+  const sizes = md ? md.sizes : MAP_SIZES;
+  const maxRivals = Math.min(md?.maxBots ?? 31, TUNING.map.sizes[size].maxPlayers - 1);
   useEffect(() => { void getContinue().then((c) => c && setCont(c)); }, []);
-  useEffect(() => { if (rivals > maxRivals) { setRivals(maxRivals); setClampMsg(`A ${size} map has room for ${maxRivals} bots, so the bot count was lowered.`); } else setClampMsg(''); if (allies > Math.max(0, maxRivals - 1)) setAllies(Math.max(0, maxRivals - 1)); }, [size]);
+  useEffect(() => {
+    if (rivals > maxRivals) { setRivals(maxRivals); setClampMsg(`${md ? md.name + ' mode on a' : 'A'} ${size} map has room for ${maxRivals} bots, so the bot count was lowered.`); } else setClampMsg('');
+    if (allies > Math.max(0, maxRivals - 1)) setAllies(Math.max(0, maxRivals - 1));
+  }, [size, mode]);
+  /** Picking a mode applies its preset (size, bots, world); everything stays adjustable. */
+  const setMode = (id: ModeId): void => {
+    setModeRaw(id);
+    const m = modeDef(id);
+    if (!m) return;
+    const sz = m.sizes.includes(size) ? size : m.defaultSize;
+    setSize(sz);
+    setRivals(Math.min(m.defaultBots, TUNING.map.sizes[sz].maxPlayers - 1)); setClampMsg('');
+    setGlobe(m.globe); setSea(m.sea); setContinents(m.continents);
+  };
+  const rows = Array.from({ length: rivals }, (_, k) => botRows[k] ?? { difficulty, personality: pers });
+  const setRow = (k: number, patch: Partial<MenuPrefs['botRows'][number]>): void => { const r = rows.slice(); r[k] = { ...r[k], ...patch }; setBotRows(r); };
 
   const loadBlob = async (b: Blob): Promise<void> => {
     try { onStart({ kind: 'load', save: await decodeSave(b) }); }
     catch { store.set({ error: 'That file is not a readable Fortnight save.' }); }
   };
   const chosen = RACES.find((r) => r.id === race)!;
+  const start = (): void => {
+    store.set({ error: '' });
+    saveMenuPrefs({ mode, size, speed, rivals, difficulty, pers, allies, conquest, domination, domPct, bonus, globe, continents, sea, wildlife, dayLen, popLimit, perBot, botRows: rows, testOpts });
+    const m = makeMatch(seed.trim(), size, rivals, difficulty, pers, Math.min(allies, Math.max(0, rivals - 1)));
+    if (perBot && m.bots) m.bots = m.bots.map((b, k) => ({ ...b, difficulty: rows[k].difficulty, personality: rows[k].personality === 'random' ? b.personality : rows[k].personality }));
+    onStart({ kind: 'new', opts: {
+      seed: seed.trim(), size, speed, ...m, victory: { conquest, domination, dominationPct: domPct }, impossibleBonus: bonus && (m.bots ?? []).some((b) => b.difficulty === 'impossible'),
+      world: { globe, sea, continents }, wildlifePct: wildlife, dayLengthTicks: dayLen, popLimit, testOptions: testOpts, mode,
+    } });
+  };
 
   return (
     <div class="menu">
@@ -178,6 +227,13 @@ function Menu({ initial, onStart }: { initial: Partial<NewGameOptions>; onStart:
       {error && <p class="error" role="alert" data-testid="menu-error">{error}</p>}
       <section class="panel">
         <h2>New Game</h2>
+        <div class="modes" role="radiogroup" aria-label="Game mode">
+          {[...MODES, { id: 'custom' as const, name: 'Custom', blurb: 'Every setting by hand.' }].map((m) => (
+            <button type="button" role="radio" aria-checked={mode === m.id} class={'mode' + (mode === m.id ? ' on' : '')} onClick={() => setMode(m.id)} data-testid={'mode-' + m.id}>
+              <b>{m.name}</b><small>{m.blurb}</small>
+            </button>
+          ))}
+        </div>
         <label>People
           <select value={race} onChange={(e) => setRace((e.target as HTMLSelectElement).value)} data-testid="race">
             {RACES.map((r) => <option value={r.id}>{r.name}</option>)}
@@ -185,8 +241,8 @@ function Menu({ initial, onStart }: { initial: Partial<NewGameOptions>; onStart:
           <small class="later">{chosen.description}</small>
         </label>
         <label>Map size
-          <select value={size} onChange={(e) => setSize((e.target as HTMLSelectElement).value as MapSize)} data-testid="size">
-            {MAP_SIZES.map((s) => <option value={s}>{s[0].toUpperCase() + s.slice(1)} ({TUNING.map.sizes[s].tiles}×{TUNING.map.sizes[s].tiles}, {TUNING.map.sizes[s].continents} continents)</option>)}
+          <select value={size} onChange={(e) => { const z = (e.target as HTMLSelectElement).value as MapSize; setSize(z); if (mode === 'custom') setContinents(TUNING.map.sizes[z].continents); }} data-testid="size">
+            {sizes.map((z) => <option value={z}>{z[0].toUpperCase() + z.slice(1)} ({TUNING.map.sizes[z].tiles}×{TUNING.map.sizes[z].tiles})</option>)}
           </select>
         </label>
         <label>Seed
@@ -195,7 +251,7 @@ function Menu({ initial, onStart }: { initial: Partial<NewGameOptions>; onStart:
             <button type="button" onClick={() => setSeed(randomSeed())}>Random</button>
           </span>
         </label>
-        <label>Bots: {rivals} (up to {maxRivals} on this map)
+        <label>Bots: {rivals} (up to {maxRivals}{md ? ` in ${md.name}` : ' on this map'})
           <input type="range" min="0" max={maxRivals} value={rivals} onInput={(e) => { setRivals(+(e.target as HTMLInputElement).value); setClampMsg(''); }} data-testid="rivals" />
           {clampMsg && <small class="warn" data-testid="clamp-msg">{clampMsg}</small>}
         </label>
@@ -212,24 +268,83 @@ function Menu({ initial, onStart }: { initial: Partial<NewGameOptions>; onStart:
             </select>
           </label>
         </div>
-        {difficulty === 'impossible' && (
+        {(difficulty === 'impossible' || (perBot && rows.some((r) => r.difficulty === 'impossible'))) && (
           <label class="row"><input type="checkbox" checked={bonus} onChange={(e) => setBonus((e.target as HTMLInputElement).checked)} data-testid="bonus" /> Give Impossible bots +{TUNING.bots.impossibleIncomeBonusPct} % income (off by default; shown in-game when on)</label>
         )}
-        <label>Allied bots (co-op: you + allies vs the rest): {Math.min(allies, Math.max(0, rivals - 1))}
-          <input type="range" min="0" max={Math.max(0, rivals - 1)} value={Math.min(allies, Math.max(0, rivals - 1))} onInput={(e) => setAllies(+(e.target as HTMLInputElement).value)} data-testid="allies" />
-        </label>
-        <div class="row2">
-          <label class="row"><input type="checkbox" checked={conquest} onChange={(e) => setConquest((e.target as HTMLInputElement).checked)} data-testid="v-conquest" /> Conquest</label>
-          <label class="row"><input type="checkbox" checked={domination} onChange={(e) => setDomination((e.target as HTMLInputElement).checked)} data-testid="v-domination" /> Domination at
-            <input type="number" min="50" max="95" value={domPct} style={{ width: '4rem' }} onInput={(e) => setDomPct(Math.max(50, Math.min(95, +(e.target as HTMLInputElement).value || 70)))} data-testid="v-dompct" /> %</label>
-        </div>
         <label>Game speed
           <select value={speed} onChange={(e) => setSpeed((e.target as HTMLSelectElement).value as SpeedName)}>
-            {SPEED_NAMES.map((s) => <option value={s}>{SPEED_LABEL[s]}</option>)}
+            {MENU_SPEEDS.map((z) => <option value={z}>{SPEED_LABEL[z]}</option>)}
           </select>
         </label>
-        <p class="later">Conquest: be the last team with a capital. Domination: your team holds the chosen share of all land for {TUNING.economy.dominationHoldTicks / 600} minutes.</p>
-        <button class="primary" data-testid="start" onClick={() => { store.set({ error: '' }); saveMenuPrefs({ size, speed, rivals, difficulty, pers, allies, conquest, domination, domPct, bonus }); const m = makeMatch(seed.trim(), size, rivals, difficulty, pers, Math.min(allies, Math.max(0, rivals - 1))); onStart({ kind: 'new', opts: { seed: seed.trim(), size, speed, ...m, victory: { conquest, domination, dominationPct: domPct }, impossibleBonus: bonus && difficulty === 'impossible' } }); }} disabled={!seed.trim() || (!conquest && !domination)}>Start</button>
+        <details class="more" data-testid="more-settings">
+          <summary>More settings</summary>
+          <div class="row2">
+            <label>World
+              <select value={globe ? 'globe' : 'flat'} onChange={(e) => setGlobe((e.target as HTMLSelectElement).value === 'globe')} data-testid="world">
+                <option value="globe">Globe (wraps east–west)</option><option value="flat">Flat map</option>
+              </select>
+            </label>
+            <label>Continents
+              <input type="number" min="1" max="8" value={continents} onInput={(e) => setContinents(Math.max(1, Math.min(8, +(e.target as HTMLInputElement).value || 1)))} data-testid="continents" />
+            </label>
+          </div>
+          <div class="row2">
+            <label>Seas between continents
+              <select value={sea} onChange={(e) => setSea((e.target as HTMLSelectElement).value as SeaWidth)} data-testid="sea">
+                <option value="close">Close (narrow straits)</option><option value="mixed">Mixed (like Earth)</option><option value="far">Far (wide oceans)</option>
+              </select>
+            </label>
+            <label>Wildlife
+              <select value={wildlife} onChange={(e) => setWildlife(+(e.target as HTMLSelectElement).value)} data-testid="wildlife">
+                {WILDLIFE.map(([v, l]) => <option value={v}>{l}</option>)}
+              </select>
+            </label>
+          </div>
+          <div class="row2">
+            <label>Day length
+              <select value={dayLen} onChange={(e) => setDayLen(+(e.target as HTMLSelectElement).value)} data-testid="daylen">
+                {DAY_LENGTHS.map(([v, l]) => <option value={v}>{l}</option>)}
+              </select>
+            </label>
+            <label>Population limit
+              <select value={popLimit} onChange={(e) => setPopLimit(+(e.target as HTMLSelectElement).value)} data-testid="poplimit">
+                {POP_LIMITS.map(([v, l]) => <option value={v}>{l}</option>)}
+              </select>
+            </label>
+          </div>
+          <label>Allied bots (co-op: you + allies vs the rest): {Math.min(allies, Math.max(0, rivals - 1))}
+            <input type="range" min="0" max={Math.max(0, rivals - 1)} value={Math.min(allies, Math.max(0, rivals - 1))} onInput={(e) => setAllies(+(e.target as HTMLInputElement).value)} data-testid="allies" />
+          </label>
+          <div class="row2">
+            <label class="row"><input type="checkbox" checked={conquest} onChange={(e) => setConquest((e.target as HTMLInputElement).checked)} data-testid="v-conquest" /> Conquest</label>
+            <label class="row"><input type="checkbox" checked={domination} onChange={(e) => setDomination((e.target as HTMLInputElement).checked)} data-testid="v-domination" /> Domination at
+              <input type="number" min="50" max="95" value={domPct} style={{ width: '4rem' }} onInput={(e) => setDomPct(Math.max(50, Math.min(95, +(e.target as HTMLInputElement).value || 70)))} data-testid="v-dompct" /> %</label>
+          </div>
+          <p class="later">Conquest: be the last team with a capital. Domination: your team holds the chosen share of all land for {TUNING.economy.dominationHoldTicks / 600} minutes.</p>
+          <label class="row"><input type="checkbox" checked={perBot} onChange={(e) => setPerBot((e.target as HTMLInputElement).checked)} data-testid="per-bot" /> Set each bot separately</label>
+          {perBot && (
+            <div class="botrows" data-testid="bot-rows">
+              {rows.map((r, k) => (
+                <div class="row">
+                  <span>Bot {k + 1}</span>
+                  <select value={r.difficulty} onChange={(e) => setRow(k, { difficulty: (e.target as HTMLSelectElement).value as Difficulty })} data-testid={'bot-diff-' + k}>
+                    {DIFFICULTIES.map((d) => <option value={d}>{d[0].toUpperCase() + d.slice(1)}</option>)}
+                  </select>
+                  <select value={r.personality} onChange={(e) => setRow(k, { personality: (e.target as HTMLSelectElement).value })} data-testid={'bot-pers-' + k}>
+                    <option value="random">Random</option>
+                    {PERSONALITIES.map((p) => <option value={p.id}>{p.name}</option>)}
+                  </select>
+                </div>
+              ))}
+            </div>
+          )}
+        </details>
+        <details class="more" data-testid="test-options-menu">
+          <summary>Test options (cheats){testOpts ? ' · on' : ''}</summary>
+          <TestOptionList mask={testOpts} onChange={setTestOpts} modified={false} />
+        </details>
+        {testOpts !== 0 && <p class="warn" data-testid="menu-modified">Test options are on: this run will be marked as Modified.</p>}
+        <button class="primary" data-testid="start" onClick={start} disabled={!seed.trim() || (!conquest && !domination)}>Start</button>
       </section>
       <section class="panel">
         <h2>Saved games</h2>

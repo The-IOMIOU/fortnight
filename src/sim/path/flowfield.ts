@@ -3,6 +3,8 @@
 // data: the cache is cleared on any terrain/building change, and recomputing gives identical results,
 // so cache hits/misses never affect the simulation.
 
+import { tileAt } from '../core/topo';
+
 export const UNREACHABLE = 0x7fffffff;
 const DIAG = 14, STRAIGHT = 10;
 
@@ -12,7 +14,7 @@ export class FlowFields {
   computed = 0;
   lastMs = 0;
 
-  constructor(readonly w: number, readonly h: number, readonly capacity: number) {}
+  constructor(readonly w: number, readonly h: number, readonly capacity: number, readonly wrap = false) {}
 
   clear(): void { this.cache.clear(); }
 
@@ -65,15 +67,13 @@ export class FlowFields {
       const x = t % w, y = (t - x) / w, d = dist[t];
       for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) {
         if (dx === 0 && dy === 0) continue;
-        const nx = x + dx, ny = y + dy;
-        if (nx < 0 || ny < 0 || nx >= w || ny >= h) continue;
-        const nb = ny * w + nx;
-        if (done[nb]) continue;
+        const nb = tileAt(x + dx, y + dy, w, h, this.wrap);
+        if (nb < 0 || done[nb]) continue;
         // entering cost is paid by the neighbour (we search backwards from the goal): use the
         // neighbour's own cost so that moving *out of* a slow tile is what costs time
         const c = cost(nb);
         if (c <= 0) continue;
-        if (dx !== 0 && dy !== 0 && (cost(y * w + nx) <= 0 || cost(ny * w + x) <= 0)) continue;
+        if (dx !== 0 && dy !== 0 && (cost(tileAt(x + dx, y, w, h, this.wrap)) <= 0 || cost(tileAt(x, y + dy, w, h, this.wrap)) <= 0)) continue;
         const nd = d + Math.floor(((dx !== 0 && dy !== 0 ? DIAG : STRAIGHT) * c) / 10);
         if (nd < dist[nb]) { dist[nb] = nd; push(nb); }
       }
@@ -82,16 +82,14 @@ export class FlowFields {
   }
 
   /** Best next tile from `t` (lowest distance neighbour, no corner cutting); -1 at goal or if stuck. */
-  static next(field: Int32Array, t: number, w: number, h: number, cost: (t: number) => number): number {
+  static next(field: Int32Array, t: number, w: number, h: number, cost: (t: number) => number, wrap = false): number {
     const x = t % w, y = (t - x) / w;
     let best = -1, bd = field[t];
     for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) {
       if (dx === 0 && dy === 0) continue;
-      const nx = x + dx, ny = y + dy;
-      if (nx < 0 || ny < 0 || nx >= w || ny >= h) continue;
-      const nb = ny * w + nx;
-      if (field[nb] >= bd) continue;
-      if (dx !== 0 && dy !== 0 && (cost(y * w + nx) <= 0 || cost(ny * w + x) <= 0)) continue;
+      const nb = tileAt(x + dx, y + dy, w, h, wrap);
+      if (nb < 0 || field[nb] >= bd) continue;
+      if (dx !== 0 && dy !== 0 && (cost(tileAt(x + dx, y, w, h, wrap)) <= 0 || cost(tileAt(x, y + dy, w, h, wrap)) <= 0)) continue;
       bd = field[nb]; best = nb;
     }
     return best;

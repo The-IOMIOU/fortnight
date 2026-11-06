@@ -109,11 +109,11 @@ export function placeResources(m: GameMap, players: number): ResourceLayer {
 }
 
 /** Wildlife spawn tiles (plains/forest/tundra, away from starts). */
-export function animalSpawns(m: GameMap, players: number, layer: ResourceLayer): number[] {
+export function animalSpawns(m: GameMap, players: number, layer: ResourceLayer, pct = 100): number[] {
   const N = m.w * m.h, rng = Rng.stream(m.seed, 'animals-spawn');
   let land = 0;
   for (let i = 0; i < N; i++) if (!isWaterBiome(m.biome[i])) land++;
-  const want = Math.floor(land / TUNING.animals.landTilesPerAnimal);
+  const want = Math.floor((Math.floor(land / TUNING.animals.landTilesPerAnimal) * Math.max(0, pct)) / 100);
   const starts = Array.from(m.starts.slice(0, players));
   const out: number[] = [];
   for (let attempt = 0; attempt < want * 30 && out.length < want; attempt++) {

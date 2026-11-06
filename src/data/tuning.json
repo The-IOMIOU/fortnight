@@ -2,7 +2,7 @@
   "sim": {
     "tickHz": 10,
     "maxCatchUpTicks": 8,
-    "speeds": { "slow": 0.5, "normal": 1, "fast": 2, "veryFast": 4 }
+    "speeds": { "slow": 0.5, "normal": 1, "fast": 2, "veryFast": 4, "x8": 8, "x16": 16 }
   },
   "map": {
     "sizes": {
@@ -12,6 +12,11 @@
       "huge":   { "tiles": 384, "maxPlayers": 32, "rivers": 16, "lakes": 10, "continents": 7 }
     },
     "channelWidth": 7,
+    "seaWidths": [3, 10, 30],
+    "globeSeamOcean": 14,
+    "straitReach": 16,
+    "partnerDistPct": 145,
+    "globeCurveStrength": 0.06,
     "continentMinShareOfLand": 0.08,
     "landFraction": 0.42,
     "borderOcean": 6,
@@ -154,5 +159,10 @@
     "capital3": { "wood": 300, "stone": 250, "gold": 100, "ticks": 600, "housing": 10, "territory": 2 },
     "house2":   { "wood": 40,  "stone": 30,  "gold": 0,   "ticks": 150, "housing": 4,  "territory": 0 },
     "farm2":    { "wood": 60,  "stone": 40,  "gold": 0,   "ticks": 200, "yieldPct": 30 }
+  },
+  "modes": {
+    "short": { "sizes": ["small"], "defaultSize": "small", "maxBots": 3, "defaultBots": 2, "globe": 1, "sea": "close", "continents": 2, "targetMin": 20 },
+    "long": { "sizes": ["medium", "large"], "defaultSize": "medium", "maxBots": 15, "defaultBots": 5, "globe": 1, "sea": "mixed", "continents": 4, "targetMin": 45 },
+    "continental": { "sizes": ["large", "huge"], "defaultSize": "huge", "maxBots": 31, "defaultBots": 9, "globe": 1, "sea": "mixed", "continents": 7, "targetMin": 120 }
   }
 }

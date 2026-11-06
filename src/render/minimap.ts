@@ -94,9 +94,12 @@ export class Minimap {
     if (corners.some((c) => !c)) return;
     ctx.strokeStyle = 'rgba(255,255,255,0.9)';
     ctx.lineWidth = 1.5;
-    ctx.beginPath();
-    corners.forEach((c, k) => (k === 0 ? ctx.moveTo(c!.x * sx, c!.z * sz) : ctx.lineTo(c!.x * sx, c!.z * sz)));
-    ctx.closePath();
-    ctx.stroke();
+    // globe: the view rectangle can cross the seam; draw it again one map-width over (the canvas clips)
+    for (const off of this.map.wrap ? [0, -S, S] : [0]) {
+      ctx.beginPath();
+      corners.forEach((c, k) => (k === 0 ? ctx.moveTo(c!.x * sx + off, c!.z * sz) : ctx.lineTo(c!.x * sx + off, c!.z * sz)));
+      ctx.closePath();
+      ctx.stroke();
+    }
   }
 }

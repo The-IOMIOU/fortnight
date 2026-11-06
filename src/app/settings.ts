@@ -1,9 +1,9 @@
 // Player settings (UI scale, graphics quality, sound), remembered per browser when storage is available.
 export type Quality = 'low' | 'medium' | 'high';
-export interface Settings { uiScale: number; quality: Quality; volume: number; muted: boolean }
+export interface Settings { uiScale: number; quality: Quality; volume: number; muted: boolean; /** Curved globe look on globe maps (F-195). */ globeCurve: boolean }
 
 const KEY = 'fortnight.settings.v1';
-const DEFAULTS: Settings = { uiScale: 1, quality: 'high', volume: 0.6, muted: false };
+const DEFAULTS: Settings = { uiScale: 1, quality: 'high', volume: 0.6, muted: false, globeCurve: true };
 
 export function loadSettings(): Settings {
   try {

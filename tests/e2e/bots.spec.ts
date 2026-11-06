@@ -8,6 +8,7 @@ const inGame = (page: import('@playwright/test').Page) =>
 
 test('F-120 bot count 0..max per size; over-limit is clamped with a message; each count starts', async ({ page }) => {
   await page.goto('/');
+  await page.getByTestId('mode-custom').click(); // every size
   await page.getByTestId('size').selectOption('medium');
   await page.getByTestId('rivals').fill('8');
   await page.getByTestId('size').selectOption('small');
@@ -18,6 +19,7 @@ test('F-120 bot count 0..max per size; over-limit is clamped with a message; eac
   const started: string[] = [];
   for (const n of [0, 1, 3]) {
     await page.goto('/');
+    await page.getByTestId('mode-custom').click();
     await page.getByTestId('seed').fill(`bots-count-${n}`);
     await page.getByTestId('size').selectOption('small');
     await page.getByTestId('rivals').fill(String(n));
@@ -42,6 +44,7 @@ test('F-121 / F-170 / F-178 difficulty, personality, victory options shape the m
   await page.getByTestId('difficulty').selectOption('impossible');
   await expect(page.getByTestId('bonus')).not.toBeChecked();
   await page.getByTestId('personality').selectOption('berserker');
+  await page.getByTestId('more-settings').locator('summary').click();
   await page.getByTestId('v-domination').uncheck();
   // both victory conditions off → Start disabled
   await page.getByTestId('v-conquest').uncheck();
@@ -61,6 +64,7 @@ test('F-121 / F-170 / F-178 difficulty, personality, victory options shape the m
   await page.goto('/');
   await expect(page.getByTestId('difficulty')).toHaveValue('impossible');
   await expect(page.getByTestId('personality')).toHaveValue('berserker');
+  await page.getByTestId('more-settings').locator('summary').click();
   await expect(page.getByTestId('v-domination')).not.toBeChecked();
   await expect(page.getByTestId('rivals')).toHaveValue('2');
   await expect(page.getByTestId('bonus')).toBeChecked();

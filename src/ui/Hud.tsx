@@ -1,17 +1,18 @@
 // In-game HUD: top bar (resources, speed), selection panel with build/train/upgrade, continent stats,
 // notification feed, settings, game-over overlay.
 import { useState } from 'preact/hooks';
-import type { Game } from '../app/game';
+import { availableSpeeds, type Game } from '../app/game';
 import { store, useStore, type GameState } from '../app/store';
 import { applyUiScale, saveSettings, type Quality } from '../app/settings';
 import { setVolume } from '../audio/sfx';
-import { SPEED_NAMES, TUNING, type SpeedName } from '../sim/core/tuning';
+import { TUNING, type SpeedName } from '../sim/core/tuning';
+import { TestOptionList } from './testOptions';
 import { NUM_RES, TASK_NAMES, TRAINS, UNIT_TYPES, buildingDef, unitDef, upgradeDef, type BuildingTypeName, type UnitTypeName } from '../sim/defs';
 import { playerLabel, playerSwatchCss } from '../render/palette';
 import { BUILDING_HELP, BUILDING_NAMES, RES_COLORS, RES_LABELS, UNIT_HELP, UNIT_NAMES } from './names';
 import { DEFAULT_KEYS, keyFor, keyLabel, resetKeys, setKey } from '../app/keymap';
 
-const SPEED_LABEL: Record<SpeedName, string> = { slow: '0.5×', normal: '1×', fast: '2×', veryFast: '4×' };
+const SPEED_LABEL: Record<SpeedName, string> = { slow: '0.5×', normal: '1×', fast: '2×', veryFast: '4×', x8: '8×', x16: '16×' };
 const BUILDABLE_LIST: BuildingTypeName[] = ['house', 'farm', 'lumberCamp', 'mineCamp', 'fishingHut', 'storehouse', 'outpost', 'barracks', 'workshop', 'dock'];
 const DEFENCE_LIST: BuildingTypeName[] = ['wall', 'gate', 'tower'];
 const K = (id: string): string => keyLabel(keyFor(id));
@@ -55,13 +56,15 @@ function Help() {
 
 function TopBar({ game, onQuit, onSave }: { game: Game; onQuit: () => void; onSave: () => void }) {
   const bonusOn = useStore((st) => st.impossibleBonusOn);
+  const modified = useStore((st) => st.modified);
+  const opts = useStore((st) => st.opts);
   const s = useStore((st) => ({ tick: st.tick, paused: st.paused, speed: st.speed, isNight: st.isNight, pending: st.pendingOrders, stats: st.stats, seed: st.seed, size: st.size, owners: st.ownerOverlay }));
   const st = s.stats;
   return (
     <div class="topbar">
       <div class="speed" role="group" aria-label="Game speed">
         <button class={s.paused ? 'on' : ''} onClick={() => game.setPaused(!s.paused)} data-testid="pause" title="Pause (Space)">{s.paused ? '▶' : '❚❚'}</button>
-        {SPEED_NAMES.map((n) => (
+        {availableSpeeds(opts).map((n) => (
           <button class={!s.paused && s.speed === n ? 'on' : s.speed === n ? 'sel' : ''} onClick={() => { game.setSpeed(n); if (s.paused) game.setPaused(false); }} data-testid={'speed-' + n}>{SPEED_LABEL[n]}</button>
         ))}
       </div>
@@ -79,6 +82,7 @@ function TopBar({ game, onQuit, onSave }: { game: Game; onQuit: () => void; onSa
       )}
       {s.paused && <div class="paused-tag">PAUSED{s.pending > 0 ? ` · ${s.pending} order${s.pending > 1 ? 's' : ''} queued` : ''}</div>}
       <div class="spacer" />
+      {modified && <span class="res warn" title="Test options were used in this run" data-testid="modified-badge">Modified run</span>}
       {bonusOn && <span class="res warn" title="Impossible bots receive extra income" data-testid="bonus-badge">Impossible bonus +{TUNING.bots.impossibleIncomeBonusPct} %</span>}
       <button onClick={() => store.set({ showBots: !store.state.showBots })} data-testid="bots-btn" title="Bot goals (F4)">Bots</button>
       <button onClick={() => store.set({ showStats: !store.state.showStats })} data-testid="stats-btn" title="Continent stats (Tab)">Stats</button>
@@ -277,6 +281,9 @@ function StatsPanel() {
 export function SettingsModal() {
   const open = useStore((st) => st.settingsOpen);
   const settings = useStore((st) => st.settings);
+  const inGame = useStore((st) => st.screen === 'game');
+  const opts = useStore((st) => st.opts);
+  const modified = useStore((st) => st.modified);
   const [q0] = useState(settings.quality);
   if (!open) return null;
   const set = (patch: Partial<typeof settings>): void => {
@@ -304,6 +311,13 @@ export function SettingsModal() {
         </label>
         <label class="row"><input type="checkbox" checked={settings.muted} onChange={(e) => set({ muted: (e.target as HTMLInputElement).checked })} data-testid="mute" /> Mute</label>
         <button onClick={() => store.set({ keysOpen: true, settingsOpen: false })} data-testid="keys-btn">Key bindings…</button>
+        <label class="row"><input type="checkbox" checked={settings.globeCurve} onChange={(e) => { set({ globeCurve: (e.target as HTMLInputElement).checked }); (window as { __game?: { game?: { applyCurve(): void } } }).__game?.game?.applyCurve(); }} data-testid="globe-curve" /> Curved globe view (globe maps)</label>
+        {inGame && (
+          <details class="more" data-testid="settings-test-options">
+            <summary>Test options (cheats){opts ? ' · on' : ''}</summary>
+            <TestOptionList mask={opts} modified={modified} onChange={(m) => (window as { __game?: { game?: { setTestOptions(m: number): void } } }).__game?.game?.setTestOptions(m)} />
+          </details>
+        )}
         {store.state.impossibleBonusOn && <p class="warn" data-testid="settings-bonus">This match: Impossible bots get +{TUNING.bots.impossibleIncomeBonusPct} % income.</p>}
         <button class="primary" onClick={() => store.set({ settingsOpen: false })}>Close</button>
       </div>
@@ -374,7 +388,7 @@ function BoxRect() {
 }
 
 function GameOver({ onQuit }: { onQuit: () => void }) {
-  const s = useStore((st) => ({ winner: st.winner, winnerTeam: st.winnerTeam, myTeam: st.myTeam }));
+  const s = useStore((st) => ({ winner: st.winner, winnerTeam: st.winnerTeam, myTeam: st.myTeam, modified: st.modified }));
   const spectating = useStore((st) => st.spectating);
   const [dismissed, setDismissed] = useState(false);
   if (s.winner < 0 || dismissed) return null;
@@ -384,6 +398,7 @@ function GameOver({ onQuit }: { onQuit: () => void }) {
       <div class="panel">
         <h2 data-testid="gameover-title">{won ? 'Victory' : 'Defeat'}</h2>
         <p>{won ? (s.winner === 0 ? 'The world is yours.' : 'Your alliance has won.') : `${playerLabel(s.winner)}${s.winnerTeam !== s.winner ? ' and allies have' : ' has'} won.`}</p>
+        {s.modified && <p class="warn" data-testid="gameover-modified">Modified run: test options were used.</p>}
         <div class="row"><button class="primary" onClick={onQuit}>Main menu</button><button onClick={() => setDismissed(true)}>Keep looking</button></div>
       </div>
     </div>

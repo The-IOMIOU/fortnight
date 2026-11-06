@@ -5,6 +5,7 @@ import { BotView, UNKNOWN, type BuildingInfo, type MapMemory, type UnitInfo } fr
 import { difficultyDef, personality, scoreGoals, boredom, type Difficulty, type Goal, type Situation } from './utility';
 import type { CommandBody } from '../sim/commands';
 import { Rng } from '../sim/core/prng';
+import { wdelta } from '../sim/core/topo';
 import { TUNING } from '../sim/core/tuning';
 import { Biome, isWaterBiome } from '../sim/world/mapgen';
 import { BUILDING_TYPES, Kind, Res, RES_NONE, Task, UNIT_TYPES, buildingDef, unitDef, type BuildingTypeName, type UnitTypeName } from '../sim/defs';
@@ -84,7 +85,8 @@ export class Bot {
 
   // ------------------------------------------------------------------ geometry helpers
 
-  private dist(a: number, b: number, w: number): number { return Math.max(Math.abs((a % w) - (b % w)), Math.abs(Math.floor(a / w) - Math.floor(b / w))); }
+  private wrap = false;
+  private dist(a: number, b: number, w: number): number { return Math.max(Math.abs(wdelta(a % w, b % w, w, this.wrap)), Math.abs(Math.floor(a / w) - Math.floor(b / w))); }
 
   /** Ring search for a placement near a tile, using only the bot's knowledge. */
   private spotNear(v: BotView, bt: BuildingTypeName, near: number, minR: number, maxR: number, ok?: (t: number) => boolean): number {
@@ -126,6 +128,7 @@ export class Bot {
 
   think(v: BotView): CommandBody[] {
     this.out = [];
+    this.wrap = v.wrap;
     const s = this.s, w = v.w, d = this.diff, pers = personality(s.personality);
     s.lastThink = v.tick;
     const towns = v.myBuildings.filter((b) => TOWN.includes(b.btype) && b.complete);
@@ -167,7 +170,8 @@ export class Bot {
       threat, intruders: intruders.length, enemyTownsLand: landTowns.length, enemyTownsSea: seaTowns.length, softTargets: soft,
       barracks: has('barracks').length,
     };
-    const { goal, scores } = scoreGoals(sit, pers);
+    let { goal, scores } = scoreGoals(sit, pers);
+    if (v.peaceful && (goal === 'attack' || goal === 'raid')) { goal = 'economy'; s.naval = 'none'; } // test option: bots never start fights
     s.goal = goal; s.scores = scores;
 
     // ---- 1. defend: soldiers attack intruders first

@@ -1,5 +1,6 @@
 // Deterministic A* on the tile grid (8-neighbour, no corner cutting), integer costs.
-// Used for single units (workers, settlers, scouts). Group flow fields come in Phase 3 (F-078).
+// Used for single units (workers, settlers, scouts). Wraps east–west on globe maps (F-195).
+import { inSpanX, spanDistX, tileAt } from '../core/topo';
 
 const SQRT2_10 = 14; // diagonal step cost ×10
 
@@ -55,7 +56,7 @@ export class PathFinder {
   /** Nodes expanded by the last search (for profiling). */
   lastExpanded = 0;
 
-  constructor(readonly w: number, readonly h_: number, private cost: (tile: number) => number) {
+  constructor(readonly w: number, readonly h_: number, private cost: (tile: number) => number, readonly wrap = false) {
     const n = w * h_;
     this.g = new Int32Array(n); this.f = new Int32Array(n); this.h = new Int32Array(n);
     this.from = new Int32Array(n); this.stamp = new Uint32Array(n); this.closedStamp = new Uint32Array(n);
@@ -64,7 +65,7 @@ export class PathFinder {
 
   private heur(a: number, r: GoalRect, minCost: number): number {
     const x = a % this.w, y = (a - x) / this.w;
-    const dx = x < r.x0 ? r.x0 - x : x > r.x1 ? x - r.x1 : 0;
+    const dx = spanDistX(x, r.x0, r.x1, this.w, this.wrap);
     const dy = y < r.y0 ? r.y0 - y : y > r.y1 ? y - r.y1 : 0;
     const diag = Math.min(dx, dy), straight = Math.max(dx, dy) - diag;
     return Math.floor(((diag * SQRT2_10 + straight * 10) * minCost) / 10);
@@ -79,7 +80,7 @@ export class PathFinder {
     const maxNodes = opts.maxNodes ?? 40000, minCost = opts.minCost ?? 10;
     const reached = (t: number): boolean => {
       const x = t % w, y = (t - x) / w;
-      return x >= goal.x0 && x <= goal.x1 && y >= goal.y0 && y <= goal.y1;
+      return inSpanX(x, goal.x0, goal.x1, w, this.wrap) && y >= goal.y0 && y <= goal.y1;
     };
     if (reached(start)) return [];
     this.gen = (this.gen + 1) >>> 0;
@@ -105,15 +106,14 @@ export class PathFinder {
       const x = cur % w, y = (cur - x) / w;
       for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) {
         if (dx === 0 && dy === 0) continue;
-        const nx = x + dx, ny = y + dy;
-        if (nx < 0 || ny < 0 || nx >= w || ny >= H) continue;
-        const nb = ny * w + nx;
+        const nb = tileAt(x + dx, y + dy, w, H, this.wrap);
+        if (nb < 0) continue;
         if (this.closedStamp[nb] === gen) continue;
         const c = this.cost(nb);
         if (c <= 0) continue;
         if (dx !== 0 && dy !== 0) {
           // no corner cutting past impassable tiles
-          if (this.cost(y * w + nx) <= 0 || this.cost(ny * w + x) <= 0) continue;
+          if (this.cost(tileAt(x + dx, y, w, H, this.wrap)) <= 0 || this.cost(tileAt(x, y + dy, w, H, this.wrap)) <= 0) continue;
         }
         const step = dx !== 0 && dy !== 0 ? (c * SQRT2_10) / 10 : c;
         const ng = this.g[cur] + Math.floor(step);

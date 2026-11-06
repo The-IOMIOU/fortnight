@@ -37,6 +37,13 @@ Status: **approved 2026-11-05** ("okay do phase 1") with these owner amendments:
    - **Long bot suites** run separately (`npm run test:bots`, about 15 min on 9 cores; `node tools/bot-report.mjs` prints the report) so `npm test` stays quick.
    - **Not met at this gate (reported in the ledger, proposals P-007/P-008):** 43/50 Small matches finish (F-126 asks for all 50); Small median length 34.6 min (target 15–25); Impossible beats Hard 4/10 (target ≥ 7/10). Hard beats Easy 9/10 (met).
 
+10. **Game modes, globe world and test options (2026-11-06, owner request after the Phase 4 gate). Ledger F-193–F-199; build slot awaiting the owner's choice.**
+   - **Modes** (presets you can still adjust): **Short** = small map, few opponents (target 15–25 min). **Long** = bigger map, more opponents (30–60 min). **Continental** = massive maps with real-continent geography, played over several sessions with save/resume.
+   - **Earth-like geography:** continents of different sizes. Some sit close (narrow straits, island chains you can hop), others are separated by wide ocean.
+   - **Globe:** the world wraps around east–west, so you can scroll forever and armies, ships, fog and borders cross the seam. When zoomed out, the view curves like a globe. It's a New Game setting (Globe / Flat), plus a display setting for the curved look. My reading: a wrap-around world drawn curved, not a full 3D planet you rotate, because poles on a sphere distort the tile grid and pathfinding. To confirm.
+   - **Many match settings**, plus **test options ("cheats")** that change the rules: reveal the whole map, no housing cap (unlimited units), instant building, instant training, invulnerable own units, faster speeds, peaceful bots, and similar. **No option ever creates resources or money.**
+   - **Single-player:** turning on any test option needs a separate confirmation screen. The run is then permanently marked as modified (in the save, on the game-over screen and in stats). **Multiplayer:** an option turns on only when every player votes yes, otherwise it stays off.
+
 Items in §7 that weren't commented on are taken as accepted. Proposals P-001…P-005 stay open until answered.
 
 Companion files: [FEATURES.md](FEATURES.md) (feature ledger), [CONTINENT_STRATEGY_GAME.md](CONTINENT_STRATEGY_GAME.md) (master spec).

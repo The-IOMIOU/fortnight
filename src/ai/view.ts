@@ -14,6 +14,7 @@ import {
   BUILDABLE, BUILDING_TYPES, FARM_YIELD, Kind, RES_NONE, buildingDef, buildingTypeOfKind, isBuildingKind, isUnitKind, type BuildingTypeName,
 } from '../sim/defs';
 import { FP_SHIFT } from '../sim/core/fixed';
+import { TestOpt } from '../sim/sim';
 
 export const UNKNOWN = 255;
 
@@ -28,6 +29,10 @@ export class BotView {
   readonly w: number;
   readonly h: number;
   readonly tick: number;
+  /** Globe map: x wraps (F-195). */
+  readonly wrap: boolean;
+  /** A player switched on the 'peaceful bots' test option: bots never start fights (F-197). */
+  readonly peaceful: boolean;
   readonly stats: PlayerStats;
   readonly myUnits: UnitInfo[] = [];
   readonly myBuildings: BuildingInfo[] = [];
@@ -40,7 +45,8 @@ export class BotView {
 
   constructor(private sim: Sim, readonly player: number, readonly mem: MapMemory) {
     const m = sim.map;
-    this.w = m.w; this.h = m.h; this.tick = sim.tick;
+    this.w = m.w; this.h = m.h; this.tick = sim.tick; this.wrap = sim.wrap;
+    this.peaceful = sim.ps.some((ps) => (ps.opts & TestOpt.PEACEFUL_BOTS) !== 0);
     // refresh memory from what is visible right now
     for (const t of sim.fog[player].visibleTiles()) { mem.biome[t] = m.biome[t]; mem.res[t] = sim.res.amount[t] > 0 ? sim.res.type[t] : RES_NONE; }
     this.stats = computeStats(sim, player);

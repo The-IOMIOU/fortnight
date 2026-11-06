@@ -115,3 +115,22 @@ kbd { font: 0.7rem ui-monospace, Consolas, monospace; border: 1px solid var(--li
 .scorebars span { position: relative; min-width: 4.4rem; padding: 0 0.25rem; font-size: 0.72rem; color: var(--muted); border: 1px solid var(--line); border-radius: 3px; overflow: hidden; }
 .scorebars span i { position: absolute; left: 0; top: 0; bottom: 0; background: #2f7fd033; z-index: -1; }
 .scorebars span.on { color: var(--text); border-color: var(--accent); }
+
+/* ---- Phase 4b: modes, more settings, test options ---- */
+.modes { display: grid; grid-template-columns: 1fr 1fr; gap: 0.4rem; }
+.modes .mode { display: flex; flex-direction: column; align-items: flex-start; gap: 0.15rem; text-align: left; padding: 0.45rem 0.55rem; }
+.modes .mode small { color: var(--muted); font-size: 0.75rem; line-height: 1.25; }
+.modes .mode.on { border-color: var(--accent); background: #233548; }
+details.more { border: 1px solid var(--line); border-radius: 8px; padding: 0.35rem 0.6rem; display: flex; flex-direction: column; gap: 0.6rem; }
+details.more > summary { cursor: pointer; color: var(--muted); font-size: 0.9rem; }
+details.more[open] > summary { margin-bottom: 0.4rem; }
+details.more > * + * { margin-top: 0.5rem; }
+.botrows { display: flex; flex-direction: column; gap: 0.3rem; max-height: 14rem; overflow: auto; }
+.botrows .row span { min-width: 3.5rem; align-self: center; }
+.testopts { display: flex; flex-direction: column; gap: 0.35rem; }
+.testopts label.row { flex-direction: row; align-items: baseline; gap: 0.4rem; color: inherit; }
+.testopts label.row small { color: var(--muted); font-size: 0.75rem; }
+.modal.confirm { z-index: 60; }
+.warn-btn { background: #6b2b23 !important; border-color: #d0624f !important; }
+.panel .row input[type="checkbox"] { flex: 0 0 auto; width: auto; }
+.modal .panel { max-height: 92vh; overflow-y: auto; }
