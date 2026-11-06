@@ -1,4 +1,9 @@
 # fortnight
+
+**▶ Play in the browser (single-player and online multiplayer): https://the-iomiou.github.io/fortnight/**
+
+> The built game is on the `gh-pages` branch. The link goes live once the repo owner turns on GitHub Pages: Settings → Pages → "Deploy from a branch" → `gh-pages` / `(root)`. Multiplayer needs no server: host a game, send the invite link from the in-game *Online* panel.
+
 defend your fort at night
 
 A browser real-time 2.5D strategy game on a world of continents (TypeScript, Three.js, deterministic simulation in a Web Worker). Build: `npm install`, `npm run dev`; tests: `npx vitest run`.
