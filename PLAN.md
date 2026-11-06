@@ -43,6 +43,9 @@ Status: **approved 2026-11-05** ("okay do phase 1") with these owner amendments:
    - **Globe:** the world wraps around east–west, so you can scroll forever and armies, ships, fog and borders cross the seam. When zoomed out, the view curves like a globe. It's a New Game setting (Globe / Flat), plus a display setting for the curved look. My reading: a wrap-around world drawn curved, not a full 3D planet you rotate, because poles on a sphere distort the tile grid and pathfinding. To confirm.
    - **Many match settings**, plus **test options ("cheats")** that change the rules: reveal the whole map, no housing cap (unlimited units), instant building, instant training, invulnerable own units, faster speeds, peaceful bots, and similar. **No option ever creates resources or money.**
    - **Single-player:** turning on any test option needs a separate confirmation screen. The run is then permanently marked as modified (in the save, on the game-over screen and in stats). **Multiplayer:** an option turns on only when every player votes yes, otherwise it stays off.
+   - **Globe, as built (no owner answer yet):** the world wraps east–west and is drawn bent down towards the horizon. It is not a rotatable 3D planet: the north and south edges stay ocean, and the east–west seam always lies in open ocean (`map.globeSeamOcean`), so only ships cross it. A real sphere stays possible later but would need a different tile grid.
+   - **F-194 threshold changed:** the farthest continent pair must be ≥ 15 tiles apart on Medium and ≥ 25 on Large/Huge (was ≥ 25 everywhere). A 192-tile-wide Medium map with 4 continents can't fit 25-tile oceans between every cluster.
+   - **Short mode uses 2 continents and close seas** (P-008's first half), to bring Small matches towards 15–25 minutes.
 
 Items in §7 that weren't commented on are taken as accepted. Proposals P-001…P-005 stay open until answered.
 

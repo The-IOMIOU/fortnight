@@ -12,6 +12,8 @@ Source of truth is [src/data/tuning.json](src/data/tuning.json). `npm run check`
 | `sim.speeds.normal` | 1 | 10 ticks/s |
 | `sim.speeds.fast` | 2 | 20 ticks/s |
 | `sim.speeds.veryFast` | 4 | 40 ticks/s. Speed changes how many ticks run per second, never what a tick does, so results are identical at every speed. |
+| `sim.speeds.x8` | 8 | 80 ticks/s. Test speed (F-197): the worker clamps it to `veryFast` unless the FAST_SPEEDS test option is on. |
+| `sim.speeds.x16` | 16 | 160 ticks/s. Same rule as `x8`; measured 170 ticks/s on a Small map in Chromium, so the sim keeps up. |
 
 ## Map
 
@@ -57,6 +59,13 @@ Source of truth is [src/data/tuning.json](src/data/tuning.json). `npm run check`
 | `map.startQualityRadius` | 6 | Start spots are scored by farmland yield within this many tiles (F-192). |
 | `map.startForestWanted` | 12 | Forest tiles near a start that count towards its score (wood for the first houses). |
 | `map.startQualityPct` | 80 | Only spots scoring ≥ 80 % of the best on their continent are used; then players are spread apart. Added in Phase 4: before, farthest-point sampling pushed starts to continent edges (often desert/tundra) and the poorest start had 0–17 % of the richest start's farmland. |
+| `map.seaWidths.0` | 3 | Earth-like seas (F-194): ocean strip between "partner" continents. A narrow strait that transports cross in seconds. |
+| `map.seaWidths.1` | 10 | Medium sea, used for about 30 % of non-partner pairs on maps with 6+ continents in `mixed` mode. |
+| `map.seaWidths.2` | 30 | Open ocean between continent clusters (`mixed`) and between all pairs (`far`). The 192-wide Medium map can't fit 30 everywhere, so measured farthest gaps there are 15+. |
+| `map.globeSeamOcean` | 14 | Globe world (F-195): tiles of forced ocean on each side of the east–west seam, so only ships cross it and no continent is cut in two. |
+| `map.straitReach` | 16 | Next to a narrow strait the continent's edge falloff fades out over this many tiles, so both coasts actually reach the strait instead of leaving a wide gap. |
+| `map.partnerDistPct` | 145 | Partner continent centres are placed at 145/200 of their summed radii, so their falloffs overlap and only the forced strait separates them. |
+| `map.globeCurveStrength` | 0.06 | Render only: how strongly the globe view bends down towards the horizon. Strong enough to read as a globe when zoomed out, weak enough that picking stays accurate. |
 
 ## Day/night
 
@@ -669,3 +678,36 @@ The same bot code runs at every difficulty; only these numbers change. No diffic
 | `bots.boredomFullMin` | 25 | Boredom reaches its maximum here. After minute 30 every personality escalates further, and after 35 the attack weight is at least 0.9 (pacifists too) so matches end. |
 | `bots.threatRadius` | 12 | Enemy soldiers within this many tiles of the bot's buildings count as a threat (defense score). |
 | `bots.matchLimitMin` | 90 | Headless harness time limit (game minutes). Raised from 60 to 90: invasions across the sea on Small maps often decide the match after minute 45. |
+
+## Game modes (F-193)
+
+Presets for the New Game menu. The player can still change every value under "More settings" (or pick Custom).
+
+| Constant | Value | Why |
+|---|---|---|
+| `modes.short.sizes.0` | small | Short games only use the Small map. |
+| `modes.short.defaultSize` | small | |
+| `modes.short.maxBots` | 3 | Small maps hold 4 players (`map.sizes.small.maxPlayers`). |
+| `modes.short.defaultBots` | 2 | Few opponents keep the game in the 15–25 min target. |
+| `modes.short.globe` | 1 | 1 = wrap-around globe world by default. |
+| `modes.short.sea` | close | Narrow straits everywhere, so invasions start early. |
+| `modes.short.continents` | 2 | Two continents: less sea to explore, shorter games (the Phase 4 Small median was 34.6 min with 3). |
+| `modes.short.targetMin` | 20 | Target match length shown on the mode card. |
+| `modes.long.sizes.0` | medium | |
+| `modes.long.sizes.1` | large | |
+| `modes.long.defaultSize` | medium | |
+| `modes.long.maxBots` | 15 | Large maps hold 16 players; the menu also caps by the chosen size. |
+| `modes.long.defaultBots` | 5 | |
+| `modes.long.globe` | 1 | |
+| `modes.long.sea` | mixed | Partner continents on narrow straits, open ocean between pairs (Earth-like). |
+| `modes.long.continents` | 4 | |
+| `modes.long.targetMin` | 45 | Target 30–60 min. |
+| `modes.continental.sizes.0` | large | |
+| `modes.continental.sizes.1` | huge | |
+| `modes.continental.defaultSize` | huge | |
+| `modes.continental.maxBots` | 31 | Spec maximum of 32 players. |
+| `modes.continental.defaultBots` | 9 | Kept moderate by default for performance; the player can raise it. |
+| `modes.continental.globe` | 1 | |
+| `modes.continental.sea` | mixed | |
+| `modes.continental.continents` | 7 | |
+| `modes.continental.targetMin` | 120 | Played over several sessions with save and resume. |

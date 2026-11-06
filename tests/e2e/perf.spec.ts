@@ -67,3 +67,16 @@ for (const [size, bots, minFps] of [['medium', 8, 60], ['huge', 31, 30]] as cons
     expect(tps).toBeGreaterThanOrEqual(9.5);
   });
 }
+
+// F-195: the globe world draws extra copies of the world near the seam and bends the view; F-028's bar still applies.
+test('F-195 globe world: 30 s camera sweep on medium (wrap + curve) keeps F-028 thresholds', async ({ page }) => {
+  await openGame(page, 'perf-seed', 'medium', '&reveal=1&world=globe&sea=mixed');
+  await page.waitForTimeout(1000);
+  const s: Sweep = await page.evaluate(() => (window as any).__game.sweep(30, 40));
+  const zoomedOut: Sweep = await page.evaluate(() => (window as any).__game.sweep(10, 1e9));
+  const wrap = await page.evaluate(() => (window as any).__game.game.map.wrap);
+  console.log(`[F-195] medium globe (wrap ${wrap}): mid zoom ${fmt(s)} | fully zoomed out ${fmt(zoomedOut)}`);
+  expect(wrap).toBe(true);
+  expect(s.avgFps).toBeGreaterThanOrEqual(59);
+  expect(s.p95Ms).toBeLessThanOrEqual(20);
+});

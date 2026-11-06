@@ -15,6 +15,7 @@ import type { BotConfig } from '../ai/manager';
 import { sfxPlayed } from '../audio/sfx';
 import { MODES, modeDef, type ModeId } from '../app/modes';
 import type { MapOpts, SeaWidth } from '../sim/world/mapgen';
+import type { SimSettings } from '../sim/sim';
 import { TestOptionList } from './testOptions';
 
 const SPEED_LABEL: Record<SpeedName, string> = { slow: '0.5×', normal: '1×', fast: '2×', veryFast: '4×', x8: '8×', x16: '16×' };
@@ -47,9 +48,12 @@ function readUrl(): Partial<NewGameOptions> & { play: boolean; botCount?: number
   };
 }
 
-export function shareLink(seed: string, size: string): string {
+/** Link that starts the same map: seed, size and (since Phase 4b) the world shape. */
+export function shareLink(seed: string, size: string, world?: SimSettings['world']): string {
   const u = new URL(location.href);
-  u.search = new URLSearchParams({ seed, size, play: '1' }).toString();
+  const q: Record<string, string> = { seed, size, play: '1' };
+  if (world) { q.world = world.globe ? 'globe' : 'flat'; if (world.sea) q.sea = world.sea; if (world.continents) q.continents = String(world.continents); }
+  u.search = new URLSearchParams(q).toString();
   return u.toString();
 }
 

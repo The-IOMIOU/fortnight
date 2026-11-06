@@ -7,11 +7,14 @@ test('F-022 menu defaults to Small; F-015 menu start and share link give the sam
   await page.goto('/');
   await expect(page.getByTestId('size')).toHaveValue('small');
   await page.getByTestId('seed').fill('golden-fjord-404');
+  await page.getByTestId('mode-custom').click(); // Short mode (the default) only offers Small
   await page.getByTestId('size').selectOption('medium');
+  // the world shape (Phase 4b) is part of the map, so the link carries what the menu shows
+  const world = await page.getByTestId('world').inputValue(), sea = await page.getByTestId('sea').inputValue(), continents = await page.getByTestId('continents').inputValue();
   await page.getByTestId('start').click();
   await page.waitForFunction(() => (window as any).__game?.state().screen === 'game', null, { timeout: 60_000 });
   const a = await state(page);
-  const link = await page.evaluate(() => { const u = new URL(location.href); u.search = new URLSearchParams({ seed: 'golden-fjord-404', size: 'medium', play: '1' }).toString(); return u.toString(); });
+  const link = await page.evaluate((w) => { const u = new URL(location.href); u.search = new URLSearchParams({ seed: 'golden-fjord-404', size: 'medium', ...w, play: '1' }).toString(); return u.toString(); }, { world, sea, continents });
   const page2 = await context.newPage();
   await page2.goto(link);
   await page2.waitForFunction(() => (window as any).__game?.state().screen === 'game', null, { timeout: 60_000 });
