@@ -114,6 +114,7 @@ Last updated: 2026-11-06.
 - **Open after Phase 9:** balance pass on the flagged peoples; FPS and Firefox runs on a machine where headed browsers start; signaling server / TURN (owner accounts); race-builder UI; render polish (fungus tint, burrowed units, glider height); heroes only if wanted; GitHub Pages deploy and CI (P-004) only if wanted.
 
 ### Key facts and gotchas
+- **Deploying the live site:** GitHub Pages serves the `gh-pages` branch (built files only: `index.html`, `assets/`, `.nojekyll`), not `main`. After pushing `main`, run `npm run build` and replace the `gh-pages` contents with `dist/` (e.g. via `git worktree add <dir> origin/gh-pages`), commit "Deploy fortnight (static build of main <sha>)" and push. Otherwise the owner sees the old version.
 - Stack: TypeScript 7 strict, Vite 8 (worker inlined), Three.js 0.186, Preact, Vitest 5, Playwright 1.64. The sim is integer-only and deterministic (`tools/check-sim-purity.mjs` bans Math.random/Date/trig/`**` in `src/sim`). Sim runs in a Web Worker. 10 Hz tick.
 - Test commands: `npx vitest run` (unit, `tests/*.test.ts`), `npm run test:bots` (long headless bot suites, about 15 min, results in `test-results/bots/`), `npx playwright test --project=chromium|firefox|perf|perf-uncapped` (needs `npm run build`; preview server on 4173).
 - Save format v4 (`src/sim/serialize.ts`); `extra.bots` holds bot memory.
