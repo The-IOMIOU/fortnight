@@ -30,6 +30,7 @@ const VERT = /* glsl */ `
 attribute vec3 tcol;
 attribute float water;
 uniform float uTime;
+uniform float uWater;
 uniform vec2 uMapSize;
 varying vec3 vCol;
 varying vec3 vNormal;
@@ -38,7 +39,7 @@ varying float vWater;
 varying vec3 vWorld;
 void main() {
   vec3 p = position;
-  if (water > 0.5) p.y += sin(uTime * 1.3 + p.x * 0.37 + p.z * 0.29) * 0.02;
+  if (water > 0.5 && uWater > 0.5) p.y += sin(uTime * 1.3 + p.x * 0.37 + p.z * 0.29) * 0.02;
   vCol = tcol; vNormal = normal; vWater = water; vWorld = p;
   vMapUv = vec2(p.x / uMapSize.x, p.z / uMapSize.y);
   gl_Position = projectionMatrix * modelViewMatrix * vec4(p, 1.0);
@@ -53,6 +54,7 @@ uniform vec3 uSunCol;
 uniform vec3 uAmb;
 uniform float uOwnerOverlay;
 uniform float uTime;
+uniform float uWater;
 varying vec3 vCol;
 varying vec3 vNormal;
 varying vec2 vMapUv;
@@ -62,11 +64,16 @@ void main() {
   vec3 n = normalize(vNormal);
   float l = max(dot(n, normalize(uSunDir)), 0.0);
   vec3 c = vCol * (uAmb + uSunCol * l);
-  if (vWater > 0.5) c += vec3(0.015, 0.022, 0.03) * sin(uTime * 1.2 + vWorld.x * 0.31 + vWorld.z * 0.23);
+  if (vWater > 0.5 && uWater > 0.5) c += vec3(0.015, 0.022, 0.03) * sin(uTime * 1.2 + vWorld.x * 0.31 + vWorld.z * 0.23);
   float o = texture2D(uOwner, vMapUv).r * 255.0;
   if (o < 254.5 && uOwnerOverlay > 0.5) {
-    vec3 pc = texture2D(uPalette, vec2((floor(o + 0.5) + 0.5) / 32.0, 0.5)).rgb;
-    c = mix(c, pc, 0.38);
+    vec4 pc = texture2D(uPalette, vec2((floor(o + 0.5) + 0.5) / 32.0, 0.5));
+    float pat = floor(pc.a * 4.0 + 0.5);
+    float on = 1.0;
+    if (pat > 0.5 && pat < 1.5) on = step(0.5, fract((vWorld.x + vWorld.z) * 1.5));
+    else if (pat > 1.5 && pat < 2.5) on = step(0.18, length(fract(vWorld.xz * 2.0) - 0.5)) ;
+    else if (pat > 2.5) on = mod(floor(vWorld.x * 2.0) + floor(vWorld.z * 2.0), 2.0);
+    c = mix(c, pc.rgb, 0.38 * (0.35 + 0.65 * on));
   }
   float f = texture2D(uFog, vMapUv).r;
   float vis = smoothstep(0.6, 0.95, f);
@@ -96,7 +103,8 @@ export class Terrain {
     const pal = new Uint8Array(32 * 4);
     for (let p = 0; p < 32; p++) {
       const c = PLAYER_COLORS[p % PLAYER_COLORS.length];
-      pal[p * 4] = c[0] * 255; pal[p * 4 + 1] = c[1] * 255; pal[p * 4 + 2] = c[2] * 255; pal[p * 4 + 3] = 255;
+      pal[p * 4] = c[0] * 255; pal[p * 4 + 1] = c[1] * 255; pal[p * 4 + 2] = c[2] * 255;
+      pal[p * 4 + 3] = Math.floor(p / PLAYER_COLORS.length) * 64; // pattern index in alpha
     }
     const palTex = new THREE.DataTexture(pal, 32, 1, THREE.RGBAFormat, THREE.UnsignedByteType);
     palTex.magFilter = THREE.NearestFilter; palTex.minFilter = THREE.NearestFilter; palTex.needsUpdate = true;
@@ -107,14 +115,36 @@ export class Terrain {
         uFog: { value: this.fogTex }, uOwner: { value: this.ownerTex }, uPalette: { value: palTex },
         uMapSize: { value: new THREE.Vector2(w, h) }, uTime: { value: 0 },
         uSunDir: { value: new THREE.Vector3(0.45, 1, 0.3) }, uSunCol: { value: new THREE.Vector3(0.75, 0.73, 0.68) },
-        uAmb: { value: new THREE.Vector3(0.45, 0.46, 0.5) }, uOwnerOverlay: { value: 1 },
+        uAmb: { value: new THREE.Vector3(0.45, 0.46, 0.5) }, uOwnerOverlay: { value: 1 }, uWater: { value: 1 },
       },
     });
 
-    for (let cy = 0; cy < h; cy += CHUNK) for (let cx = 0; cx < w; cx += CHUNK) {
-      const mesh = this.buildChunk(cx, cy, Math.min(w, cx + CHUNK), Math.min(h, cy + CHUNK));
-      if (mesh) this.group.add(mesh);
+    for (let cy = 0; cy < h; cy += CHUNK) for (let cx = 0; cx < w; cx += CHUNK) this.rebuildChunk(cx / CHUNK, cy / CHUNK);
+  }
+
+  private chunks = new Map<number, THREE.Mesh>();
+  private rebuildChunk(cx: number, cy: number): void {
+    const key = cy * 1000 + cx, old = this.chunks.get(key);
+    if (old) { this.triangles -= (old.geometry.index?.count ?? 0) / 3; old.geometry.dispose(); this.group.remove(old); this.chunks.delete(key); }
+    const { w, h } = this.map;
+    const mesh = this.buildChunk(cx * CHUNK, cy * CHUNK, Math.min(w, (cx + 1) * CHUNK), Math.min(h, (cy + 1) * CHUNK));
+    if (mesh) { this.group.add(mesh); this.chunks.set(key, mesh); }
+  }
+
+  /** Apply tile deltas ([tile, biome, resType] triples) and rebuild affected chunks (incl. neighbours' cliffs). */
+  applyTiles(tiles: Int32Array): void {
+    const dirty = new Set<number>();
+    const { w, h } = this.map;
+    for (let k = 0; k < tiles.length; k += 3) {
+      const t = tiles[k];
+      this.map.biome[t] = tiles[k + 1];
+      const x = t % w, y = (t - x) / w;
+      for (const [dx, dy] of [[0, 0], [1, 0], [-1, 0], [0, 1], [0, -1]]) {
+        const nx = x + dx, ny = y + dy;
+        if (nx >= 0 && ny >= 0 && nx < w && ny < h) dirty.add(Math.floor(ny / CHUNK) * 1000 + Math.floor(nx / CHUNK));
+      }
     }
+    for (const key of dirty) this.rebuildChunk(key % 1000, Math.floor(key / 1000));
   }
 
   private buildChunk(x0: number, y0: number, x1: number, y1: number): THREE.Mesh | null {

@@ -44,6 +44,13 @@ export class Minimap {
     this.overlay.addEventListener('contextmenu', (ev) => ev.preventDefault());
   }
 
+  private baseColor(i: number): void {
+    const b = this.map.biome[i], c = BIOME_COLORS[b];
+    const shade = isWaterBiome(b) ? 1 : 0.85 + this.map.height[i] * 0.04;
+    this.baseRgb[i * 3] = c[0] * 255 * shade; this.baseRgb[i * 3 + 1] = c[1] * 255 * shade; this.baseRgb[i * 3 + 2] = c[2] * 255 * shade;
+  }
+  /** Tile deltas ([tile, biome, resType]); the terrain layer already updated map.biome. */
+  applyTiles(tiles: Int32Array): void { for (let k = 0; k < tiles.length; k += 3) this.baseColor(tiles[k]); this.dirty = true; }
   setFog(f: Uint8Array): void { this.fog.set(f); this.dirty = true; }
   setOwner(o: Uint8Array): void { this.owner.set(o); this.dirty = true; }
   setOwnerOverlay(on: boolean): void { this.ownerOverlay = on; this.dirty = true; }
@@ -63,8 +70,10 @@ export class Minimap {
       let r = rgb[i * 3], g = rgb[i * 3 + 1], b = rgb[i * 3 + 2];
       const o = this.owner[i];
       if (this.ownerOverlay && o !== 255) {
-        const pc = playerColor(o);
-        r = r * 0.45 + pc[0] * 255 * 0.55; g = g * 0.45 + pc[1] * 255 * 0.55; b = b * 0.45 + pc[2] * 255 * 0.55;
+        const pc = playerColor(o), pat = Math.floor(o / 8) % 4, x = i % this.map.w, y = (i - x) / this.map.w;
+        const on = pat === 0 || (pat === 1 && (x + y) % 3 !== 0) || (pat === 2 && (x % 2 === 0 || y % 2 === 0)) || (pat === 3 && (Math.floor(x / 2) + Math.floor(y / 2)) % 2 === 0);
+        const k = on ? 0.55 : 0.2;
+        r = r * (1 - k) + pc[0] * 255 * k; g = g * (1 - k) + pc[1] * 255 * k; b = b * (1 - k) + pc[2] * 255 * k;
       }
       if (f === 0) { r = 8; g = 9; b = 12; } else if (f < 200) { r *= 0.45; g *= 0.45; b *= 0.45; }
       d[i * 4] = r; d[i * 4 + 1] = g; d[i * 4 + 2] = b; d[i * 4 + 3] = 255;

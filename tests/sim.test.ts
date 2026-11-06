@@ -2,10 +2,11 @@ import { describe, expect, it } from 'vitest';
 import { Sim, packVisibleEntities, ENTITY_STRIDE } from '../src/sim/sim';
 import { TickScheduler } from '../src/sim/core/scheduler';
 import { FP_ONE, isqrt, tileCenter } from '../src/sim/core/fixed';
-import { Entities, Kind } from '../src/sim/entities/entities';
+import { Entities } from '../src/sim/entities/entities';
+import { Kind } from '../src/sim/defs';
 import { FOG_UNEXPLORED, FOG_VISIBLE } from '../src/sim/world/fog';
 import { TUNING } from '../src/sim/core/tuning';
-import { scriptedRun } from '../src/sim/scripted';
+import { scriptedRun, ownedOfKind } from '../src/sim/scripted';
 
 describe('fixed-point helpers', () => {
   it('isqrt is exact floor(sqrt) on edge cases and pseudo-random values', () => {
@@ -34,64 +35,66 @@ describe('F-010 deterministic sim (Node)', () => {
 });
 
 describe('F-026 fog of war', () => {
-  it('starts mostly unexplored; moving scout reveals tiles only within vision radius', () => {
+  it('starts mostly unexplored; moving scout reveals tiles only within some own vision radius', () => {
     const sim = new Sim({ seed: 'fog-test', size: 'small', players: 2 });
     const f = sim.fog[0].data, w = sim.map.w;
+    const scout = ownedOfKind(sim, 0, Kind.SCOUT)[0];
     const visibleAtStart = f.filter((v) => v === FOG_VISIBLE).length;
-    expect(f.filter((v) => v === FOG_UNEXPLORED).length).toBeGreaterThan(f.length * 0.9);
+    expect(f.filter((v) => v === FOG_UNEXPLORED).length).toBeGreaterThan(f.length * 0.85);
     const s = sim.map.starts[0];
     const tx = Math.floor(w / 2), ty = Math.floor(w / 2);
-    sim.enqueue({ type: 'move', tick: sim.tick, player: 0, seq: 0, ids: [0], x: tileCenter(tx), y: tileCenter(ty) });
-    for (let k = 0; k < 40; k++) sim.step();
+    sim.enqueue({ type: 'move', tick: sim.tick, player: 0, seq: 0, ids: [scout], x: tileCenter(tx), y: tileCenter(ty) });
+    for (let k = 0; k < 60; k++) sim.step();
     const explored = f.filter((v) => v !== FOG_UNEXPLORED).length;
-    console.log(`[F-026] visible at start=${visibleAtStart}, explored after 40 ticks=${explored}`);
+    console.log(`[F-026] visible at start=${visibleAtStart}, explored after 60 ticks=${explored}`);
     expect(explored).toBeGreaterThan(visibleAtStart);
     expect(f[s]).not.toBe(FOG_UNEXPLORED);
-    const ex = sim.ents.posX[0] >> 10, ey = sim.ents.posY[0] >> 10, r = TUNING.units.scout.vision;
+    // every visible tile is own territory or inside the vision circle of some own entity
+    const e = sim.ents;
+    const own: [number, number, number][] = [];
+    for (let id = 0; id < e.count; id++) if (e.alive[id] && e.owner[id] === 0) own.push([e.posX[id] >> 10, e.posY[id] >> 10, e.vision[id]]);
     for (let i = 0; i < f.length; i++) if (f[i] === FOG_VISIBLE && sim.tileOwner[i] !== 0) {
       const x = i % w, y = (i - x) / w;
-      expect((x - ex) ** 2 + (y - ey) ** 2).toBeLessThanOrEqual(r * r + r);
+      expect(own.some(([ex, ey, r]) => (x - ex) * (x - ex) + (y - ey) * (y - ey) <= r * r + r)).toBe(true);
     }
   });
 
-  it('enemy entities on non-visible tiles are absent from the viewer snapshot', () => {
+  it('enemy units on non-visible tiles are absent from the viewer snapshot', () => {
     const sim = new Sim({ seed: 'fog-test', size: 'small', players: 4 });
     sim.step();
+    const units = (snap: Int32Array, owner: number): number => { let n = 0; for (let k = 0; k < snap.length; k += ENTITY_STRIDE) if (snap[k + 2] === owner && snap[k + 1] < 64) n++; return n; };
     const snap = packVisibleEntities(sim, 0);
-    const owners = new Set<number>();
-    for (let k = 0; k < snap.length; k += ENTITY_STRIDE) owners.add(snap[k + 2]);
-    expect([...owners]).toEqual([0]);
-    expect(packVisibleEntities(sim, -1).length / ENTITY_STRIDE).toBe(4);
-    // Put enemy scout 1 two tiles from scout 0 by direct state edit (test only) → now visible.
-    const e = sim.ents;
-    e.posX[1] = e.posX[0] + 2 * FP_ONE; e.posY[1] = e.posY[0];
-    const snap2 = packVisibleEntities(sim, 0);
-    let seen = false;
-    for (let j = 0; j < snap2.length; j += ENTITY_STRIDE) if (snap2[j + 2] === 1) seen = true;
-    expect(seen).toBe(true);
+    for (const p of [1, 2, 3]) expect(units(snap, p)).toBe(0);
+    expect(units(packVisibleEntities(sim, -1), 1)).toBeGreaterThan(0);
+    // Put an enemy scout two tiles from our scout by direct state edit (test only) → now visible.
+    const e = sim.ents, mine = ownedOfKind(sim, 0, Kind.SCOUT)[0], theirs = ownedOfKind(sim, 1, Kind.SCOUT)[0];
+    e.posX[theirs] = e.posX[mine] + 2 * FP_ONE; e.posY[theirs] = e.posY[mine];
+    expect(units(packVisibleEntities(sim, 0), 1)).toBe(1);
   });
 });
 
 describe('F-014 orders while paused (sim semantics)', () => {
-  it('a queued order does not change positions until the next tick is stepped', () => {
+  it('a queued order does not change positions until ticks are stepped', () => {
     const sim = new Sim({ seed: 'pause', size: 'small', players: 1 });
-    const t = sim.tick, x0 = sim.ents.posX[0];
-    sim.enqueue({ type: 'move', tick: sim.tick, player: 0, seq: 0, ids: [0], x: x0 + 5 * FP_ONE, y: sim.ents.posY[0] });
+    const scout = ownedOfKind(sim, 0, Kind.SCOUT)[0];
+    const t = sim.tick, x0 = sim.ents.posX[scout];
+    sim.enqueue({ type: 'move', tick: sim.tick, player: 0, seq: 0, ids: [scout], x: x0 + 5 * FP_ONE, y: sim.ents.posY[scout] });
     expect(sim.tick).toBe(t);
     expect(sim.pendingCommands.length).toBe(1);
-    expect(sim.ents.posX[0]).toBe(x0);
-    sim.step();
+    expect(sim.ents.posX[scout]).toBe(x0);
+    for (let k = 0; k < 5; k++) sim.step();
     expect(sim.pendingCommands.length).toBe(0);
-    expect(sim.ents.moving[0] === 1 || sim.ents.posX[0] !== x0).toBe(true);
+    expect(sim.ents.posX[scout]).not.toBe(x0);
   });
   it('rejects past-tick commands and orders for units the player does not own', () => {
     const sim = new Sim({ seed: 'pause', size: 'small', players: 2 });
     sim.step();
     expect(sim.enqueue({ type: 'move', tick: 0, player: 0, seq: 0, ids: [0], x: 0, y: 0 })).toBe(false);
-    const x1 = sim.ents.tgtX[1];
-    sim.enqueue({ type: 'move', tick: sim.tick, player: 0, seq: 1, ids: [1], x: 5000, y: 5000 });
+    const theirs = ownedOfKind(sim, 1, Kind.SCOUT)[0];
+    sim.enqueue({ type: 'move', tick: sim.tick, player: 0, seq: 1, ids: [theirs], x: 5000, y: 5000 });
     sim.step();
-    expect(sim.ents.tgtX[1]).toBe(x1);
+    expect(sim.ents.task[theirs]).toBe(0);
+    expect(sim.ents.waitPath[theirs]).toBe(0);
   });
 });
 

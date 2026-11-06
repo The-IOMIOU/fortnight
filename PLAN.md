@@ -9,6 +9,9 @@ Status: **approved 2026-11-05** ("okay do phase 1") with these owner amendments:
 
 5. **Several continents, not one (2026-11-06).** Each map has several massive continents separated by ocean (Small 3, Medium 4, Large 5, Huge 7; tunable). Players are spread across them. Crossing to another continent needs transport ships (derived feature F-083, Phase 3).
 
+6. **Phase 2 with full autonomy (2026-11-06).** Decisions taken without asking, all recorded in the ledger: the Baseline race (P-001); single-unit A* pathfinding now (flow fields stay Phase 3, F-078); a move order onto water goes to the nearest walkable tile; the simulation worker is inlined into the page bundle so offline play needs no extra file.
+7. **Higher-quality models (2026-11-06, owner request, F-184):** detailed but stylized models generated in code. Photo-realistic models would need external texture/model assets, which conflicts with the small-repo and original-art rules (§9) and the performance budget; that remains an option for later (CC0 packs or generated models, recorded in ASSETS.md).
+
 Items in §7 that weren't commented on are taken as accepted. Proposals P-001…P-005 stay open until answered.
 
 Companion files: [FEATURES.md](FEATURES.md) (feature ledger), [CONTINENT_STRATEGY_GAME.md](CONTINENT_STRATEGY_GAME.md) (master spec).

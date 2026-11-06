@@ -1,20 +1,30 @@
 // Messages between the main thread and the simulation worker.
-import type { SimSettings } from '../sim/sim';
+import type { SimSettings, SimEvent } from '../sim/sim';
 import type { SpeedName } from '../sim/core/tuning';
+import type { CommandBody } from '../sim/commands';
+import type { PlayerStats } from '../sim/stats';
+import type { SaveData } from '../sim/serialize';
 
 export interface MapPayload {
   seed: string; size: string; w: number; h: number; hash: number;
   height: Uint8Array; biome: Uint8Array; temp: Uint8Array; starts: Int32Array;
+  resType: Uint8Array;
+  continent: Uint8Array;
   riverCount: number; lakeCount: number;
 }
 
 export type ToWorker =
   | { type: 'init'; settings: SimSettings; viewer: number; speed: SpeedName; paused: boolean }
-  | { type: 'move'; ids: number[]; x: number; y: number }
+  | { type: 'load'; save: SaveData; viewer: number; speed: SpeedName }
+  | { type: 'cmd'; body: CommandBody }
   | { type: 'speed'; speed: SpeedName }
   | { type: 'pause'; paused: boolean }
   | { type: 'stall'; ms: number }            // debug: block the worker (F-011 test)
-  | { type: 'hash'; reqId: number };
+  | { type: 'hash'; reqId: number }
+  | { type: 'save'; reqId: number }
+  | { type: 'dump'; reqId: number };         // debug: stats straight from the sim (F-059 test)
+
+export interface BuildingInfo { id: number; queue: number[]; trainPermille: number; upTo: number; upPermille: number; workers: number }
 
 export interface Snapshot {
   type: 'snap';
@@ -25,7 +35,13 @@ export interface Snapshot {
   ents: Int32Array;              // ENTITY_STRIDE ints per visible entity
   fog: Uint8Array | null;        // full fog layer of the viewer when it changed
   owner: Uint8Array | null;      // tile ownership when it changed
-  pending: { tick: number; x: number; y: number; ids: number[] }[];
+  /** Changed tiles the viewer can see: [tile, biome, resType] triples. */
+  tiles: Int32Array | null;
+  pending: { tick: number; type: string }[];
+  stats: PlayerStats | null;
+  events: SimEvent[];
+  buildings: BuildingInfo[];
+  winner: number;
   simMsPerTick: number;
   ticksPerSec: number;
   droppedTicks: number;
@@ -36,4 +52,7 @@ export interface Snapshot {
 export type FromWorker =
   | { type: 'map'; map: MapPayload; players: number; viewer: number; startTile: number }
   | Snapshot
-  | { type: 'hash'; reqId: number; tick: number; hash: number };
+  | { type: 'hash'; reqId: number; tick: number; hash: number }
+  | { type: 'save'; reqId: number; save: SaveData }
+  | { type: 'dump'; reqId: number; stats: PlayerStats }
+  | { type: 'error'; message: string };

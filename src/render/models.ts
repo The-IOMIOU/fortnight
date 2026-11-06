@@ -1,0 +1,295 @@
+// Procedural low-poly models with per-part colors (original, generated in code; no asset files).
+// Each model = a detailed "body" (vertex colors: plaster, timber, stone, glass…) and an owner-colored
+// "trim" (roofs, banners, hats) so teams stay readable. Front faces +z (towards the camera).
+import * as THREE from 'three';
+import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
+import type { BuildingTypeName } from '../sim/defs';
+
+export interface Model { body: THREE.BufferGeometry; trim: THREE.BufferGeometry }
+
+// ---- palette (display-space colors) ----
+const PLASTER = 0xe6dcc3, TIMBER = 0x5b3d25, DARKWOOD = 0x3f2a1a, STONE = 0x8d8a84, STONE_D = 0x6e6b66, GLASS = 0x4f6f86;
+const THATCH = 0xc9a85b, PLANK = 0x9a7046, SOIL = 0x6b4a2c, CROP = 0x9cbc4a, CROP2 = 0xd8c25a, HAY = 0xd9bd62, IRON = 0x55595f;
+const SKIN = 0xe0b48f, CLOTH = 0x8a7357, CLOTH2 = 0x6c5a44, CANVAS = 0xeee6d0, FUR = 0x8a5a35, FUR_L = 0xc79c6a;
+const LEAF = 0x2f6b34, LEAF2 = 0x3d7d3a, LEAF3 = 0x4f8f3f, BARK = 0x5a4029;
+
+// ---- geometry helpers ----
+type G = THREE.BufferGeometry;
+function paint(g: G, hex: number): G {
+  const n = g.index ? g.toNonIndexed() : g;
+  n.deleteAttribute('uv');
+  const c = new THREE.Color(hex), count = n.getAttribute('position').count, arr = new Float32Array(count * 3);
+  for (let i = 0; i < count; i++) { arr[i * 3] = c.r; arr[i * 3 + 1] = c.g; arr[i * 3 + 2] = c.b; }
+  n.setAttribute('color', new THREE.BufferAttribute(arr, 3));
+  return n;
+}
+const plain = (g: G): G => { const n = g.index ? g.toNonIndexed() : g; n.deleteAttribute('uv'); return n; };
+const merge = (gs: G[]): G => mergeGeometries(gs)!;
+const box = (w: number, h: number, d: number, x = 0, y = 0, z = 0): G => new THREE.BoxGeometry(w, h, d).translate(x, y + h / 2, z);
+const cyl = (r: number, h: number, seg: number, x = 0, y = 0, z = 0, r2 = r): G => new THREE.CylinderGeometry(r2, r, h, seg).translate(x, y + h / 2, z);
+const cone = (r: number, h: number, seg: number, x = 0, y = 0, z = 0): G => new THREE.ConeGeometry(r, h, seg).translate(x, y + h / 2, z);
+const ball = (r: number, x = 0, y = 0, z = 0, ws = 7, hs = 5): G => new THREE.SphereGeometry(r, ws, hs).translate(x, y, z);
+/** Box rotated about Z (for braces) */
+const brace = (len: number, t: number, angle: number, x: number, y: number, z: number): G => new THREE.BoxGeometry(len, t, t).rotateZ(angle).translate(x, y, z);
+
+/**
+ * Gable roof: ridge along X, two sloped planes with overhang.
+ * Returns [roof planes (owner-colored), gable-end attic walls, roof-tile rows + ridge cap (body)].
+ */
+function gable(w: number, d: number, rise: number, y: number, over = 0.06, t = 0.04, cx = 0, cz = 0): [G, G, G] {
+  const half = d / 2 + over, len = Math.hypot(half, rise * (half / (d / 2))), ang = Math.atan2(rise, d / 2);
+  const planes: G[] = [], rows: G[] = [];
+  for (const sgn of [1, -1]) {
+    const place = (g: G): G => g.rotateX(sgn * ang).translate(cx, y + rise / 2, cz + sgn * (d / 4 + over / 4));
+    planes.push(plain(place(new THREE.BoxGeometry(w + over * 2, t, len))));
+    const n = Math.max(3, Math.round(len / 0.07));
+    for (let i = 1; i < n; i++) rows.push(paint(place(new THREE.BoxGeometry(w + over * 2, 0.014, 0.014).translate(0, t / 2 + 0.004, -len / 2 + (i * len) / n)), 0x3a2418));
+  }
+  rows.push(paint(new THREE.BoxGeometry(w + over * 2 + 0.02, t * 1.6, t * 1.6).translate(cx, y + rise + t * 0.35, cz), 0x4a3426));
+  const tri = new THREE.Shape([new THREE.Vector2(-d / 2, 0), new THREE.Vector2(d / 2, 0), new THREE.Vector2(0, rise)]);
+  const attic = new THREE.ExtrudeGeometry(tri, { depth: w, bevelEnabled: false }).rotateY(Math.PI / 2).translate(cx - w / 2, y, cz);
+  return [merge(planes), attic, merge(rows)];
+}
+
+/** Window with frame on the front (+z) or side (+x) face. */
+function windowAt(x: number, y: number, z: number, side: 'z' | 'x', w = 0.1, h = 0.11): G[] {
+  const fw = side === 'z' ? [w + 0.03, h + 0.03, 0.015] : [0.015, h + 0.03, w + 0.03];
+  const gw = side === 'z' ? [w, h, 0.02] : [0.02, h, w];
+  return [paint(box(fw[0], fw[1], fw[2], x, y - 0.015, z), TIMBER), paint(box(gw[0], gw[1], gw[2], x + (side === 'x' ? 0.004 : 0), y, z + (side === 'z' ? 0.004 : 0)), GLASS)];
+}
+
+/** Half-timbered wall block (plaster with dark posts, beams and a brace) of size w×h×d. */
+function timberBlock(w: number, h: number, d: number, y = 0, cx = 0, cz = 0): G[] {
+  const t = 0.035, parts: G[] = [paint(box(w, h, d, cx, y, cz), PLASTER)];
+  for (const sx of [-1, 1]) for (const sz of [-1, 1]) parts.push(paint(box(t, h, t, cx + sx * (w / 2 - t / 2), y, cz + sz * (d / 2 - t / 2)), TIMBER));
+  for (const sz of [-1, 1]) {
+    parts.push(paint(box(w, t, t, cx, y + h - t, cz + sz * (d / 2)), TIMBER));
+    parts.push(paint(box(w, t, t, cx, y + h * 0.5, cz + sz * (d / 2)), TIMBER));
+  }
+  const bl = Math.hypot(w * 0.3, h * 0.45);
+  parts.push(paint(brace(bl, t * 0.8, Math.atan2(h * 0.45, w * 0.3), cx - w * 0.3, y + h * 0.72, cz + d / 2 + 0.004), TIMBER));
+  parts.push(paint(brace(bl, t * 0.8, -Math.atan2(h * 0.45, w * 0.3), cx + w * 0.3, y + h * 0.72, cz + d / 2 + 0.004), TIMBER));
+  return parts;
+}
+
+function house(w = 0.66, d = 0.56, h = 0.46): Model {
+  const [roof, attic, tiles] = gable(w, d, 0.2, 0.06 + h, 0.07);
+  return {
+    body: merge([
+      paint(box(w + 0.08, 0.06, d + 0.08), STONE),
+      ...timberBlock(w, h, d, 0.06),
+      paint(attic, PLASTER), tiles,
+      paint(box(0.12, 0.22, 0.02, 0.12, 0.06, d / 2 + 0.006), DARKWOOD),
+      paint(box(0.16, 0.025, 0.04, 0.12, 0.06, d / 2 + 0.03), STONE_D),
+      ...windowAt(-0.15, 0.24, d / 2 + 0.006, 'z'),
+      ...windowAt(w / 2 + 0.006, 0.24, 0, 'x'),
+      paint(box(0.09, 0.3, 0.09, -w * 0.28, h + 0.06, -d * 0.12), STONE),
+      paint(box(0.11, 0.03, 0.11, -w * 0.28, h + 0.36, -d * 0.12), STONE_D),
+    ]),
+    trim: roof,
+  };
+}
+
+/** Building models sized to their footprint (s tiles), centred on the footprint centre. */
+export function buildingModel(bt: BuildingTypeName, s: number): Model {
+  switch (bt) {
+    case 'house': return house();
+    case 'capital': {
+      const [hallRoof, hallAttic, hallTiles] = gable(1.7, 1.1, 0.42, 0.12 + 0.75, 0.08, 0.05, 0, 0.35);
+      const towers: G[] = [], towerRoofs: G[] = [];
+      for (const [x, z] of [[1.15, -1.0], [-1.15, 1.05], [1.15, 1.05]]) {
+        towers.push(paint(cyl(0.22, 1.25, 8, x, 0.12, z), STONE), paint(cyl(0.25, 0.08, 8, x, 1.37, z), STONE_D));
+        towers.push(...windowAt(x, 0.85, z + 0.22, 'z', 0.07, 0.12));
+        towerRoofs.push(plain(cone(0.3, 0.5, 8, x, 1.45, z)));
+      }
+      const crenels: G[] = [];
+      for (let i = 0; i < 4; i++) for (let j = 0; j < 4; j++) if (i === 0 || j === 0 || i === 3 || j === 3) crenels.push(paint(box(0.1, 0.1, 0.1, -0.85 - 0.33 + i * 0.22, 1.9, -0.75 - 0.33 + j * 0.22), STONE));
+      return {
+        body: merge([
+          paint(box(2.8, 0.12, 2.8), STONE_D),
+          ...timberBlock(1.7, 0.75, 1.1, 0.12, 0, 0.35), paint(hallAttic, PLASTER), hallTiles,
+          paint(box(0.3, 0.42, 0.03, 0, 0.12, 0.91), DARKWOOD), paint(box(0.38, 0.05, 0.04, 0, 0.54, 0.92), STONE),
+          ...windowAt(-0.5, 0.5, 0.91, 'z'), ...windowAt(0.5, 0.5, 0.91, 'z'), ...windowAt(-0.5, 0.82, 0.91, 'z', 0.08, 0.08), ...windowAt(0.5, 0.82, 0.91, 'z', 0.08, 0.08),
+          paint(box(0.8, 1.78, 0.8, -0.85, 0.12, -0.75), STONE),
+          ...windowAt(-0.85, 1.35, -0.34, 'z', 0.1, 0.16), ...windowAt(-0.85, 0.8, -0.34, 'z', 0.1, 0.16),
+          ...crenels, ...towers,
+          paint(cyl(0.025, 0.9, 5, -0.85, 1.9, -0.75), DARKWOOD),
+          paint(cyl(0.18, 0.25, 8, 0.85, 0.12, 1.0), STONE), paint(cyl(0.14, 0.02, 8, 0.85, 0.37, 1.0), 0x3d6f8f),
+        ]),
+        trim: merge([hallRoof, ...towerRoofs, plain(box(0.36, 0.22, 0.015, -0.67, 2.5, -0.75))]),
+      };
+    }
+    case 'settlement': {
+      const [roof, attic, tiles] = gable(1.1, 0.8, 0.32, 0.08 + 0.55, 0.07, 0.045, 0, 0.1);
+      const posts: G[] = [];
+      for (let i = 0; i <= 8; i++) { const a = -0.85 + i * 0.2125; posts.push(paint(cyl(0.035, 0.3, 5, a, 0, -0.85), PLANK), paint(cyl(0.035, 0.3, 5, -0.85, 0, a), PLANK), paint(cyl(0.035, 0.3, 5, 0.85, 0, a), PLANK)); }
+      return {
+        body: merge([
+          paint(box(1.8, 0.05, 1.8), SOIL),
+          ...timberBlock(1.1, 0.55, 0.8, 0.08, 0, 0.1), paint(attic, PLASTER), tiles,
+          paint(box(0.2, 0.32, 0.03, 0, 0.08, 0.51), DARKWOOD), ...windowAt(-0.32, 0.4, 0.51, 'z'), ...windowAt(0.32, 0.4, 0.51, 'z'),
+          ...posts,
+          paint(cyl(0.13, 0.2, 8, 0.6, 0.05, 0.65), STONE), paint(cyl(0.02, 0.5, 4, 0.6, 0.05, 0.65), DARKWOOD),
+        ]),
+        trim: merge([roof, plain(box(0.26, 0.16, 0.012, 0.73, 0.4, 0.65))]),
+      };
+    }
+    case 'farm': {
+      const rows: G[] = [];
+      for (let i = 0; i < 7; i++) {
+        const z = -0.78 + i * 0.2;
+        rows.push(paint(box(1.15, 0.06, 0.1, -0.3, 0.04, z), SOIL), paint(box(1.1, 0.1, 0.07, -0.3, 0.07, z), i % 2 ? CROP : CROP2));
+      }
+      const fence: G[] = [];
+      for (let i = 0; i <= 9; i++) { const a = -0.9 + i * 0.2; fence.push(paint(cyl(0.02, 0.18, 4, a, 0, 0.93), PLANK), paint(cyl(0.02, 0.18, 4, -0.93, 0, a), PLANK)); }
+      fence.push(paint(box(1.86, 0.025, 0.025, 0, 0.12, 0.93), PLANK), paint(box(0.025, 0.025, 1.86, -0.93, 0.12, 0), PLANK));
+      const [roof, attic, tiles] = gable(0.5, 0.55, 0.24, 0.42, 0.05, 0.035, 0.6, -0.35);
+      return {
+        body: merge([
+          paint(box(1.9, 0.04, 1.9), 0x7a5a36), ...rows, ...fence,
+          paint(box(0.5, 0.42, 0.55, 0.6, 0, -0.35), 0x8b5a3c), paint(attic, 0x8b5a3c), tiles,
+          paint(box(0.2, 0.28, 0.02, 0.6, 0, -0.07), DARKWOOD),
+          paint(cyl(0.16, 0.22, 8, 0.62, 0, 0.4, 0.05), HAY), paint(cyl(0.12, 0.18, 8, 0.38, 0, 0.62, 0.04), HAY),
+        ]),
+        trim: roof,
+      };
+    }
+    case 'lumberCamp': {
+      const logs: G[] = [];
+      for (let r = 0; r < 3; r++) for (let i = 0; i < 3 - r; i++) logs.push(paint(cyl(0.05, 0.42, 7).rotateZ(Math.PI / 2).translate(0, 0, 0), BARK).translate(0.1, 0.05 + r * 0.09, 0.28 - 0.1 + i * 0.1 + r * 0.05));
+      return {
+        body: merge([
+          paint(box(0.8, 0.03, 0.75), SOIL),
+          ...[[-0.3, -0.3], [0.3, -0.3], [-0.3, 0.05], [0.3, 0.05]].map(([x, z]) => paint(cyl(0.03, z < 0 ? 0.45 : 0.32, 5, x, 0, z - 0.05), TIMBER)),
+          paint(box(0.62, 0.03, 0.42, 0, 0.0, -0.15), PLANK),
+          ...logs,
+          paint(cyl(0.08, 0.12, 8, -0.25, 0, 0.25), BARK), paint(box(0.02, 0.18, 0.02, -0.25, 0.12, 0.25).rotateZ(0.4), DARKWOOD), paint(box(0.08, 0.05, 0.015, -0.2, 0.26, 0.25), IRON),
+        ]),
+        trim: plain(new THREE.BoxGeometry(0.7, 0.035, 0.52).rotateX(-0.28).translate(0, 0.42, -0.12)),
+      };
+    }
+    case 'mineCamp': {
+      return {
+        body: merge([
+          paint(box(0.85, 0.05, 0.8), STONE_D),
+          paint(new THREE.ConeGeometry(0.42, 0.45, 4).rotateY(Math.PI / 4).scale(1.2, 1, 0.8).translate(0, 0.27, -0.15), STONE),
+          paint(box(0.32, 0.3, 0.06, 0, 0.05, 0.12), 0x1d1d20),
+          paint(box(0.04, 0.34, 0.04, -0.17, 0.05, 0.15), TIMBER), paint(box(0.04, 0.34, 0.04, 0.17, 0.05, 0.15), TIMBER), paint(box(0.42, 0.05, 0.05, 0, 0.37, 0.15), TIMBER),
+          paint(box(0.04, 0.02, 0.5, -0.06, 0.05, 0.4), IRON), paint(box(0.04, 0.02, 0.5, 0.06, 0.05, 0.4), IRON),
+          paint(box(0.18, 0.1, 0.14, 0, 0.09, 0.45), PLANK), paint(ball(0.06, 0, 0.21, 0.45), 0x2b2b2e),
+          paint(ball(0.1, 0.28, 0.08, 0.28), 0x3a3a3e), paint(ball(0.08, -0.28, 0.07, 0.3), STONE),
+        ]),
+        trim: plain(box(0.14, 0.1, 0.01, -0.17, 0.4, 0.17)),
+      };
+    }
+    case 'fishingHut': {
+      const [roof, attic, tiles] = gable(0.5, 0.42, 0.18, 0.42, 0.05, 0.03, 0, -0.1);
+      const legs: G[] = [];
+      for (const [x, z] of [[-0.22, -0.28], [0.22, -0.28], [-0.22, 0.08], [0.22, 0.08], [-0.08, 0.4], [0.08, 0.4]]) legs.push(paint(cyl(0.025, 0.14, 5, x, 0, z), TIMBER));
+      return {
+        body: merge([
+          ...legs, paint(box(0.55, 0.03, 0.75, 0, 0.12, 0), PLANK),
+          paint(box(0.5, 0.27, 0.42, 0, 0.15, -0.1), PLANK), paint(attic, PLANK), tiles,
+          paint(box(0.12, 0.2, 0.02, 0, 0.15, 0.115), DARKWOOD), ...windowAt(0.26, 0.3, -0.1, 'x', 0.08, 0.08),
+          paint(box(0.03, 0.3, 0.03, -0.28, 0.15, 0.3), TIMBER), paint(box(0.03, 0.3, 0.03, 0.28, 0.15, 0.3), TIMBER),
+          paint(box(0.56, 0.18, 0.005, 0, 0.27, 0.3), 0xa89a7a),
+          paint(cyl(0.05, 0.08, 6, 0.17, 0.15, 0.25), PLANK),
+        ]),
+        trim: roof,
+      };
+    }
+    case 'storehouse': {
+      const [roof, attic, tiles] = gable(1.55, 1.15, 0.4, 0.06 + 0.62, 0.08, 0.045);
+      const crates: G[] = [];
+      for (const [x, z, h] of [[0.65, 0.75, 0], [0.45, 0.78, 0], [0.55, 0.77, 0.16]]) crates.push(paint(box(0.16, 0.16, 0.16, x, 0.06 + h, z), PLANK));
+      for (const [x, z] of [[-0.6, 0.78], [-0.42, 0.8]]) crates.push(paint(cyl(0.07, 0.18, 8, x, 0.06, z), 0x7a5232), paint(cyl(0.072, 0.015, 8, x, 0.12, z), IRON));
+      return {
+        body: merge([
+          paint(box(1.75, 0.06, 1.35), STONE),
+          paint(box(1.55, 0.62, 1.15, 0, 0.06, 0), PLANK), paint(attic, PLANK), tiles,
+          ...[-0.7, -0.35, 0, 0.35, 0.7].map((x) => paint(box(0.04, 0.62, 0.02, x, 0.06, 0.58), TIMBER)),
+          paint(box(0.5, 0.48, 0.03, 0, 0.06, 0.585), DARKWOOD), paint(brace(0.62, 0.03, 0.75, 0, 0.3, 0.6), TIMBER),
+          ...windowAt(0.55, 0.5, 0.585, 'z'), ...windowAt(-0.55, 0.5, 0.585, 'z'),
+          ...crates,
+        ]),
+        trim: roof,
+      };
+    }
+    case 'outpost': {
+      const legs: G[] = [];
+      for (const [x, z] of [[-0.2, -0.2], [0.2, -0.2], [-0.2, 0.2], [0.2, 0.2]]) legs.push(paint(cyl(0.035, 1.1, 5, x, 0, z, 0.03), TIMBER));
+      const rails: G[] = [];
+      for (const sz of [-1, 1]) { rails.push(paint(box(0.5, 0.02, 0.02, 0, 1.28, sz * 0.25), PLANK), paint(box(0.02, 0.02, 0.5, sz * 0.25, 1.28, 0), PLANK)); }
+      return {
+        body: merge([
+          ...legs, paint(brace(0.55, 0.025, 1.0, 0, 0.5, 0.2), TIMBER), paint(brace(0.55, 0.025, -1.0, 0, 0.5, -0.2), TIMBER),
+          paint(box(0.56, 0.05, 0.56, 0, 1.1, 0), PLANK), ...rails,
+          ...[[-0.25, -0.25], [0.25, -0.25], [-0.25, 0.25], [0.25, 0.25]].map(([x, z]) => paint(cyl(0.02, 0.45, 4, x, 1.15, z), TIMBER)),
+          paint(cyl(0.015, 0.55, 4, 0, 1.6, 0), DARKWOOD),
+        ]),
+        trim: merge([plain(cone(0.42, 0.25, 4, 0, 1.6, 0).rotateY(Math.PI / 4)), plain(box(0.22, 0.13, 0.01, 0.11, 2.0, 0))]),
+      };
+    }
+  }
+  void s;
+}
+
+/** A small humanoid: legs, tunic, arms, head. Height ≈ 0.6. */
+function person(tunic: number, extra: G[] = []): G {
+  return merge([
+    paint(box(0.06, 0.2, 0.07, -0.045, 0, 0), CLOTH2), paint(box(0.06, 0.2, 0.07, 0.045, 0, 0), CLOTH2),
+    paint(box(0.17, 0.22, 0.11, 0, 0.2, 0), tunic),
+    paint(box(0.045, 0.2, 0.05, -0.11, 0.22, 0), tunic), paint(box(0.045, 0.2, 0.05, 0.11, 0.22, 0), tunic),
+    paint(ball(0.07, 0, 0.5, 0, 8, 6), SKIN),
+    ...extra,
+  ]);
+}
+
+/** Unit models. */
+export function unitModel(kind: 'scout' | 'worker' | 'settler' | 'animal' | 'carcass'): Model {
+  switch (kind) {
+    case 'worker': return {
+      body: person(CLOTH, [paint(cyl(0.012, 0.32, 4, 0.14, 0.12, 0.04), DARKWOOD), paint(box(0.1, 0.035, 0.03, 0.14, 0.42, 0.04), IRON)]),
+      trim: plain(cyl(0.075, 0.05, 8, 0, 0.55, 0, 0.05)),
+    };
+    case 'scout': return {
+      body: person(CLOTH2, [paint(cyl(0.012, 0.7, 4, 0.15, 0.02, 0), DARKWOOD), paint(cone(0.025, 0.08, 4, 0.15, 0.72, 0), IRON)]),
+      trim: merge([plain(new THREE.BoxGeometry(0.2, 0.32, 0.03).translate(0, 0.28, -0.07)), plain(cone(0.08, 0.1, 8, 0, 0.55, 0))]),
+    };
+    case 'settler': {
+      const wheels: G[] = [];
+      for (const [x, z] of [[-0.18, 0.16], [0.18, 0.16], [-0.18, -0.16], [0.18, -0.16]]) wheels.push(paint(cyl(0.09, 0.03, 10).rotateX(Math.PI / 2).translate(x, 0.09, z), DARKWOOD));
+      const cover = new THREE.CylinderGeometry(0.16, 0.16, 0.48, 10, 1, true, 0, Math.PI).rotateZ(Math.PI / 2).rotateX(Math.PI / 2).rotateY(Math.PI / 2).translate(0, 0.22, 0);
+      return {
+        body: merge([...wheels, paint(box(0.48, 0.08, 0.28, 0, 0.12, 0), PLANK), paint(cover.rotateZ(0), CANVAS), paint(box(0.22, 0.02, 0.02, 0.36, 0.14, 0), DARKWOOD), paint(box(0.08, 0.06, 0.06, 0.22, 0.2, 0.0), 0x6b5a3a)]),
+        trim: plain(box(0.14, 0.09, 0.005, -0.12, 0.42, 0)),
+      };
+    }
+    case 'animal': {
+      const legs: G[] = [];
+      for (const [x, z] of [[-0.12, -0.05], [-0.12, 0.05], [0.12, -0.05], [0.12, 0.05]]) legs.push(paint(box(0.035, 0.18, 0.035, x, 0, z), FUR));
+      return {
+        body: merge([
+          ...legs, paint(ball(0.1, 0, 0.24, 0, 8, 6).scale(1.6, 0.85, 0.8), FUR), paint(ball(0.08, 0.2, 0.4, 0, 6, 5).scale(1, 1, 0.9).translate(0, 0, 0), FUR_L),
+          paint(box(0.05, 0.12, 0.05, 0.16, 0.28, 0).rotateZ(-0.5), FUR), paint(ball(0.03, -0.17, 0.27, 0), 0xf3e7d6),
+        ]),
+        trim: merge([plain(brace(0.12, 0.012, 1.0, 0.2, 0.52, 0.04)), plain(brace(0.12, 0.012, 1.0, 0.2, 0.52, -0.04))]),
+      };
+    }
+    case 'carcass': return {
+      body: merge([paint(ball(0.1, 0, 0.06, 0, 8, 6).scale(1.6, 0.6, 0.8), 0x7a4a2b), paint(ball(0.06, 0.2, 0.05, 0), FUR_L), ...[-0.1, 0.05].map((x) => paint(box(0.16, 0.03, 0.03, x, 0.03, 0.12), FUR))]),
+      trim: plain(box(0.001, 0.001, 0.001)),
+    };
+  }
+}
+
+/** Two tree species (vertex-colored); instance color only dims them in fog. */
+export const pineGeometry = (): G => merge([paint(cyl(0.05, 0.22, 6, 0, 0, 0, 0.04), BARK), paint(cone(0.34, 0.42, 7, 0, 0.16, 0), LEAF), paint(cone(0.27, 0.38, 7, 0, 0.38, 0), LEAF2), paint(cone(0.18, 0.32, 7, 0, 0.6, 0), LEAF3)]);
+export const broadleafGeometry = (): G => merge([paint(cyl(0.05, 0.32, 6, 0, 0, 0, 0.035), BARK), paint(ball(0.24, 0, 0.5, 0), LEAF2), paint(ball(0.18, 0.13, 0.42, 0.06), LEAF3), paint(ball(0.17, -0.12, 0.44, -0.05), LEAF)]);
+/** Deposit rock cluster; color comes from the instance (resource type). */
+export const rockGeometry = (): G => merge([
+  plain(new THREE.DodecahedronGeometry(0.22, 0).scale(1, 0.75, 1).translate(0, 0.12, 0)),
+  plain(new THREE.DodecahedronGeometry(0.14, 0).scale(1, 0.8, 1).translate(0.2, 0.08, 0.12)),
+  plain(new THREE.DodecahedronGeometry(0.11, 0).translate(-0.18, 0.07, 0.1)),
+]);
+export const cargoGeometry = (): G => plain(box(0.13, 0.13, 0.13, 0, 0.3, -0.1));

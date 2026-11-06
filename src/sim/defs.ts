@@ -1,0 +1,77 @@
+// Typed ids for resources, unit and building types, entity kinds, tasks — all derived from tuning data.
+import { TUNING } from './core/tuning';
+import { Biome } from './world/mapgen';
+
+export const Res = { FOOD: 0, WOOD: 1, STONE: 2, GOLD: 3, CARBON: 4, ADAMITE: 5 } as const;
+export const RES_NAMES = ['food', 'wood', 'stone', 'gold', 'carbon', 'adamite'] as const;
+export type ResName = (typeof RES_NAMES)[number];
+export const NUM_RES = RES_NAMES.length;
+export const RES_NONE = 255;
+
+export const UNIT_TYPES = ['scout', 'worker', 'settler'] as const;
+export type UnitTypeName = (typeof UNIT_TYPES)[number];
+export const BUILDING_TYPES = ['capital', 'settlement', 'house', 'farm', 'lumberCamp', 'mineCamp', 'fishingHut', 'storehouse', 'outpost'] as const;
+export type BuildingTypeName = (typeof BUILDING_TYPES)[number];
+
+/** Entity kinds: units 1..63 (1 + unit index), buildings 64.. (64 + building index), nature 128+. */
+export const Kind = {
+  SCOUT: 1, WORKER: 2, SETTLER: 3,
+  BUILDING_BASE: 64,
+  ANIMAL: 128, CARCASS: 129,
+} as const;
+export const unitKind = (u: UnitTypeName): number => 1 + UNIT_TYPES.indexOf(u);
+export const unitTypeOfKind = (k: number): UnitTypeName => UNIT_TYPES[k - 1];
+export const isUnitKind = (k: number): boolean => k >= 1 && k < 64;
+export const buildingKind = (b: BuildingTypeName): number => Kind.BUILDING_BASE + BUILDING_TYPES.indexOf(b);
+export const isBuildingKind = (k: number): boolean => k >= 64 && k < 128;
+export const buildingTypeOfKind = (k: number): BuildingTypeName => BUILDING_TYPES[k - Kind.BUILDING_BASE];
+
+export const NATURE_OWNER = 254;
+
+export const Task = { IDLE: 0, MOVE: 1, GATHER: 2, RETURN: 3, BUILD: 4, WORK: 5, HUNT: 6, SETTLE: 7 } as const;
+export const TASK_NAMES = ['idle', 'moving', 'gathering', 'returning', 'building', 'working', 'hunting', 'settling'];
+
+export interface UnitDef { food: number; wood: number; trainTicks: number; pop: number; speed: number; vision: number }
+export interface BuildingDef {
+  size: number; wood: number; stone: number; buildPoints: number; housing: number; territory: number; vision: number; maxWorkers?: number;
+}
+export const unitDef = (u: UnitTypeName): UnitDef => TUNING.unitTypes[u];
+export const buildingDef = (b: BuildingTypeName): BuildingDef => TUNING.buildingTypes[b];
+
+/** Which resources each building accepts as a drop-off. */
+export const DROPOFF: Partial<Record<BuildingTypeName, number[]>> = {
+  capital: [0, 1, 2, 3, 4, 5], settlement: [0, 1, 2, 3, 4, 5], storehouse: [0, 1, 2, 3, 4, 5],
+  lumberCamp: [Res.WOOD], mineCamp: [Res.STONE, Res.GOLD, Res.CARBON, Res.ADAMITE],
+};
+/** Which units each building can train. */
+export const TRAINS: Partial<Record<BuildingTypeName, UnitTypeName[]>> = {
+  capital: ['worker', 'settler', 'scout'], settlement: ['worker', 'scout'],
+};
+/** Buildings units can walk across (fields). */
+export const WALKABLE_BUILDING: Partial<Record<BuildingTypeName, boolean>> = { farm: true };
+/** Buildings that count as settlements (capital + settlement) for territory and elimination. */
+export const TOWN_CENTERS: BuildingTypeName[] = ['capital', 'settlement'];
+
+export interface UpgradeDef { wood: number; stone: number; gold: number; ticks: number; housing?: number; territory?: number; yieldPct?: number }
+/** Upgrade from level L to L+1 for a building type, if any. */
+export function upgradeDef(b: BuildingTypeName, toLevel: number): UpgradeDef | null {
+  const key = `${b}${toLevel}` as keyof typeof TUNING.upgrades;
+  return (TUNING.upgrades[key] as UpgradeDef | undefined) ?? null;
+}
+
+// ---- Biome rules (F-023) ----
+const BIOME_KEY: Record<number, keyof typeof TUNING.biomes | null> = {
+  [Biome.OCEAN]: null, [Biome.LAKE]: null, [Biome.ICE]: null, [Biome.RIVER]: 'river',
+  [Biome.COAST]: 'coast', [Biome.PLAINS]: 'plains', [Biome.FOREST]: 'forest', [Biome.DESERT]: 'desert',
+  [Biome.SWAMP]: 'swamp', [Biome.MOUNTAIN]: 'mountain', [Biome.TUNDRA]: 'tundra', [Biome.SNOW]: 'snow',
+};
+export const MOVE_COST = new Int32Array(16);
+export const FARM_YIELD = new Int32Array(16);
+export const BUILDABLE = new Uint8Array(16);
+for (const [b, key] of Object.entries(BIOME_KEY)) {
+  if (!key) continue;
+  const d = TUNING.biomes[key];
+  MOVE_COST[+b] = d.moveCost; FARM_YIELD[+b] = d.farmYield; BUILDABLE[+b] = d.buildable;
+}
+
+export const TICKS_PER_MIN = TUNING.sim.tickHz * 60;

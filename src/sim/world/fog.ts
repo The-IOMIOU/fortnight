@@ -32,8 +32,12 @@ export class FogLayer {
     for (let k = 0; k < this.visibleCount; k++) d[this.visible[k]] = FOG_EXPLORED;
     this.visibleCount = 0;
   }
+  /** Tiles that went from unexplored to visible since the last drain. */
+  newlyExplored: number[] = [];
   private mark(i: number): void {
-    if (this.data[i] === FOG_VISIBLE) return;
+    const v = this.data[i];
+    if (v === FOG_VISIBLE) return;
+    if (v === FOG_UNEXPLORED) this.newlyExplored.push(i);
     this.data[i] = FOG_VISIBLE;
     if (this.visibleCount >= this.visible.length) {
       const b = new Int32Array(this.visible.length * 2); b.set(this.visible); this.visible = b;
@@ -48,5 +52,16 @@ export class FogLayer {
     }
   }
   stampTile(i: number): void { this.mark(i); }
+  /** Currently visible tile list (for save files). */
+  visibleTiles(): number[] { return Array.from(this.visible.subarray(0, this.visibleCount)); }
+  restore(data: ArrayLike<number>, visible: number[]): void {
+    this.data.set(data);
+    this.visibleCount = 0;
+    for (const t of visible) {
+      if (this.visibleCount >= this.visible.length) { const b = new Int32Array(this.visible.length * 2); b.set(this.visible); this.visible = b; }
+      this.visible[this.visibleCount++] = t;
+    }
+    this.dirty = true;
+  }
   isVisible(i: number): boolean { return this.data[i] === FOG_VISIBLE; }
 }

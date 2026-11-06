@@ -38,4 +38,6 @@ export class Rng {
     return v % n;
   }
   range(lo: number, hiInclusive: number): number { return lo + this.int(hiInclusive - lo + 1); }
+  getState(): [number, number, number, number] { return [this.a, this.b, this.c, this.d]; }
+  setState(s: [number, number, number, number]): void { [this.a, this.b, this.c, this.d] = s; }
 }

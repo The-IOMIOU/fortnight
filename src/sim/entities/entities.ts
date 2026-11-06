@@ -1,48 +1,56 @@
-// Struct-of-arrays entity storage. Entity handle = slot index; `gen` guards against stale handles.
+// Struct-of-arrays entity storage for units, buildings and wildlife.
+// Every typed-array field is registered in FIELDS, so growth, hashing and save/load cover all of them.
 
-export const Kind = { SCOUT: 1 } as const;
+export { Kind } from '../defs';
+
+type TA = Uint8Array | Uint16Array | Int32Array;
+type Ctor = { new (n: number): TA };
+
+const FIELDS: [string, Ctor][] = [
+  ['alive', Uint8Array], ['gen', Uint16Array], ['kind', Uint8Array], ['owner', Uint8Array],
+  ['posX', Int32Array], ['posY', Int32Array], ['tgtX', Int32Array], ['tgtY', Int32Array],
+  ['moving', Uint8Array], ['speed', Int32Array], ['vision', Uint8Array],
+  // units
+  ['task', Uint8Array], ['phase', Uint8Array], ['taskTile', Int32Array], ['taskEnt', Int32Array],
+  ['carryType', Uint8Array], ['carryAmt', Int32Array], ['acc', Int32Array], ['pathIdx', Int32Array], ['repathAt', Int32Array],
+  ['srcEnt', Int32Array], ['waitPath', Uint8Array], ['hasFinal', Uint8Array],
+  ['gx0', Int32Array], ['gy0', Int32Array], ['gx1', Int32Array], ['gy1', Int32Array], ['finX', Int32Array], ['finY', Int32Array],
+  // buildings
+  ['btype', Uint8Array], ['level', Uint8Array], ['progress', Int32Array], ['anchor', Int32Array], ['complete', Uint8Array],
+  ['upTo', Uint8Array], ['upProgress', Int32Array], ['trainProgress', Int32Array], ['yieldPct', Int32Array],
+  // wildlife
+  ['food', Int32Array], ['homeTile', Int32Array],
+];
 
 export class Entities {
   capacity: number;
   count = 0; // high-water mark of used slots
-  alive: Uint8Array;
-  gen: Uint16Array;
-  kind: Uint8Array;
-  owner: Uint8Array;
-  posX: Int32Array;
-  posY: Int32Array;
-  tgtX: Int32Array;
-  tgtY: Int32Array;
-  moving: Uint8Array;
-  speed: Int32Array; // fixed-point sub-units per tick
-  vision: Uint8Array; // tiles
-  private free: number[] = [];
+  alive!: Uint8Array; gen!: Uint16Array; kind!: Uint8Array; owner!: Uint8Array;
+  posX!: Int32Array; posY!: Int32Array; tgtX!: Int32Array; tgtY!: Int32Array;
+  moving!: Uint8Array; speed!: Int32Array; vision!: Uint8Array;
+  task!: Uint8Array; phase!: Uint8Array; taskTile!: Int32Array; taskEnt!: Int32Array;
+  carryType!: Uint8Array; carryAmt!: Int32Array; acc!: Int32Array; pathIdx!: Int32Array; repathAt!: Int32Array;
+  srcEnt!: Int32Array; waitPath!: Uint8Array; hasFinal!: Uint8Array;
+  gx0!: Int32Array; gy0!: Int32Array; gx1!: Int32Array; gy1!: Int32Array; finX!: Int32Array; finY!: Int32Array;
+  btype!: Uint8Array; level!: Uint8Array; progress!: Int32Array; anchor!: Int32Array; complete!: Uint8Array;
+  upTo!: Uint8Array; upProgress!: Int32Array; trainProgress!: Int32Array; yieldPct!: Int32Array;
+  food!: Int32Array; homeTile!: Int32Array;
+  /** Path (tile list) per entity; null when none. */
+  paths: (number[] | null)[] = [];
+  /** Training queue (unit type indices) per building. */
+  queues: number[][] = [];
+  free: number[] = [];
 
   constructor(capacity = 1024) {
     this.capacity = capacity;
-    this.alive = new Uint8Array(capacity);
-    this.gen = new Uint16Array(capacity);
-    this.kind = new Uint8Array(capacity);
-    this.owner = new Uint8Array(capacity);
-    this.posX = new Int32Array(capacity);
-    this.posY = new Int32Array(capacity);
-    this.tgtX = new Int32Array(capacity);
-    this.tgtY = new Int32Array(capacity);
-    this.moving = new Uint8Array(capacity);
-    this.speed = new Int32Array(capacity);
-    this.vision = new Uint8Array(capacity);
+    const self = this as unknown as Record<string, TA>;
+    for (const [name, C] of FIELDS) self[name] = new C(capacity);
   }
 
   private grow(): void {
     const cap = this.capacity * 2;
-    const g = <T extends Uint8Array | Uint16Array | Int32Array>(a: T): T => {
-      const b = new (a.constructor as { new (n: number): T })(cap);
-      b.set(a);
-      return b;
-    };
-    this.alive = g(this.alive); this.gen = g(this.gen); this.kind = g(this.kind); this.owner = g(this.owner);
-    this.posX = g(this.posX); this.posY = g(this.posY); this.tgtX = g(this.tgtX); this.tgtY = g(this.tgtY);
-    this.moving = g(this.moving); this.speed = g(this.speed); this.vision = g(this.vision);
+    const self = this as unknown as Record<string, TA>;
+    for (const [name, C] of FIELDS) { const b = new C(cap); b.set(self[name]); self[name] = b; }
     this.capacity = cap;
   }
 
@@ -56,9 +64,15 @@ export class Entities {
       if (this.count >= this.capacity) this.grow();
       id = this.count++;
     }
+    const self = this as unknown as Record<string, TA>;
+    const g = this.gen[id];
+    for (const [name] of FIELDS) self[name][id] = 0;
+    this.gen[id] = g;
     this.alive[id] = 1; this.kind[id] = kind; this.owner[id] = owner;
     this.posX[id] = x; this.posY[id] = y; this.tgtX[id] = x; this.tgtY[id] = y;
-    this.moving[id] = 0; this.speed[id] = speed; this.vision[id] = vision;
+    this.speed[id] = speed; this.vision[id] = vision;
+    this.taskEnt[id] = -1; this.taskTile[id] = -1; this.anchor[id] = -1; this.homeTile[id] = -1; this.srcEnt[id] = -1;
+    this.paths[id] = null; this.queues[id] = [];
     return id;
   }
 
@@ -66,13 +80,28 @@ export class Entities {
     if (!this.alive[id]) return;
     this.alive[id] = 0; this.moving[id] = 0;
     this.gen[id] = (this.gen[id] + 1) & 0xffff;
+    this.paths[id] = null; this.queues[id] = [];
     this.free.push(id);
   }
 
-  /** Arrays included in the state hash (only the used prefix). */
+  /** All typed arrays (used prefix) for hashing. */
   hashViews(): ArrayBufferView[] {
-    const n = this.count;
-    return [this.alive.subarray(0, n), this.kind.subarray(0, n), this.owner.subarray(0, n), this.posX.subarray(0, n),
-      this.posY.subarray(0, n), this.tgtX.subarray(0, n), this.tgtY.subarray(0, n), this.moving.subarray(0, n)];
+    const n = this.count, self = this as unknown as Record<string, TA>;
+    return FIELDS.map(([name]) => self[name].subarray(0, n));
+  }
+
+  /** Plain-data snapshot for save files. */
+  serialize(): { capacity: number; count: number; fields: Record<string, number[]>; paths: (number[] | null)[]; queues: number[][]; free: number[] } {
+    const self = this as unknown as Record<string, TA>, fields: Record<string, number[]> = {};
+    for (const [name] of FIELDS) fields[name] = Array.from(self[name].subarray(0, this.count));
+    return { capacity: this.capacity, count: this.count, fields, paths: this.paths.slice(0, this.count), queues: this.queues.slice(0, this.count), free: this.free.slice() };
+  }
+
+  static deserialize(d: ReturnType<Entities['serialize']>): Entities {
+    const e = new Entities(d.capacity);
+    const self = e as unknown as Record<string, TA>;
+    for (const [name] of FIELDS) self[name].set(d.fields[name]);
+    e.count = d.count; e.paths = d.paths.map((p) => (p ? p.slice() : null)); e.queues = d.queues.map((q) => q.slice()); e.free = d.free.slice();
+    return e;
   }
 }

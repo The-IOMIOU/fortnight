@@ -5,8 +5,12 @@ import type { RtsCamera } from '../render/camera';
 
 export interface ControlHandlers {
   onLeftClick(clientX: number, clientY: number, shift: boolean): void;
-  onRightClick(clientX: number, clientY: number): void;
+  onRightClick(clientX: number, clientY: number, shift: boolean): void;
   onKey(ev: KeyboardEvent): void;
+  /** Box selection in progress (null when finished/cancelled). */
+  onBoxDrag(rect: { x0: number; y0: number; x1: number; y1: number } | null): void;
+  onBoxSelect(rect: { x0: number; y0: number; x1: number; y1: number }, shift: boolean): void;
+  onHover(clientX: number, clientY: number): void;
 }
 
 const EDGE_PX = 12;
@@ -15,7 +19,7 @@ const DRAG_THRESHOLD = 5;
 export class Controls {
   private keys = new Set<string>();
   private mouse = { x: -1, y: -1, inside: false };
-  private drag: { button: number; x: number; y: number; moved: boolean } | null = null;
+  private drag: { button: number; x: number; y: number; sx: number; sy: number; moved: boolean } | null = null;
   edgeScroll = true;
   private disposers: (() => void)[] = [];
 
@@ -26,17 +30,19 @@ export class Controls {
     };
     on(el, 'contextmenu', (e: MouseEvent) => e.preventDefault());
     on(el, 'pointerdown', (e: PointerEvent) => {
-      this.drag = { button: e.button, x: e.clientX, y: e.clientY, moved: false };
+      this.drag = { button: e.button, x: e.clientX, y: e.clientY, sx: e.clientX, sy: e.clientY, moved: false };
       el.setPointerCapture(e.pointerId);
       if (e.button === 1) e.preventDefault();
     });
     on(el, 'pointermove', (e: PointerEvent) => {
       this.mouse.x = e.clientX; this.mouse.y = e.clientY; this.mouse.inside = true;
+      this.h.onHover(e.clientX, e.clientY);
       const d = this.drag;
-      if (!d || d.button === 0) return;
+      if (!d) return;
       const dx = e.clientX - d.x, dy = e.clientY - d.y;
       if (!d.moved && Math.hypot(dx, dy) < DRAG_THRESHOLD) return;
       d.moved = true;
+      if (d.button === 0) { this.h.onBoxDrag(this.rect(d.sx, d.sy, e.clientX, e.clientY)); return; }
       // Drag the ground: move the target opposite to the pointer.
       const k = (this.cam.distance * 1.6) / el.clientHeight;
       this.cam.panWorld(-dx * k, -dy * k);
@@ -45,9 +51,13 @@ export class Controls {
     on(el, 'pointerup', (e: PointerEvent) => {
       const d = this.drag;
       this.drag = null;
-      if (!d || d.moved) return;
+      if (!d) return;
+      if (d.moved) {
+        if (d.button === 0) { this.h.onBoxDrag(null); this.h.onBoxSelect(this.rect(d.sx, d.sy, e.clientX, e.clientY), e.shiftKey); }
+        return;
+      }
       if (e.button === 0) this.h.onLeftClick(e.clientX, e.clientY, e.shiftKey);
-      else if (e.button === 2) this.h.onRightClick(e.clientX, e.clientY);
+      else if (e.button === 2) this.h.onRightClick(e.clientX, e.clientY, e.shiftKey);
     });
     on(el, 'pointerleave', () => { this.mouse.inside = false; });
     on(el, 'wheel', (e: WheelEvent) => { e.preventDefault(); this.cam.zoom(Math.sign(e.deltaY)); }, { passive: false });
@@ -58,6 +68,10 @@ export class Controls {
     });
     on(window, 'keyup', (e: KeyboardEvent) => this.keys.delete(e.key.toLowerCase()));
     on(window, 'blur', () => { this.keys.clear(); this.mouse.inside = false; });
+  }
+
+  private rect(ax: number, ay: number, bx: number, by: number): { x0: number; y0: number; x1: number; y1: number } {
+    return { x0: Math.min(ax, bx), y0: Math.min(ay, by), x1: Math.max(ax, bx), y1: Math.max(ay, by) };
   }
 
   /** Per-frame continuous movement (keys + edge scroll). dt in seconds. */

@@ -8,7 +8,7 @@
 
 All visuals are currently generated in code:
 - **Terrain:** terraced quads with per-biome vertex colors, from [src/render/terrain.ts](src/render/terrain.ts).
-- **Units:** Three.js primitive geometry, from [src/render/units.ts](src/render/units.ts).
+- **Buildings, units, trees, animals, rocks:** procedural low-poly models assembled from Three.js primitives with per-part vertex colors, in [src/render/models.ts](src/render/models.ts).
 - **Palette:** original, in [src/render/palette.ts](src/render/palette.ts). Team colors follow the Okabe–Ito colorblind-safe palette, which is a published color recommendation rather than copyrighted art.
 
 There are no audio, image or font files. The UI uses the system font.

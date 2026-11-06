@@ -55,9 +55,9 @@ test('F-014 select scout and order a move while paused: queued, executes after u
   // Screen position of our scout.
   const pos = await page.evaluate(() => {
     const g = (window as any).__game.game;
-    const u = g.units.visible.find((v: any) => v.owner === 0);
+    const u = g.units.visible.find((v: any) => v.owner === 0 && v.kind === 1);
     const THREE_V = g.cam.camera.position.clone();
-    const v = THREE_V.set(u.x, 2.0, u.z).project(g.cam.camera);
+    const v = THREE_V.set(u.x, u.y + 0.4, u.z).project(g.cam.camera);
     const r = g.renderer.domElement.getBoundingClientRect();
     return { sx: ((v.x + 1) / 2) * r.width + r.left, sy: ((1 - v.y) / 2) * r.height + r.top, id: u.id, x: u.x, z: u.z };
   });
@@ -160,7 +160,7 @@ test('F-027 minimap: click jumps camera; pixels match fog and ownership; F-026 s
   expect(px.owned[2]).toBeGreaterThan(px.owned[0]);
   const owners = await page.evaluate(() => {
     const e = (window as any).__game.state && (window as any).__game.game.snapshot.ents as Int32Array;
-    const set = new Set<number>(); for (let k = 0; k < e.length; k += 6) set.add(e[k + 2]); return [...set];
+    const set = new Set<number>(); for (let k = 0; k < e.length; k += 8) if (e[k + 1] < 64) set.add(e[k + 2]); return [...set];
   });
   console.log(`[F-026] owners present in viewer snapshot: ${JSON.stringify(owners)} (4 players on map)`);
   expect(owners).toEqual([0]);

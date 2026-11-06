@@ -33,5 +33,62 @@
   "units": {
     "scout": { "speed": 358, "vision": 7 }
   },
-  "fog": { "explored": 128, "visible": 255 }
+  "fog": { "explored": 128, "visible": 255 },
+  "biomes": {
+    "coast":    { "moveCost": 10, "farmYield": 80,  "buildable": 1 },
+    "plains":   { "moveCost": 10, "farmYield": 100, "buildable": 1 },
+    "forest":   { "moveCost": 15, "farmYield": 0,   "buildable": 0 },
+    "desert":   { "moveCost": 13, "farmYield": 35,  "buildable": 1 },
+    "swamp":    { "moveCost": 22, "farmYield": 60,  "buildable": 1 },
+    "mountain": { "moveCost": 28, "farmYield": 0,   "buildable": 0 },
+    "tundra":   { "moveCost": 13, "farmYield": 45,  "buildable": 1 },
+    "snow":     { "moveCost": 32, "farmYield": 0,   "buildable": 0 },
+    "river":    { "moveCost": 30, "farmYield": 0,   "buildable": 0 }
+  },
+  "deposits": {
+    "woodPerForestTile": 200,
+    "stone":   { "clustersPer1000Land": 3,   "tiles": 5, "amount": 400 },
+    "gold":    { "clustersPer1000Land": 1,   "tiles": 4, "amount": 300 },
+    "carbon":  { "clustersPer1000Land": 2,   "tiles": 4, "amount": 300 },
+    "adamite": { "clustersPer1000Land": 0.4, "tiles": 3, "amount": 150 },
+    "startGuaranteeRadius": 12
+  },
+  "animals": { "landTilesPerAnimal": 250, "food": 120, "speed": 200, "wanderRadius": 6, "wanderEveryTicks": 80 },
+  "economy": {
+    "carryCapacity": 10,
+    "gatherPerMin": { "wood": 24, "stone": 18, "gold": 14, "carbon": 16, "adamite": 8, "carcass": 30 },
+    "farmFoodPerWorkerPerMin": 18,
+    "fishFoodPerWorkerPerMin": 20,
+    "fishWaterTilesForFull": 12,
+    "foodPerPopPerMin": 2,
+    "starvingRatePct": 50,
+    "buildPointsPerWorkerTick": 1,
+    "trainQueueMax": 5,
+    "settlementMinDistance": 10,
+    "outpostReachOutsideTerritory": 2,
+    "dominationPct": 70,
+    "dominationHoldTicks": 3000
+  },
+  "unitTypes": {
+    "worker":  { "food": 50,  "wood": 0,  "trainTicks": 120, "pop": 1, "speed": 280, "vision": 5 },
+    "settler": { "food": 120, "wood": 60, "trainTicks": 250, "pop": 2, "speed": 240, "vision": 5 },
+    "scout":   { "food": 40,  "wood": 0,  "trainTicks": 100, "pop": 1, "speed": 358, "vision": 7 }
+  },
+  "buildingTypes": {
+    "capital":    { "size": 3, "wood": 0,  "stone": 0,  "buildPoints": 0,   "housing": 10, "territory": 7, "vision": 9 },
+    "settlement": { "size": 2, "wood": 0,  "stone": 0,  "buildPoints": 0,   "housing": 5,  "territory": 6, "vision": 8 },
+    "house":      { "size": 1, "wood": 40, "stone": 0,  "buildPoints": 200, "housing": 6,  "territory": 0, "vision": 3 },
+    "farm":       { "size": 2, "wood": 60, "stone": 0,  "buildPoints": 250, "housing": 0,  "territory": 0, "vision": 3, "maxWorkers": 2 },
+    "lumberCamp": { "size": 1, "wood": 50, "stone": 0,  "buildPoints": 150, "housing": 0,  "territory": 0, "vision": 4 },
+    "mineCamp":   { "size": 1, "wood": 60, "stone": 0,  "buildPoints": 200, "housing": 0,  "territory": 0, "vision": 4 },
+    "fishingHut": { "size": 1, "wood": 50, "stone": 0,  "buildPoints": 180, "housing": 0,  "territory": 0, "vision": 4, "maxWorkers": 3 },
+    "storehouse": { "size": 2, "wood": 80, "stone": 20, "buildPoints": 300, "housing": 0,  "territory": 0, "vision": 4 },
+    "outpost":    { "size": 1, "wood": 40, "stone": 40, "buildPoints": 250, "housing": 0,  "territory": 4, "vision": 7 }
+  },
+  "upgrades": {
+    "capital2": { "wood": 150, "stone": 100, "gold": 0,   "ticks": 400, "housing": 10, "territory": 2 },
+    "capital3": { "wood": 300, "stone": 250, "gold": 100, "ticks": 600, "housing": 10, "territory": 2 },
+    "house2":   { "wood": 40,  "stone": 30,  "gold": 0,   "ticks": 150, "housing": 4,  "territory": 0 },
+    "farm2":    { "wood": 60,  "stone": 40,  "gold": 0,   "ticks": 200, "yieldPct": 30 }
+  }
 }

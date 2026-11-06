@@ -30,4 +30,17 @@ export const PLAYER_COLORS: [number, number, number][] = [
   hex(0xd55e00), hex(0x56b4e9), hex(0xf0e442), hex(0xffffff),
 ];
 export const playerColor = (p: number): [number, number, number] => PLAYER_COLORS[p % PLAYER_COLORS.length];
+
+/** Players 9–32 reuse the 8 hues with a pattern so all 32 stay distinguishable without relying on color (F-175). */
+export const PLAYER_PATTERNS = ['solid', 'stripes', 'dots', 'checks'] as const;
+export const playerPattern = (p: number): (typeof PLAYER_PATTERNS)[number] => PLAYER_PATTERNS[Math.floor(p / PLAYER_COLORS.length) % 4];
+export const playerLabel = (p: number): string => `P${p + 1}`;
+/** CSS background for a player swatch (color + pattern). */
+export function playerSwatchCss(p: number): string {
+  const c = toCss(playerColor(p)), pat = playerPattern(p);
+  if (pat === 'stripes') return `repeating-linear-gradient(45deg, ${c} 0 3px, #111 3px 5px)`;
+  if (pat === 'dots') return `radial-gradient(#111 30%, transparent 32%) 0 0 / 5px 5px, ${c}`;
+  if (pat === 'checks') return `conic-gradient(${c} 25%, #111 0 50%, ${c} 0 75%, #111 0) 0 0 / 6px 6px`;
+  return c;
+}
 export const toCss = (c: [number, number, number]): string => `rgb(${Math.round(c[0] * 255)},${Math.round(c[1] * 255)},${Math.round(c[2] * 255)})`;
