@@ -289,6 +289,360 @@ Key = building + target level.
 | `upgrades.farm2.ticks` | 200 | Upgrade time in ticks (no workers needed). |
 | `upgrades.farm2.yieldPct` | 30 | Extra farm yield (%) at level 2. |
 
+## Units (Phase 2)
+
+| Constant | Value | Why |
+|---|---|---|
+| `unitTypes.scout.gold` | 0 | Cost in gold. |
+| `unitTypes.scout.hp` | 50 | Hit points. |
+| `unitTypes.scout.attack` | 3 | Damage per hit before modifiers. |
+| `unitTypes.scout.range` | 12 | Weapon range in tenths of a tile (12 = melee, 65 = 6.5 tiles). |
+| `unitTypes.scout.cooldown` | 12 | Ticks between hits (10 = 1 s). |
+| `unitTypes.scout.armor` | 0 | Flat damage reduction per hit. |
+| `unitTypes.scout.vsUnits` | 100 | Damage vs units, % (rams are weak against soldiers). |
+| `unitTypes.scout.vsBuildings` | 30 | Damage vs buildings, % (rams ×5, archers barely scratch walls). |
+| `unitTypes.scout.water` | 0 | 1 = sails on water only. |
+| `unitTypes.scout.stealth` | 0 | 1 = invisible to enemies more than 2 tiles away. |
+| `unitTypes.scout.capacity` | 0 | Transport capacity in housing (pop) units. |
+| `unitTypes.worker.gold` | 0 | Cost in gold. |
+| `unitTypes.worker.hp` | 40 | Hit points. |
+| `unitTypes.worker.attack` | 2 | Damage per hit before modifiers. |
+| `unitTypes.worker.range` | 12 | Weapon range in tenths of a tile (12 = melee, 65 = 6.5 tiles). |
+| `unitTypes.worker.cooldown` | 15 | Ticks between hits (10 = 1 s). |
+| `unitTypes.worker.armor` | 0 | Flat damage reduction per hit. |
+| `unitTypes.worker.vsUnits` | 100 | Damage vs units, % (rams are weak against soldiers). |
+| `unitTypes.worker.vsBuildings` | 30 | Damage vs buildings, % (rams ×5, archers barely scratch walls). |
+| `unitTypes.worker.water` | 0 | 1 = sails on water only. |
+| `unitTypes.worker.stealth` | 0 | 1 = invisible to enemies more than 2 tiles away. |
+| `unitTypes.worker.capacity` | 0 | Transport capacity in housing (pop) units. |
+| `unitTypes.settler.gold` | 0 | Cost in gold. |
+| `unitTypes.settler.hp` | 60 | Hit points. |
+| `unitTypes.settler.attack` | 0 | Damage per hit before modifiers. |
+| `unitTypes.settler.range` | 0 | Weapon range in tenths of a tile (12 = melee, 65 = 6.5 tiles). |
+| `unitTypes.settler.cooldown` | 0 | Ticks between hits (10 = 1 s). |
+| `unitTypes.settler.armor` | 0 | Flat damage reduction per hit. |
+| `unitTypes.settler.vsUnits` | 0 | Damage vs units, % (rams are weak against soldiers). |
+| `unitTypes.settler.vsBuildings` | 0 | Damage vs buildings, % (rams ×5, archers barely scratch walls). |
+| `unitTypes.settler.water` | 0 | 1 = sails on water only. |
+| `unitTypes.settler.stealth` | 0 | 1 = invisible to enemies more than 2 tiles away. |
+| `unitTypes.settler.capacity` | 0 | Transport capacity in housing (pop) units. |
+| `unitTypes.spearman.food` | 50 | Cost in food. |
+| `unitTypes.spearman.wood` | 20 | Cost in wood. |
+| `unitTypes.spearman.gold` | 0 | Cost in gold. |
+| `unitTypes.spearman.trainTicks` | 150 | Training time in ticks (10 = 1 s at 1×). |
+| `unitTypes.spearman.pop` | 1 | Housing used. Settlers count double: they are a family. |
+| `unitTypes.spearman.speed` | 260 | Fixed-point sub-units per tick on plains (1024 = 1 tile). |
+| `unitTypes.spearman.vision` | 6 | Vision radius in tiles. |
+| `unitTypes.spearman.hp` | 110 | Hit points. |
+| `unitTypes.spearman.attack` | 11 | Damage per hit before modifiers. |
+| `unitTypes.spearman.range` | 12 | Weapon range in tenths of a tile (12 = melee, 65 = 6.5 tiles). |
+| `unitTypes.spearman.cooldown` | 10 | Ticks between hits (10 = 1 s). |
+| `unitTypes.spearman.armor` | 2 | Flat damage reduction per hit. |
+| `unitTypes.spearman.vsUnits` | 100 | Damage vs units, % (rams are weak against soldiers). |
+| `unitTypes.spearman.vsBuildings` | 50 | Damage vs buildings, % (rams ×5, archers barely scratch walls). |
+| `unitTypes.spearman.water` | 0 | 1 = sails on water only. |
+| `unitTypes.spearman.stealth` | 0 | 1 = invisible to enemies more than 2 tiles away. |
+| `unitTypes.spearman.capacity` | 0 | Transport capacity in housing (pop) units. |
+| `unitTypes.archer.food` | 40 | Cost in food. |
+| `unitTypes.archer.wood` | 45 | Cost in wood. |
+| `unitTypes.archer.gold` | 0 | Cost in gold. |
+| `unitTypes.archer.trainTicks` | 160 | Training time in ticks (10 = 1 s at 1×). |
+| `unitTypes.archer.pop` | 1 | Housing used. Settlers count double: they are a family. |
+| `unitTypes.archer.speed` | 270 | Fixed-point sub-units per tick on plains (1024 = 1 tile). |
+| `unitTypes.archer.vision` | 8 | Vision radius in tiles. |
+| `unitTypes.archer.hp` | 65 | Hit points. |
+| `unitTypes.archer.attack` | 8 | Damage per hit before modifiers. |
+| `unitTypes.archer.range` | 65 | Weapon range in tenths of a tile (12 = melee, 65 = 6.5 tiles). |
+| `unitTypes.archer.cooldown` | 15 | Ticks between hits (10 = 1 s). |
+| `unitTypes.archer.armor` | 0 | Flat damage reduction per hit. |
+| `unitTypes.archer.vsUnits` | 100 | Damage vs units, % (rams are weak against soldiers). |
+| `unitTypes.archer.vsBuildings` | 20 | Damage vs buildings, % (rams ×5, archers barely scratch walls). |
+| `unitTypes.archer.water` | 0 | 1 = sails on water only. |
+| `unitTypes.archer.stealth` | 0 | 1 = invisible to enemies more than 2 tiles away. |
+| `unitTypes.archer.capacity` | 0 | Transport capacity in housing (pop) units. |
+| `unitTypes.rider.food` | 80 | Cost in food. |
+| `unitTypes.rider.wood` | 0 | Cost in wood. |
+| `unitTypes.rider.gold` | 40 | Cost in gold. |
+| `unitTypes.rider.trainTicks` | 200 | Training time in ticks (10 = 1 s at 1×). |
+| `unitTypes.rider.pop` | 2 | Housing used. Settlers count double: they are a family. |
+| `unitTypes.rider.speed` | 430 | Fixed-point sub-units per tick on plains (1024 = 1 tile). |
+| `unitTypes.rider.vision` | 8 | Vision radius in tiles. |
+| `unitTypes.rider.hp` | 150 | Hit points. |
+| `unitTypes.rider.attack` | 13 | Damage per hit before modifiers. |
+| `unitTypes.rider.range` | 13 | Weapon range in tenths of a tile (12 = melee, 65 = 6.5 tiles). |
+| `unitTypes.rider.cooldown` | 12 | Ticks between hits (10 = 1 s). |
+| `unitTypes.rider.armor` | 1 | Flat damage reduction per hit. |
+| `unitTypes.rider.vsUnits` | 100 | Damage vs units, % (rams are weak against soldiers). |
+| `unitTypes.rider.vsBuildings` | 40 | Damage vs buildings, % (rams ×5, archers barely scratch walls). |
+| `unitTypes.rider.water` | 0 | 1 = sails on water only. |
+| `unitTypes.rider.stealth` | 0 | 1 = invisible to enemies more than 2 tiles away. |
+| `unitTypes.rider.capacity` | 0 | Transport capacity in housing (pop) units. |
+| `unitTypes.ram.food` | 0 | Cost in food. |
+| `unitTypes.ram.wood` | 120 | Cost in wood. |
+| `unitTypes.ram.gold` | 0 | Cost in gold. |
+| `unitTypes.ram.trainTicks` | 300 | Training time in ticks (10 = 1 s at 1×). |
+| `unitTypes.ram.pop` | 3 | Housing used. Settlers count double: they are a family. |
+| `unitTypes.ram.speed` | 150 | Fixed-point sub-units per tick on plains (1024 = 1 tile). |
+| `unitTypes.ram.vision` | 4 | Vision radius in tiles. |
+| `unitTypes.ram.hp` | 260 | Hit points. |
+| `unitTypes.ram.attack` | 30 | Damage per hit before modifiers. |
+| `unitTypes.ram.range` | 13 | Weapon range in tenths of a tile (12 = melee, 65 = 6.5 tiles). |
+| `unitTypes.ram.cooldown` | 25 | Ticks between hits (10 = 1 s). |
+| `unitTypes.ram.armor` | 6 | Flat damage reduction per hit. |
+| `unitTypes.ram.vsUnits` | 20 | Damage vs units, % (rams are weak against soldiers). |
+| `unitTypes.ram.vsBuildings` | 500 | Damage vs buildings, % (rams ×5, archers barely scratch walls). |
+| `unitTypes.ram.water` | 0 | 1 = sails on water only. |
+| `unitTypes.ram.stealth` | 0 | 1 = invisible to enemies more than 2 tiles away. |
+| `unitTypes.ram.capacity` | 0 | Transport capacity in housing (pop) units. |
+| `unitTypes.spy.food` | 40 | Cost in food. |
+| `unitTypes.spy.wood` | 0 | Cost in wood. |
+| `unitTypes.spy.gold` | 40 | Cost in gold. |
+| `unitTypes.spy.trainTicks` | 150 | Training time in ticks (10 = 1 s at 1×). |
+| `unitTypes.spy.pop` | 1 | Housing used. Settlers count double: they are a family. |
+| `unitTypes.spy.speed` | 320 | Fixed-point sub-units per tick on plains (1024 = 1 tile). |
+| `unitTypes.spy.vision` | 9 | Vision radius in tiles. |
+| `unitTypes.spy.hp` | 40 | Hit points. |
+| `unitTypes.spy.attack` | 0 | Damage per hit before modifiers. |
+| `unitTypes.spy.range` | 0 | Weapon range in tenths of a tile (12 = melee, 65 = 6.5 tiles). |
+| `unitTypes.spy.cooldown` | 0 | Ticks between hits (10 = 1 s). |
+| `unitTypes.spy.armor` | 0 | Flat damage reduction per hit. |
+| `unitTypes.spy.vsUnits` | 0 | Damage vs units, % (rams are weak against soldiers). |
+| `unitTypes.spy.vsBuildings` | 0 | Damage vs buildings, % (rams ×5, archers barely scratch walls). |
+| `unitTypes.spy.water` | 0 | 1 = sails on water only. |
+| `unitTypes.spy.stealth` | 1 | 1 = invisible to enemies more than 2 tiles away. |
+| `unitTypes.spy.capacity` | 0 | Transport capacity in housing (pop) units. |
+| `unitTypes.saboteur.food` | 40 | Cost in food. |
+| `unitTypes.saboteur.wood` | 0 | Cost in wood. |
+| `unitTypes.saboteur.gold` | 50 | Cost in gold. |
+| `unitTypes.saboteur.trainTicks` | 180 | Training time in ticks (10 = 1 s at 1×). |
+| `unitTypes.saboteur.pop` | 1 | Housing used. Settlers count double: they are a family. |
+| `unitTypes.saboteur.speed` | 300 | Fixed-point sub-units per tick on plains (1024 = 1 tile). |
+| `unitTypes.saboteur.vision` | 6 | Vision radius in tiles. |
+| `unitTypes.saboteur.hp` | 50 | Hit points. |
+| `unitTypes.saboteur.attack` | 12 | Damage per hit before modifiers. |
+| `unitTypes.saboteur.range` | 12 | Weapon range in tenths of a tile (12 = melee, 65 = 6.5 tiles). |
+| `unitTypes.saboteur.cooldown` | 20 | Ticks between hits (10 = 1 s). |
+| `unitTypes.saboteur.armor` | 0 | Flat damage reduction per hit. |
+| `unitTypes.saboteur.vsUnits` | 30 | Damage vs units, % (rams are weak against soldiers). |
+| `unitTypes.saboteur.vsBuildings` | 300 | Damage vs buildings, % (rams ×5, archers barely scratch walls). |
+| `unitTypes.saboteur.water` | 0 | 1 = sails on water only. |
+| `unitTypes.saboteur.stealth` | 1 | 1 = invisible to enemies more than 2 tiles away. |
+| `unitTypes.saboteur.capacity` | 0 | Transport capacity in housing (pop) units. |
+| `unitTypes.warship.food` | 0 | Cost in food. |
+| `unitTypes.warship.wood` | 150 | Cost in wood. |
+| `unitTypes.warship.gold` | 20 | Cost in gold. |
+| `unitTypes.warship.trainTicks` | 300 | Training time in ticks (10 = 1 s at 1×). |
+| `unitTypes.warship.pop` | 3 | Housing used. Settlers count double: they are a family. |
+| `unitTypes.warship.speed` | 300 | Fixed-point sub-units per tick on plains (1024 = 1 tile). |
+| `unitTypes.warship.vision` | 9 | Vision radius in tiles. |
+| `unitTypes.warship.hp` | 220 | Hit points. |
+| `unitTypes.warship.attack` | 12 | Damage per hit before modifiers. |
+| `unitTypes.warship.range` | 55 | Weapon range in tenths of a tile (12 = melee, 65 = 6.5 tiles). |
+| `unitTypes.warship.cooldown` | 18 | Ticks between hits (10 = 1 s). |
+| `unitTypes.warship.armor` | 2 | Flat damage reduction per hit. |
+| `unitTypes.warship.vsUnits` | 100 | Damage vs units, % (rams are weak against soldiers). |
+| `unitTypes.warship.vsBuildings` | 60 | Damage vs buildings, % (rams ×5, archers barely scratch walls). |
+| `unitTypes.warship.water` | 1 | 1 = sails on water only. |
+| `unitTypes.warship.stealth` | 0 | 1 = invisible to enemies more than 2 tiles away. |
+| `unitTypes.warship.capacity` | 0 | Transport capacity in housing (pop) units. |
+| `unitTypes.transport.food` | 0 | Cost in food. |
+| `unitTypes.transport.wood` | 100 | Cost in wood. |
+| `unitTypes.transport.gold` | 0 | Cost in gold. |
+| `unitTypes.transport.trainTicks` | 220 | Training time in ticks (10 = 1 s at 1×). |
+| `unitTypes.transport.pop` | 1 | Housing used. Settlers count double: they are a family. |
+| `unitTypes.transport.speed` | 320 | Fixed-point sub-units per tick on plains (1024 = 1 tile). |
+| `unitTypes.transport.vision` | 6 | Vision radius in tiles. |
+| `unitTypes.transport.hp` | 160 | Hit points. |
+| `unitTypes.transport.attack` | 0 | Damage per hit before modifiers. |
+| `unitTypes.transport.range` | 0 | Weapon range in tenths of a tile (12 = melee, 65 = 6.5 tiles). |
+| `unitTypes.transport.cooldown` | 0 | Ticks between hits (10 = 1 s). |
+| `unitTypes.transport.armor` | 1 | Flat damage reduction per hit. |
+| `unitTypes.transport.vsUnits` | 0 | Damage vs units, % (rams are weak against soldiers). |
+| `unitTypes.transport.vsBuildings` | 0 | Damage vs buildings, % (rams ×5, archers barely scratch walls). |
+| `unitTypes.transport.water` | 1 | 1 = sails on water only. |
+| `unitTypes.transport.stealth` | 0 | 1 = invisible to enemies more than 2 tiles away. |
+| `unitTypes.transport.capacity` | 8 | Transport capacity in housing (pop) units. |
+
+## Buildings (F-053)
+
+| Constant | Value | Why |
+|---|---|---|
+| `buildingTypes.capital.hp` | 3000 | Hit points. Under construction, HP grows with build progress. |
+| `buildingTypes.capital.attack` | 6 | Arrow damage (towers, capital) before garrison bonus. |
+| `buildingTypes.capital.range` | 70 | Arrow range in tenths of a tile. |
+| `buildingTypes.capital.cooldown` | 15 | Ticks between arrows. |
+| `buildingTypes.capital.garrison` | 10 | Soldiers that can shelter inside (each adds arrows). |
+| `buildingTypes.settlement.hp` | 1500 | Hit points. Under construction, HP grows with build progress. |
+| `buildingTypes.settlement.attack` | 0 | Arrow damage (towers, capital) before garrison bonus. |
+| `buildingTypes.settlement.range` | 70 | Arrow range in tenths of a tile. |
+| `buildingTypes.settlement.cooldown` | 15 | Ticks between arrows. |
+| `buildingTypes.settlement.garrison` | 6 | Soldiers that can shelter inside (each adds arrows). |
+| `buildingTypes.house.hp` | 300 | Hit points. Under construction, HP grows with build progress. |
+| `buildingTypes.house.attack` | 0 | Arrow damage (towers, capital) before garrison bonus. |
+| `buildingTypes.house.range` | 0 | Arrow range in tenths of a tile. |
+| `buildingTypes.house.cooldown` | 0 | Ticks between arrows. |
+| `buildingTypes.house.garrison` | 0 | Soldiers that can shelter inside (each adds arrows). |
+| `buildingTypes.farm.hp` | 250 | Hit points. Under construction, HP grows with build progress. |
+| `buildingTypes.farm.attack` | 0 | Arrow damage (towers, capital) before garrison bonus. |
+| `buildingTypes.farm.range` | 0 | Arrow range in tenths of a tile. |
+| `buildingTypes.farm.cooldown` | 0 | Ticks between arrows. |
+| `buildingTypes.farm.garrison` | 0 | Soldiers that can shelter inside (each adds arrows). |
+| `buildingTypes.lumberCamp.hp` | 300 | Hit points. Under construction, HP grows with build progress. |
+| `buildingTypes.lumberCamp.attack` | 0 | Arrow damage (towers, capital) before garrison bonus. |
+| `buildingTypes.lumberCamp.range` | 0 | Arrow range in tenths of a tile. |
+| `buildingTypes.lumberCamp.cooldown` | 0 | Ticks between arrows. |
+| `buildingTypes.lumberCamp.garrison` | 0 | Soldiers that can shelter inside (each adds arrows). |
+| `buildingTypes.mineCamp.hp` | 300 | Hit points. Under construction, HP grows with build progress. |
+| `buildingTypes.mineCamp.attack` | 0 | Arrow damage (towers, capital) before garrison bonus. |
+| `buildingTypes.mineCamp.range` | 0 | Arrow range in tenths of a tile. |
+| `buildingTypes.mineCamp.cooldown` | 0 | Ticks between arrows. |
+| `buildingTypes.mineCamp.garrison` | 0 | Soldiers that can shelter inside (each adds arrows). |
+| `buildingTypes.fishingHut.hp` | 250 | Hit points. Under construction, HP grows with build progress. |
+| `buildingTypes.fishingHut.attack` | 0 | Arrow damage (towers, capital) before garrison bonus. |
+| `buildingTypes.fishingHut.range` | 0 | Arrow range in tenths of a tile. |
+| `buildingTypes.fishingHut.cooldown` | 0 | Ticks between arrows. |
+| `buildingTypes.fishingHut.garrison` | 0 | Soldiers that can shelter inside (each adds arrows). |
+| `buildingTypes.storehouse.hp` | 600 | Hit points. Under construction, HP grows with build progress. |
+| `buildingTypes.storehouse.attack` | 0 | Arrow damage (towers, capital) before garrison bonus. |
+| `buildingTypes.storehouse.range` | 0 | Arrow range in tenths of a tile. |
+| `buildingTypes.storehouse.cooldown` | 0 | Ticks between arrows. |
+| `buildingTypes.storehouse.garrison` | 0 | Soldiers that can shelter inside (each adds arrows). |
+| `buildingTypes.outpost.hp` | 400 | Hit points. Under construction, HP grows with build progress. |
+| `buildingTypes.outpost.attack` | 0 | Arrow damage (towers, capital) before garrison bonus. |
+| `buildingTypes.outpost.range` | 0 | Arrow range in tenths of a tile. |
+| `buildingTypes.outpost.cooldown` | 0 | Ticks between arrows. |
+| `buildingTypes.outpost.garrison` | 0 | Soldiers that can shelter inside (each adds arrows). |
+| `buildingTypes.barracks.size` | 2 | Footprint in tiles (square). |
+| `buildingTypes.barracks.wood` | 120 | Cost in wood. |
+| `buildingTypes.barracks.stone` | 30 | Cost in stone. |
+| `buildingTypes.barracks.buildPoints` | 350 | Worker-ticks to build (one worker = this many ticks). Capital/settlement are never built by workers. |
+| `buildingTypes.barracks.housing` | 0 | People housed. |
+| `buildingTypes.barracks.territory` | 0 | Land claimed around the building (radius in tiles, only unclaimed land). |
+| `buildingTypes.barracks.vision` | 4 | Vision radius in tiles. |
+| `buildingTypes.barracks.hp` | 900 | Hit points. Under construction, HP grows with build progress. |
+| `buildingTypes.barracks.attack` | 0 | Arrow damage (towers, capital) before garrison bonus. |
+| `buildingTypes.barracks.range` | 0 | Arrow range in tenths of a tile. |
+| `buildingTypes.barracks.cooldown` | 0 | Ticks between arrows. |
+| `buildingTypes.barracks.garrison` | 0 | Soldiers that can shelter inside (each adds arrows). |
+| `buildingTypes.workshop.size` | 2 | Footprint in tiles (square). |
+| `buildingTypes.workshop.wood` | 150 | Cost in wood. |
+| `buildingTypes.workshop.stone` | 60 | Cost in stone. |
+| `buildingTypes.workshop.buildPoints` | 400 | Worker-ticks to build (one worker = this many ticks). Capital/settlement are never built by workers. |
+| `buildingTypes.workshop.housing` | 0 | People housed. |
+| `buildingTypes.workshop.territory` | 0 | Land claimed around the building (radius in tiles, only unclaimed land). |
+| `buildingTypes.workshop.vision` | 4 | Vision radius in tiles. |
+| `buildingTypes.workshop.hp` | 800 | Hit points. Under construction, HP grows with build progress. |
+| `buildingTypes.workshop.attack` | 0 | Arrow damage (towers, capital) before garrison bonus. |
+| `buildingTypes.workshop.range` | 0 | Arrow range in tenths of a tile. |
+| `buildingTypes.workshop.cooldown` | 0 | Ticks between arrows. |
+| `buildingTypes.workshop.garrison` | 0 | Soldiers that can shelter inside (each adds arrows). |
+| `buildingTypes.dock.size` | 2 | Footprint in tiles (square). |
+| `buildingTypes.dock.wood` | 120 | Cost in wood. |
+| `buildingTypes.dock.stone` | 0 | Cost in stone. |
+| `buildingTypes.dock.buildPoints` | 350 | Worker-ticks to build (one worker = this many ticks). Capital/settlement are never built by workers. |
+| `buildingTypes.dock.housing` | 0 | People housed. |
+| `buildingTypes.dock.territory` | 0 | Land claimed around the building (radius in tiles, only unclaimed land). |
+| `buildingTypes.dock.vision` | 6 | Vision radius in tiles. |
+| `buildingTypes.dock.hp` | 700 | Hit points. Under construction, HP grows with build progress. |
+| `buildingTypes.dock.attack` | 0 | Arrow damage (towers, capital) before garrison bonus. |
+| `buildingTypes.dock.range` | 0 | Arrow range in tenths of a tile. |
+| `buildingTypes.dock.cooldown` | 0 | Ticks between arrows. |
+| `buildingTypes.dock.garrison` | 0 | Soldiers that can shelter inside (each adds arrows). |
+| `buildingTypes.wall.size` | 1 | Footprint in tiles (square). |
+| `buildingTypes.wall.wood` | 0 | Cost in wood. |
+| `buildingTypes.wall.stone` | 8 | Cost in stone. |
+| `buildingTypes.wall.buildPoints` | 50 | Worker-ticks to build (one worker = this many ticks). Capital/settlement are never built by workers. |
+| `buildingTypes.wall.housing` | 0 | People housed. |
+| `buildingTypes.wall.territory` | 0 | Land claimed around the building (radius in tiles, only unclaimed land). |
+| `buildingTypes.wall.vision` | 3 | Vision radius in tiles. |
+| `buildingTypes.wall.hp` | 500 | Hit points. Under construction, HP grows with build progress. |
+| `buildingTypes.wall.attack` | 0 | Arrow damage (towers, capital) before garrison bonus. |
+| `buildingTypes.wall.range` | 0 | Arrow range in tenths of a tile. |
+| `buildingTypes.wall.cooldown` | 0 | Ticks between arrows. |
+| `buildingTypes.wall.garrison` | 0 | Soldiers that can shelter inside (each adds arrows). |
+| `buildingTypes.gate.size` | 1 | Footprint in tiles (square). |
+| `buildingTypes.gate.wood` | 10 | Cost in wood. |
+| `buildingTypes.gate.stone` | 20 | Cost in stone. |
+| `buildingTypes.gate.buildPoints` | 80 | Worker-ticks to build (one worker = this many ticks). Capital/settlement are never built by workers. |
+| `buildingTypes.gate.housing` | 0 | People housed. |
+| `buildingTypes.gate.territory` | 0 | Land claimed around the building (radius in tiles, only unclaimed land). |
+| `buildingTypes.gate.vision` | 3 | Vision radius in tiles. |
+| `buildingTypes.gate.hp` | 600 | Hit points. Under construction, HP grows with build progress. |
+| `buildingTypes.gate.attack` | 0 | Arrow damage (towers, capital) before garrison bonus. |
+| `buildingTypes.gate.range` | 0 | Arrow range in tenths of a tile. |
+| `buildingTypes.gate.cooldown` | 0 | Ticks between arrows. |
+| `buildingTypes.gate.garrison` | 0 | Soldiers that can shelter inside (each adds arrows). |
+| `buildingTypes.tower.size` | 1 | Footprint in tiles (square). |
+| `buildingTypes.tower.wood` | 40 | Cost in wood. |
+| `buildingTypes.tower.stone` | 60 | Cost in stone. |
+| `buildingTypes.tower.buildPoints` | 300 | Worker-ticks to build (one worker = this many ticks). Capital/settlement are never built by workers. |
+| `buildingTypes.tower.housing` | 0 | People housed. |
+| `buildingTypes.tower.territory` | 0 | Land claimed around the building (radius in tiles, only unclaimed land). |
+| `buildingTypes.tower.vision` | 9 | Vision radius in tiles. |
+| `buildingTypes.tower.hp` | 800 | Hit points. Under construction, HP grows with build progress. |
+| `buildingTypes.tower.attack` | 9 | Arrow damage (towers, capital) before garrison bonus. |
+| `buildingTypes.tower.range` | 70 | Arrow range in tenths of a tile. |
+| `buildingTypes.tower.cooldown` | 15 | Ticks between arrows. |
+| `buildingTypes.tower.garrison` | 4 | Soldiers that can shelter inside (each adds arrows). |
+
+## Combat (F-074)
+
+Damage = attack × vs% × tier% × height% × cover% → minus armor → × armor-tier%, minimum 1; integer math, each factor floored in order (tests/combat.test.ts checks the exact numbers).
+
+| Constant | Value | Why |
+|---|---|---|
+| `combat.heightBonusPct` | 25 | Attacker on a higher terrace deals +25 %: high ground matters. |
+| `combat.heightPenaltyPct` | 15 | Attacking uphill deals −15 %. |
+| `combat.forestCoverPct` | 25 | Ranged damage −25 % against units in forest. |
+| `combat.trenchCoverPct` | 35 | Ranged damage −35 % against units in a trench. |
+| `combat.trenchMeleePenaltyPct` | 20 | Fighting out of a trench in melee: −20 %. |
+| `combat.fortifiedPct` | 40 | Ranged damage −40 % against units next to a friendly wall, gate or tower. |
+| `combat.weaponTierPct` | 15 | +15 % damage per weapon tier (gear arrives in Phase 5). |
+| `combat.armorTierPct` | 15 | −15 % damage taken per armor tier. |
+| `combat.garrisonArrowBonus` | 3 | Each garrisoned soldier adds 3 to a tower/town arrow. |
+| `combat.acquireRange` | 7 | Idle/patrolling soldiers attack enemies within this many tiles. |
+| `combat.meleeBlockedSearch` | 12 | A melee unit that cannot reach its target attacks the nearest enemy wall/gate/tower within this many tiles (once). |
+
+## Morale (F-075)
+
+| Constant | Value | Why |
+|---|---|---|
+| `morale.max` | 100 | Full morale. |
+| `morale.routBelow` | 25 | Below this, soldiers flee home (rout). |
+| `morale.rallyAbove` | 55 | Routing soldiers stop fleeing once morale is back above this. |
+| `morale.lossPerHpPct` | 150 | Morale lost per % of max HP lost, ×1.5: soldiers break at about half health (tuned in Phase 3: at 60 they died before ever routing). |
+| `morale.allyDeathLoss` | 15 | Morale lost when a nearby ally dies. |
+| `morale.allyDeathRadius` | 4 | Tiles. |
+| `morale.recoverPerSecond` | 4 | Morale regained per second once not hit for recoverDelayTicks (doubled while retreating). |
+| `morale.recoverDelayTicks` | 50 | 5 s without being hit before morale recovers. |
+
+## Trenches and moats (F-041, F-042)
+
+| Constant | Value | Why |
+|---|---|---|
+| `terrainEdit.trenchBuildPoints` | 120 | Worker-ticks to dig one trench tile (12 s for one worker). |
+| `terrainEdit.trenchMoveCost` | 35 | Trenches are slow to cross (3.5× plains) but passable until flooded. |
+| `terrainEdit.moatFillTicks` | 20 | Water advances one trench tile every 2 s from adjacent sea, lake, river or moat. |
+
+## Fire (F-045)
+
+| Constant | Value | Why |
+|---|---|---|
+| `fire.burnTicks` | 300 | A tile burns for 30 s. |
+| `fire.spreadEveryTicks` | 20 | Spread attempt every 2 s. |
+| `fire.spreadChancePct` | 35 | Chance per attempt to ignite each adjacent forest/building tile (seeded RNG stream, deterministic). |
+| `fire.unitDamagePerSecond` | 6 | Damage to units standing in fire. |
+| `fire.buildingDamagePerSecond` | 25 | Damage to burning buildings (a house burns down in ~12 s). |
+| `fire.igniteTicks` | 30 | Time a unit needs to set something alight. |
+
+## Groups and transports (F-078, F-083)
+
+| Constant | Value | Why |
+|---|---|---|
+| `groups.flowFieldMinUnits` | 6 | Groups this big share one flow field instead of one A* path each. |
+| `groups.flowFieldCache` | 12 | Flow fields kept (LRU). Cleared on any terrain/building change; recomputing is deterministic. |
+| `groups.transportBoardRange` | 2 | Land units board a transport from up to 2 tiles away. |
+
 ## Bot difficulty
 
 Defined in Phase 4 (F-121).

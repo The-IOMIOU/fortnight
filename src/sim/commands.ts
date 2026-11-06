@@ -3,20 +3,40 @@
 
 interface Base { tick: number; player: number; seq: number }
 
-/** Move units to a fixed-point position. */
-export interface MoveCommand extends Base { type: 'move'; ids: number[]; x: number; y: number }
+/** Move units to a fixed-point position (groups get formation slots; big groups use a flow field). */
+export interface MoveCommand extends Base { type: 'move'; ids: number[]; x: number; y: number; formation?: 'box' | 'line' }
 /** Workers gather from a resource tile (wood/stone/gold/carbon/adamite). */
 export interface GatherCommand extends Base { type: 'gather'; ids: number[]; tile: number }
-/** Units act on an entity: build/repair a construction site, work a farm or fishing hut, hunt an animal,
- *  gather a carcass, or drop off cargo — the sim decides from the target's state. */
+/** Units act on an entity: build, work, hunt, gather a carcass, drop off cargo, garrison, board a
+ *  transport, or attack an enemy — the sim decides from the target. */
 export interface InteractCommand extends Base { type: 'interact'; ids: number[]; target: number }
 /** Place a building (workers start building it). For a settlement, `ids` must include a settler. */
 export interface PlaceCommand extends Base { type: 'place'; ids: number[]; btype: number; tile: number }
+/** Place a line of walls/gates/towers (one per tile, built in order). */
+export interface PlaceLineCommand extends Base { type: 'placeLine'; ids: number[]; btype: number; tiles: number[] }
 export interface TrainCommand extends Base { type: 'train'; building: number; utype: number }
 export interface CancelTrainCommand extends Base { type: 'cancelTrain'; building: number; index: number }
 export interface UpgradeCommand extends Base { type: 'upgrade'; building: number }
+// ---- Phase 3 ----
+export interface AttackCommand extends Base { type: 'attack'; ids: number[]; target: number }
+export interface StopCommand extends Base { type: 'stop'; ids: number[] }
+export interface HoldCommand extends Base { type: 'hold'; ids: number[] }
+export interface RetreatCommand extends Base { type: 'retreat'; ids: number[] }
+export interface PatrolCommand extends Base { type: 'patrol'; ids: number[]; x: number; y: number }
+export interface RallyCommand extends Base { type: 'setRally'; building: number; tile: number }
+export interface DemolishCommand extends Base { type: 'demolish'; building: number }
+export interface UngarrisonCommand extends Base { type: 'ungarrison'; building: number }
+/** Workers dig trenches on the listed tiles, in order. */
+export interface DigCommand extends Base { type: 'dig'; ids: number[]; tiles: number[] }
+/** Units set fire to a forest tile or building tile. */
+export interface IgniteCommand extends Base { type: 'ignite'; ids: number[]; tile: number }
+/** A transport sails next to a shore tile and lets its passengers off. */
+export interface UnloadCommand extends Base { type: 'unload'; ship: number; tile: number }
 
-export type Command = MoveCommand | GatherCommand | InteractCommand | PlaceCommand | TrainCommand | CancelTrainCommand | UpgradeCommand;
+export type Command =
+  | MoveCommand | GatherCommand | InteractCommand | PlaceCommand | PlaceLineCommand | TrainCommand | CancelTrainCommand | UpgradeCommand
+  | AttackCommand | StopCommand | HoldCommand | RetreatCommand | PatrolCommand | RallyCommand | DemolishCommand | UngarrisonCommand
+  | DigCommand | IgniteCommand | UnloadCommand;
 
 /** A command as sent by a client, before the sim stamps tick/player/seq. */
 export type CommandBody = Command extends infer C ? (C extends Command ? Omit<C, 'tick' | 'player' | 'seq'> : never) : never;

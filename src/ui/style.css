@@ -95,3 +95,12 @@ kbd { font: 0.7rem ui-monospace, Consolas, monospace; border: 1px solid var(--li
 .error { color: #ff8a7a; margin: 0; }
 .menu { overflow-y: auto; justify-content: flex-start; padding-top: 2rem; }
 .menu .panel input[type=range] { width: 100%; }
+
+/* ---------- Phase 3 ---------- */
+.keys { width: min(520px, calc(100vw - 2rem)) !important; max-height: calc(100vh - 4rem); }
+.keylist { overflow-y: auto; max-height: 55vh; display: flex; flex-direction: column; gap: 0.2rem; }
+.keyrow { display: flex; justify-content: space-between; align-items: center; gap: 0.6rem; font-size: 0.85rem; }
+.keyrow small { color: var(--muted); }
+.keyrow button { min-width: 6rem; }
+.keyrow button.on { border-color: var(--accent); background: #233548; }
+.spectating { position: absolute; top: 3.4rem; left: 50%; transform: translateX(-50%); background: #4a2525; border: 1px solid #a85050; padding: 0.35rem 0.8rem; border-radius: 6px; }

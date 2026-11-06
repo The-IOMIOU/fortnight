@@ -3,7 +3,7 @@
 import * as THREE from 'three';
 import { ENTITY_STRIDE } from '../sim/sim';
 import { FP_ONE } from '../sim/core/fixed';
-import { BUILDING_TYPES, Kind, NATURE_OWNER, buildingDef, isBuildingKind, isUnitKind, unitTypeOfKind, type BuildingTypeName } from '../sim/defs';
+import { BUILDING_TYPES, Kind, NATURE_OWNER, UNIT_TYPES, buildingDef, isBuildingKind, isUnitKind, unitTypeOfKind, type BuildingTypeName } from '../sim/defs';
 import type { MapPayload } from '../worker/protocol';
 import { playerColor } from './palette';
 import { tileTopY } from './terrain';
@@ -13,7 +13,7 @@ const MAX = 4096;
 
 export interface EntityView {
   id: number; kind: number; owner: number; x: number; z: number; y: number;
-  flags: number; a: number; b: number;
+  flags: number; a: number; b: number; hp: number;
   /** buildings only */
   btype?: BuildingTypeName; size?: number; anchorX?: number; anchorZ?: number;
 }
@@ -29,7 +29,9 @@ export class UnitLayer {
   private bigRing: THREE.InstancedMesh;
   private cargo: THREE.InstancedMesh;
   private prev = new Map<number, [number, number]>();
-  private curr = new Map<number, { kind: number; owner: number; x: number; y: number; flags: number; a: number; b: number }>();
+  private curr = new Map<number, { kind: number; owner: number; x: number; y: number; flags: number; a: number; b: number; hp: number }>();
+  private barBg: THREE.InstancedMesh;
+  private barFill: THREE.InstancedMesh;
   readonly selected = new Set<number>();
   visible: EntityView[] = [];
   private byId = new Map<number, EntityView>();
@@ -47,13 +49,16 @@ export class UnitLayer {
       this.group.add(body, trim);
       this.pairs.set(key, { body, trim, n: 0 });
     };
-    for (const u of ['scout', 'worker', 'settler', 'animal', 'carcass'] as const) mk(u, unitModel(u), MAX);
+    for (const u of [...UNIT_TYPES, 'animal', 'carcass'] as const) mk(u, unitModel(u), MAX);
     for (const b of BUILDING_TYPES) mk(b, buildingModel(b, buildingDef(b).size), 1024);
     const ringGeo = new THREE.RingGeometry(0.42, 0.55, 20).rotateX(-Math.PI / 2);
     this.ring = new THREE.InstancedMesh(ringGeo, new THREE.MeshBasicMaterial({ color: 0x7fffb0, side: THREE.DoubleSide }), MAX);
     this.bigRing = new THREE.InstancedMesh(new THREE.RingGeometry(0.47, 0.5, 4, 1, Math.PI / 4).rotateX(-Math.PI / 2), new THREE.MeshBasicMaterial({ color: 0x7fffb0, side: THREE.DoubleSide }), 256);
     this.cargo = new THREE.InstancedMesh(cargoGeometry(), new THREE.MeshLambertMaterial({ color: 0xffffff }), MAX);
-    for (const m of [this.ring, this.bigRing, this.cargo]) { m.frustumCulled = false; m.count = 0; this.group.add(m); }
+    const bar = new THREE.BoxGeometry(1, 0.05, 0.08);
+    this.barBg = new THREE.InstancedMesh(bar, new THREE.MeshBasicMaterial({ color: 0x1a1a1a }), MAX);
+    this.barFill = new THREE.InstancedMesh(bar, new THREE.MeshBasicMaterial({ color: 0xffffff }), MAX);
+    for (const m of [this.ring, this.bigRing, this.cargo, this.barBg, this.barFill]) { m.frustumCulled = false; m.count = 0; this.group.add(m); }
   }
 
   /** New snapshot: current becomes previous. */
@@ -62,7 +67,7 @@ export class UnitLayer {
     for (const [id, c] of this.curr) this.prev.set(id, [c.x, c.y]);
     this.curr.clear();
     for (let k = 0; k < ents.length; k += ENTITY_STRIDE) {
-      this.curr.set(ents[k], { kind: ents[k + 1], owner: ents[k + 2], x: ents[k + 3], y: ents[k + 4], flags: ents[k + 5], a: ents[k + 6], b: ents[k + 7] });
+      this.curr.set(ents[k], { kind: ents[k + 1], owner: ents[k + 2], x: ents[k + 3], y: ents[k + 4], flags: ents[k + 5], a: ents[k + 6], b: ents[k + 7], hp: ents[k + 8] });
     }
     for (const id of [...this.selected]) if (!this.curr.has(id)) this.selected.delete(id);
   }
@@ -90,7 +95,7 @@ export class UnitLayer {
   /** alpha ∈ [0,1]: interpolation between previous and current snapshot. */
   render(alpha: number): void {
     for (const p of this.pairs.values()) p.n = 0;
-    let r = 0, br = 0, cg = 0;
+    let r = 0, br = 0, cg = 0, hb = 0;
     this.visible.length = 0;
     this.byId.clear();
     const m = this.tmpM, col = this.tmpC;
@@ -128,7 +133,19 @@ export class UnitLayer {
         const ct = (c.b >> 16) & 255, cc = CARGO_COLORS[ct] ?? [1, 1, 1];
         this.cargo.setMatrixAt(cg, m); this.cargo.setColorAt(cg, col.setRGB(cc[0], cc[1], cc[2])); cg++;
       }
-      const v: EntityView = { id, kind: c.kind, owner: c.owner, x, z, y, flags: c.flags, a: c.a, b: c.b };
+      const v: EntityView = { id, kind: c.kind, owner: c.owner, x, z, y, flags: c.flags, a: c.a, b: c.b, hp: c.hp };
+      // health bar for damaged units and buildings
+      if (c.hp < 1000 && (isUnitKind(c.kind) || (building && complete)) && hb < MAX) {
+        const len = building ? Math.min(2.4, buildingDef(BUILDING_TYPES[c.kind - Kind.BUILDING_BASE]).size * 0.8) : 0.55;
+        const top = building ? y + 1.2 + buildingDef(BUILDING_TYPES[c.kind - Kind.BUILDING_BASE]).size * 0.25 : y + 0.85;
+        m.makeScale(len, 1, 1).setPosition(x, top, z);
+        this.barBg.setMatrixAt(hb, m);
+        const f = Math.max(0, c.hp) / 1000;
+        m.makeScale(len * f, 1.2, 1.2).setPosition(x - (len * (1 - f)) / 2, top, z + 0.005);
+        this.barFill.setMatrixAt(hb, m);
+        this.barFill.setColorAt(hb, col.setRGB(f < 0.5 ? 1 : 2 - f * 2, f < 0.5 ? f * 2 : 1, 0.15));
+        hb++;
+      }
       if (building) {
         v.btype = BUILDING_TYPES[c.kind - Kind.BUILDING_BASE];
         v.size = buildingDef(v.btype).size;
@@ -145,8 +162,8 @@ export class UnitLayer {
       p.body.count = p.trim.count = p.n;
       for (const im of [p.body, p.trim]) { im.instanceMatrix.needsUpdate = true; if (im.instanceColor) im.instanceColor.needsUpdate = true; }
     }
-    this.ring.count = r; this.bigRing.count = br; this.cargo.count = cg;
-    for (const im of [this.ring, this.bigRing, this.cargo]) { im.instanceMatrix.needsUpdate = true; if (im.instanceColor) im.instanceColor.needsUpdate = true; }
+    this.ring.count = r; this.bigRing.count = br; this.cargo.count = cg; this.barBg.count = hb; this.barFill.count = hb;
+    for (const im of [this.ring, this.bigRing, this.cargo, this.barBg, this.barFill]) { im.instanceMatrix.needsUpdate = true; if (im.instanceColor) im.instanceColor.needsUpdate = true; }
   }
 
   dispose(): void {

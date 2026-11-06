@@ -17,6 +17,8 @@ BIOME_COLORS[Biome.SWAMP] = hex(0x5a6e3c);
 BIOME_COLORS[Biome.MOUNTAIN] = hex(0x8a8178);
 BIOME_COLORS[Biome.TUNDRA] = hex(0xa9b59a);
 BIOME_COLORS[Biome.SNOW] = hex(0xf2f5f7);
+BIOME_COLORS[Biome.TRENCH] = hex(0x5e4630);
+BIOME_COLORS[Biome.MOAT] = hex(0x3b7fae);
 
 export const CLIFF_COLOR = hex(0x6b5a45);
 export const OCEAN_DEEP = hex(0x143f63);

@@ -22,13 +22,24 @@ const tickTimes: number[] = [];
 let pendingTiles = new Set<number>();
 let events: SimEvent[] = [];
 let fogSentOnce = false;
+let shots: number[] = [];
+let spectating = false;
 
 function post(msg: FromWorker, transfer: Transferable[] = []): void { self.postMessage(msg, transfer); }
 
 function collectAfterStep(): void {
   if (!sim) return;
   for (const t of sim.drainChangedTiles()) pendingTiles.add(t);
-  for (const ev of sim.drainEvents()) if (viewer < 0 || ev.player === viewer || ev.type === 'victory') events.push(ev);
+  const sh = sim.mil.shots, e = sim.ents;
+  for (let k = 0; k < sh.length; k += 2) {
+    const a = sh[k], t = sh[k + 1];
+    if (viewer < 0 || sim.visibleTo(a, viewer) || sim.visibleTo(t, viewer)) shots.push(e.posX[a], e.posY[a], e.posX[t], e.posY[t]);
+  }
+  if (shots.length > 4 * 400) shots = shots.slice(-4 * 400);
+  for (const ev of sim.drainEvents()) {
+    if (viewer < 0 || ev.player === viewer || ev.type === 'victory' || ev.type === 'eliminated') events.push(ev);
+    if (ev.type === 'eliminated' && ev.player === viewer && viewer >= 0) { viewer = -1; spectating = true; fogSentOnce = false; sim.ownerDirty = true; }
+  }
 }
 
 function buildingInfo(s: Sim): BuildingInfo[] {
@@ -77,9 +88,13 @@ function snapshot(): void {
   if (tiles) transfer.push(tiles.buffer);
   const ev = events;
   events = [];
+  const shotsArr = shots.length ? new Int32Array(shots) : null;
+  shots = [];
+  if (shotsArr) transfer.push(shotsArr.buffer);
   post({
     type: 'snap', tick: sim.tick, isNight: sim.isNight, dayPhase: sim.dayPhase, dayLength: sim.dayLength,
-    ents, fog, owner, tiles, pending, stats: viewer >= 0 ? computeStats(sim, viewer) : null, events: ev, buildings: buildingInfo(sim),
+    ents, fog, owner, tiles, pending, stats: viewer >= 0 ? computeStats(sim, viewer) : spectating ? computeStats(sim, 0) : null, events: ev, buildings: buildingInfo(sim),
+    shots: shotsArr, fires: viewer < 0 ? sim.burningList.slice() : sim.burningList.filter((t) => sim!.fog[viewer].data[t] === FOG_VISIBLE), spectating,
     winner: sim.winner, simMsPerTick: stepMsAvg, ticksPerSec: sched.paused ? 0 : tps,
     droppedTicks: sched.droppedTicks, paused: sched.paused, speed: speedName,
   }, transfer);
@@ -126,6 +141,8 @@ self.onmessage = (ev: MessageEvent<ToWorker>) => {
         return;
       }
       viewer = m.viewer;
+      spectating = false;
+      if (viewer >= 0 && sim.ps[viewer]?.eliminated) { viewer = -1; spectating = true; }
       speedName = m.speed;
       sched.speed = TUNING.sim.speeds[m.speed];
       sched.paused = m.type === 'init' ? m.paused : true;

@@ -8,10 +8,13 @@ import { setVolume } from '../audio/sfx';
 import { SPEED_NAMES, TUNING, type SpeedName } from '../sim/core/tuning';
 import { NUM_RES, TASK_NAMES, TRAINS, UNIT_TYPES, buildingDef, unitDef, upgradeDef, type BuildingTypeName, type UnitTypeName } from '../sim/defs';
 import { playerLabel, playerSwatchCss } from '../render/palette';
-import { BUILD_KEYS, BUILDING_HELP, BUILDING_NAMES, RES_COLORS, RES_LABELS, TRAIN_KEYS, UNIT_NAMES, UPGRADE_KEY } from './names';
+import { BUILDING_HELP, BUILDING_NAMES, RES_COLORS, RES_LABELS, UNIT_HELP, UNIT_NAMES } from './names';
+import { DEFAULT_KEYS, keyFor, keyLabel, resetKeys, setKey } from '../app/keymap';
 
 const SPEED_LABEL: Record<SpeedName, string> = { slow: '0.5×', normal: '1×', fast: '2×', veryFast: '4×' };
-const BUILDABLE_LIST: BuildingTypeName[] = ['house', 'farm', 'lumberCamp', 'mineCamp', 'fishingHut', 'storehouse', 'outpost'];
+const BUILDABLE_LIST: BuildingTypeName[] = ['house', 'farm', 'lumberCamp', 'mineCamp', 'fishingHut', 'storehouse', 'outpost', 'barracks', 'workshop', 'dock'];
+const DEFENCE_LIST: BuildingTypeName[] = ['wall', 'gate', 'tower'];
+const K = (id: string): string => keyLabel(keyFor(id));
 
 export function fmtTime(tick: number): string {
   const s = Math.floor(tick / TUNING.sim.tickHz);
@@ -35,6 +38,8 @@ export function Hud({ game, onQuit, onSave }: { game: Game; onQuit: () => void; 
       <SettingsModal />
       <BoxRect />
       <GameOver onQuit={onQuit} />
+      <KeysModal />
+      <Spectating />
       <Toast />
       <Help />
     </>
@@ -44,7 +49,7 @@ export function Hud({ game, onQuit, onSave }: { game: Game; onQuit: () => void; 
 function Help() {
   const selected = useStore((st) => st.selected);
   if (selected > 0) return null;
-  return <div class="help">Left: select / box-select · Right: smart order · Drag (middle/right) or WASD: pan · Wheel: zoom · Space: pause · +/−: speed · Tab: stats · O: owners · Ctrl+1–9: groups</div>;
+  return <div class="help">Left: select / box-select · Right: order (attack, gather, garrison, board, rally) · Drag (middle/right) or WASD: pan · Wheel: zoom · Space: pause · +/−: speed · Tab: stats · Ctrl+1–9: groups</div>;
 }
 
 function TopBar({ game, onQuit, onSave }: { game: Game; onQuit: () => void; onSave: () => void }) {
@@ -115,27 +120,43 @@ function SelectionPanel({ game }: { game: Game }) {
       {units.length > 0 && (
         <div class="sel-units">
           <div class="sel-title">{units.map(([t, n]) => `${n} × ${UNIT_NAMES[t as UnitTypeName]}`).join(', ')}</div>
-          {sel.unit && <div class="sel-sub">{TASK_NAMES[sel.unit.task]}{sel.unit.carryAmt > 0 ? ` · carrying ${sel.unit.carryAmt} ${RES_LABELS[sel.unit.carryType].toLowerCase()}` : ''}</div>}
+          {sel.unit && <div class="sel-sub" data-testid="unit-info">{TASK_NAMES[sel.unit.task]} · health {Math.round(sel.unit.hp / 10)} %{sel.unit.carryAmt > 0 ? ` · carrying ${sel.unit.carryAmt} ${RES_LABELS[sel.unit.carryType].toLowerCase()}` : ''} · {UNIT_HELP[sel.unit.type as UnitTypeName]}</div>}
           {(sel.units.worker ?? 0) > 0 && (
             <div class="buildmenu" data-testid="buildmenu">
               {BUILDABLE_LIST.map((bt) => {
                 const d = buildingDef(bt), cost = { wood: d.wood, stone: d.stone };
                 return (
-                  <button class={placing === bt ? 'on' : ''} disabled={!game.canAfford(cost)} title={`${BUILDING_HELP[bt]} [${BUILD_KEYS[bt]?.toUpperCase()}]`} onClick={() => game.startPlacement(bt)} data-testid={'build-' + bt}>
-                    <b>{BUILDING_NAMES[bt]}</b> <kbd>{BUILD_KEYS[bt]?.toUpperCase()}</kbd><Cost c={cost} />
+                  <button class={placing === bt ? 'on' : ''} disabled={!game.canAfford(cost)} title={`${BUILDING_HELP[bt]} [${K('build.' + bt)}]`} onClick={() => game.startPlacement(bt)} data-testid={'build-' + bt}>
+                    <b>{BUILDING_NAMES[bt]}</b> <kbd>{K('build.' + bt)}</kbd><Cost c={cost} />
                   </button>
                 );
               })}
             </div>
           )}
-          {(sel.units.settler ?? 0) > 0 && (
-            <div class="buildmenu">
-              <button class={placing === 'settlement' ? 'on' : ''} onClick={() => game.startPlacement('settlement')} title={BUILDING_HELP.settlement} data-testid="build-settlement">
-                <b>Found settlement</b> <kbd>N</kbd>
+          {(sel.units.worker ?? 0) > 0 && (
+            <div class="buildmenu" data-testid="defencemenu">
+              {DEFENCE_LIST.map((bt) => {
+                const d = buildingDef(bt), cost = { wood: d.wood, stone: d.stone };
+                return (
+                  <button class={placing === bt ? 'on' : ''} disabled={!game.canAfford(cost)} title={`${BUILDING_HELP[bt]} Click the start, then the end of the line. [${K('build.' + bt)}]`} onClick={() => game.startPlacement(bt)} data-testid={'build-' + bt}>
+                    <b>{BUILDING_NAMES[bt]}{bt !== 'tower' ? ' line' : 's'}</b> <kbd>{K('build.' + bt)}</kbd><Cost c={cost} />
+                  </button>
+                );
+              })}
+              <button class={placing === 'dig' ? 'on' : ''} onClick={() => game.startPlacement('dig')} title={`Dig a trench line. Trenches touching water flood into moats. [${K('dig')}]`} data-testid="build-dig">
+                <b>Dig trench</b> <kbd>{K('dig')}</kbd>
               </button>
             </div>
           )}
-          {placing && <div class="sel-sub">Placing {BUILDING_NAMES[placing as BuildingTypeName]}: left-click to place (Shift for several), right-click or Esc to cancel</div>}
+          {(sel.units.settler ?? 0) > 0 && (
+            <div class="buildmenu">
+              <button class={placing === 'settlement' ? 'on' : ''} onClick={() => game.startPlacement('settlement')} title={BUILDING_HELP.settlement} data-testid="build-settlement">
+                <b>Found settlement</b> <kbd>{K('build.settlement')}</kbd>
+              </button>
+            </div>
+          )}
+          <MilitaryBar game={game} />
+          {placing && <div class="sel-sub">{placing === 'patrol' ? 'Click the far end of the patrol route' : placing === 'ignite' ? 'Click a forest or building tile to set it on fire' : DEFENCE_LIST.includes(placing as BuildingTypeName) || placing === 'dig' ? 'Click the start, then the end of the line (Shift to keep drawing). Right-click or Esc cancels.' : `Placing ${BUILDING_NAMES[placing as BuildingTypeName]}: left-click to place (Shift for several), right-click or Esc to cancel`}</div>}
         </div>
       )}
       {b && <BuildingPanel game={game} b={b} />}
@@ -153,14 +174,15 @@ function BuildingPanel({ game, b }: { game: Game; b: NonNullable<GameState['sele
     <div class="sel-building" data-testid="building-panel">
       <div class="sel-title">{BUILDING_NAMES[bt]} {b.complete ? <small>level {b.level}</small> : <small>under construction {Math.floor(b.progressPermille / 10)} %</small>}</div>
       <div class="sel-sub">{BUILDING_HELP[bt]}</div>
+      <div class="sel-sub" data-testid="building-hp">Health {Math.round(b.hp / 10)} %{d.garrison > 0 ? ` · garrison ${b.garrison}/${d.garrison}` : ''}{own && (TRAINS[bt] ?? []).length > 0 ? ' · right-click the map to set a rally point' : ''}</div>
       {own && b.complete && d.maxWorkers && info && <div class="sel-sub" data-testid="workers">Workers {info.workers}/{d.maxWorkers}</div>}
       {own && b.complete && (TRAINS[bt] ?? []).length > 0 && (
         <div class="buildmenu">
           {(TRAINS[bt] ?? []).map((u) => {
-            const ud = unitDef(u), cost = { food: ud.food, wood: ud.wood };
+            const ud = unitDef(u), cost = { food: ud.food, wood: ud.wood, gold: ud.gold };
             return (
-              <button disabled={!game.canAfford(cost) || (info?.queue.length ?? 0) >= TUNING.economy.trainQueueMax} onClick={() => game.train(b.id, UNIT_TYPES.indexOf(u))} data-testid={'train-' + u} title={`Train ${UNIT_NAMES[u]} [${TRAIN_KEYS[u].toUpperCase()}]`}>
-                <b>{UNIT_NAMES[u]}</b> <kbd>{TRAIN_KEYS[u].toUpperCase()}</kbd><Cost c={cost} />
+              <button disabled={!game.canAfford(cost) || (info?.queue.length ?? 0) >= TUNING.economy.trainQueueMax} onClick={() => game.train(b.id, UNIT_TYPES.indexOf(u))} data-testid={'train-' + u} title={`${UNIT_NAMES[u]}: ${UNIT_HELP[u]} [${K('train.' + u)}]`}>
+                <b>{UNIT_NAMES[u]}</b> <kbd>{K('train.' + u)}</kbd><Cost c={cost} />
               </button>
             );
           })}
@@ -177,11 +199,33 @@ function BuildingPanel({ game, b }: { game: Game; b: NonNullable<GameState['sele
       )}
       {own && b.complete && next && (
         info?.upTo ? <div class="sel-sub">Upgrading to level {info.upTo}: {Math.floor(info.upPermille / 10)} %</div> : (
-          <button disabled={!game.canAfford({ wood: next.wood, stone: next.stone, gold: next.gold })} onClick={() => game.upgrade(b.id)} data-testid="upgrade" title={`[${UPGRADE_KEY.toUpperCase()}]`}>
-            Upgrade to level {b.level + 1} <kbd>U</kbd> <Cost c={{ wood: next.wood, stone: next.stone, gold: next.gold }} />
+          <button disabled={!game.canAfford({ wood: next.wood, stone: next.stone, gold: next.gold })} onClick={() => game.upgrade(b.id)} data-testid="upgrade" title={`[${K('upgrade')}]`}>
+            Upgrade to level {b.level + 1} <kbd>{K('upgrade')}</kbd> <Cost c={{ wood: next.wood, stone: next.stone, gold: next.gold }} />
           </button>
         )
       )}
+      {own && b.complete && (
+        <div class="buildmenu">
+          {d.garrison > 0 && b.garrison > 0 && <button onClick={() => game.ungarrison(b.id)} data-testid="ungarrison">Release garrison <kbd>{K('ungarrison')}</kbd></button>}
+          {bt !== 'capital' && <button onClick={() => game.demolish(b.id)} data-testid="demolish">Demolish <kbd>{K('demolish')}</kbd></button>}
+        </div>
+      )}
+    </div>
+  );
+}
+
+/** Orders for selected soldiers (and any units). */
+function MilitaryBar({ game }: { game: Game }) {
+  const formation = useStore((st) => st.formation);
+  const placing = useStore((st) => st.placing);
+  return (
+    <div class="buildmenu" data-testid="orders">
+      <button onClick={() => game.order('stop')} data-testid="order-stop">Stop <kbd>{K('stop')}</kbd></button>
+      <button onClick={() => game.order('hold')} data-testid="order-hold">Hold <kbd>{K('hold')}</kbd></button>
+      <button onClick={() => game.order('retreat')} data-testid="order-retreat">Retreat <kbd>{K('retreat')}</kbd></button>
+      <button class={placing === 'patrol' ? 'on' : ''} onClick={() => game.startPlacement('patrol')} data-testid="order-patrol">Patrol <kbd>{K('patrol')}</kbd></button>
+      <button onClick={() => game.toggleFormation()} data-testid="order-formation" title="Formation used by the next move order">Formation: {formation} <kbd>{K('formation')}</kbd></button>
+      <button class={placing === 'ignite' ? 'on' : ''} onClick={() => game.startPlacement('ignite')} data-testid="order-ignite">Set fire <kbd>{K('ignite')}</kbd></button>
     </div>
   );
 }
@@ -255,10 +299,43 @@ export function SettingsModal() {
           <input type="range" min="0" max="1" step="0.05" value={settings.volume} onInput={(e) => set({ volume: +(e.target as HTMLInputElement).value })} data-testid="volume" />
         </label>
         <label class="row"><input type="checkbox" checked={settings.muted} onChange={(e) => set({ muted: (e.target as HTMLInputElement).checked })} data-testid="mute" /> Mute</label>
+        <button onClick={() => store.set({ keysOpen: true, settingsOpen: false })} data-testid="keys-btn">Key bindings…</button>
         <button class="primary" onClick={() => store.set({ settingsOpen: false })}>Close</button>
       </div>
     </div>
   );
+}
+
+function KeysModal() {
+  const open = useStore((st) => st.keysOpen);
+  const [listening, setListening] = useState<string | null>(null);
+  const [, bump] = useState(0);
+  if (!open) return null;
+  const capture = (e: KeyboardEvent): void => {
+    if (!listening) return;
+    e.preventDefault(); e.stopPropagation();
+    if (e.key !== 'Escape') setKey(listening, e.key === ' ' ? ' ' : e.key.toLowerCase());
+    setListening(null); bump((n) => n + 1);
+  };
+  return (
+    <div class="modal" role="dialog" aria-label="Key bindings" data-testid="keys" tabIndex={-1} onKeyDown={capture as never} ref={(el) => { if (el && listening) el.focus(); }}>
+      <div class="panel keys">
+        <h2>Key bindings</h2>
+        <div class="keylist">
+          {DEFAULT_KEYS.map((a) => (
+            <div class="keyrow"><span>{a.label} <small>({a.context})</small></span>
+              <button class={listening === a.id ? 'on' : ''} onClick={() => setListening(a.id)} data-testid={'key-' + a.id}>{listening === a.id ? 'press a key…' : keyLabel(keyFor(a.id))}</button></div>
+          ))}
+        </div>
+        <div class="row"><button onClick={() => { resetKeys(); bump((n) => n + 1); }}>Reset to defaults</button><button class="primary" onClick={() => store.set({ keysOpen: false })} data-testid="keys-close">Close</button></div>
+      </div>
+    </div>
+  );
+}
+
+function Spectating() {
+  const s = useStore((st) => st.spectating);
+  return s ? <div class="spectating" data-testid="spectating">You have been eliminated: spectating the whole map</div> : null;
 }
 
 function BoxRect() {
@@ -269,14 +346,15 @@ function BoxRect() {
 
 function GameOver({ onQuit }: { onQuit: () => void }) {
   const s = useStore((st) => ({ winner: st.winner, stats: st.stats }));
+  const spectating = useStore((st) => st.spectating);
   const [dismissed, setDismissed] = useState(false);
   if (s.winner < 0 || dismissed) return null;
   const me = s.stats?.player ?? 0;
   return (
     <div class="modal" data-testid="gameover">
       <div class="panel">
-        <h2>{s.winner === me ? 'Victory' : 'Defeat'}</h2>
-        <p>{s.winner === me ? 'You hold most of the world. Your rule is unchallenged.' : `${playerLabel(s.winner)} dominates the world.`}</p>
+        <h2>{s.winner === me && !spectating ? 'Victory' : 'Defeat'}</h2>
+        <p>{s.winner === me && !spectating ? 'The world is yours.' : `${playerLabel(s.winner)} has won.`}</p>
         <div class="row"><button class="primary" onClick={onQuit}>Main menu</button><button onClick={() => setDismissed(true)}>Keep looking</button></div>
       </div>
     </div>

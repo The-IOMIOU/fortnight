@@ -4,7 +4,7 @@ import { Sim, type PlayerState, type SimSettings } from './sim';
 import { Entities } from './entities/entities';
 import type { Command } from './commands';
 
-export const SAVE_VERSION = 2;
+export const SAVE_VERSION = 3;
 
 export interface SaveData {
   format: 'fortnight-save';
@@ -24,6 +24,10 @@ export interface SaveData {
   pending: Command[];
   pathQueue: number[];
   rngAnimals: [number, number, number, number];
+  rngFire: [number, number, number, number];
+  burning: string;
+  burningList: number[];
+  trenchList: number[];
 }
 
 const B64 = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/';
@@ -57,6 +61,7 @@ export function saveSim(sim: Sim): SaveData {
     fog: sim.fog.map((f) => ({ data: toB64(f.data), visible: f.visibleTiles() })),
     ents: sim.ents.serialize(), ps: JSON.parse(JSON.stringify(sim.ps)), pending: JSON.parse(JSON.stringify(sim.pending)),
     pathQueue: sim.pathQueue.slice(), rngAnimals: sim.rngAnimals.getState(),
+    rngFire: sim.rngFire.getState(), burning: toB64(sim.burning), burningList: sim.burningList.slice(), trenchList: sim.trenchList.slice(),
   };
 }
 
@@ -79,6 +84,10 @@ export function loadSim(d: SaveData): Sim {
   sim.pending = JSON.parse(JSON.stringify(d.pending));
   sim.pathQueue = d.pathQueue.slice();
   sim.rngAnimals.setState(d.rngAnimals);
+  sim.rngFire.setState(d.rngFire);
+  { const u = fromB64(d.burning); sim.burning.set(new Uint16Array(u.buffer, 0, u.byteLength / 2)); }
+  sim.burningList = d.burningList.slice();
+  sim.trenchList = d.trenchList.slice();
   for (let p = 0; p < sim.players; p++) sim.ownedList[p] = [];
   for (let t = 0; t < sim.tileOwner.length; t++) if (sim.tileOwner[t] < sim.players) sim.ownedList[sim.tileOwner[t]].push(t);
   sim.ownerDirty = true;

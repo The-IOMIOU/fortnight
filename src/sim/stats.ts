@@ -23,7 +23,7 @@ export interface PlayerStats {
   depositsFound: number[];
   units: Record<string, number>;
   buildings: number;
-  /** combat strength: sum of combat unit counts (combat units arrive in Phase 3) */
+  /** army strength: Σ attack × max HP / 100 over military units */
   army: number;
   continents: { index: number; owned: number; total: number }[];
   census: CensusRow[];
@@ -65,7 +65,7 @@ export function computeStats(sim: Sim, p: number): PlayerStats {
     landOwned: ps.landOwned, landTotal: sim.totalLand, landPermille: Math.floor((ps.landOwned * 1000) / sim.totalLand),
     pop: ps.pop, housing: ps.housing,
     foodIncomePerMin: incomePerMin[0], foodUpkeepPerMin: upkeep, foodBalancePerMin: incomePerMin[0] - upkeep, starving: ps.starving,
-    stock: ps.stock.slice(), incomePerMin, depositsFound: ps.found.slice(), units, buildings, army: 0,
+    stock: ps.stock.slice(), incomePerMin, depositsFound: ps.found.slice(), units, buildings, army: sim.mil.armyStrength(p),
     continents: continentTotals.totals.map((total, index) => ({ index, owned: owned[index], total })),
     census: sim.ps.map((q, i) => ({ player: i, landOwned: q.landOwned, landPermille: Math.floor((q.landOwned * 1000) / sim.totalLand), pop: q.pop, settlements: settlements[i] })),
     dominationTicks: ps.dominationTicks, winner: sim.winner,

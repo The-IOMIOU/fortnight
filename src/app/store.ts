@@ -14,10 +14,10 @@ export interface SelectionInfo {
   /** single selected building, if any */
   building: null | {
     id: number; btype: string; level: number; complete: boolean; progressPermille: number;
-    info: BuildingInfo | null; owner: number;
+    info: BuildingInfo | null; owner: number; garrison: number; hp: number;
   };
   /** single selected unit details */
-  unit: null | { id: number; type: string; task: number; carryAmt: number; carryType: number };
+  unit: null | { id: number; type: string; task: number; carryAmt: number; carryType: number; hp: number };
 }
 
 export interface GameState {
@@ -48,6 +48,9 @@ export interface GameState {
   error: string;
   box: { x0: number; y0: number; x1: number; y1: number } | null;
   settings: Settings;
+  formation: 'box' | 'line';
+  spectating: boolean;
+  keysOpen: boolean;
 }
 
 type Listener = () => void;
@@ -58,7 +61,7 @@ export class Store {
     speed: 'normal', paused: false, pendingOrders: 0, selected: 0, selection: { units: {}, building: null, unit: null },
     ownerOverlay: true, showPerf: false, showStats: false, settingsOpen: false,
     perf: { fps: 0, p95Ms: 0, simMs: 0, tps: 0, drawCalls: 0, triangles: 0, entities: 0, dropped: 0 },
-    stats: null, feed: [], placing: null, winner: -1, players: 1, toast: '', error: '', box: null, settings: loadSettings(),
+    stats: null, feed: [], placing: null, winner: -1, players: 1, toast: '', error: '', box: null, settings: loadSettings(), formation: 'box', spectating: false, keysOpen: false,
   };
   private listeners = new Set<Listener>();
   set(patch: Partial<GameState>): void { this.state = { ...this.state, ...patch }; for (const l of this.listeners) l(); }

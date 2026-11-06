@@ -41,6 +41,12 @@ export interface Snapshot {
   stats: PlayerStats | null;
   events: SimEvent[];
   buildings: BuildingInfo[];
+  /** Ranged shots since the last snapshot the viewer can see: [ax, ay, tx, ty] fixed-point quads. */
+  shots: Int32Array | null;
+  /** Burning tiles the viewer can see. */
+  fires: number[];
+  /** The viewer was eliminated and now watches the whole map. */
+  spectating: boolean;
   winner: number;
   simMsPerTick: number;
   ticksPerSec: number;

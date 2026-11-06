@@ -230,6 +230,78 @@ export function buildingModel(bt: BuildingTypeName, s: number): Model {
         trim: merge([plain(cone(0.42, 0.25, 4, 0, 1.6, 0).rotateY(Math.PI / 4)), plain(box(0.22, 0.13, 0.01, 0.11, 2.0, 0))]),
       };
     }
+    case 'barracks': {
+      const [roof, attic, tiles] = gable(1.5, 0.95, 0.36, 0.06 + 0.55, 0.07, 0.045, 0, -0.25);
+      const racks: G[] = [];
+      for (let i = 0; i < 4; i++) racks.push(paint(cyl(0.012, 0.42, 4, -0.55 + i * 0.09, 0.06, 0.62), DARKWOOD), paint(cone(0.02, 0.06, 4, -0.55 + i * 0.09, 0.48, 0.62), IRON));
+      return {
+        body: merge([
+          paint(box(1.85, 0.06, 1.85), SOIL), paint(box(1.6, 0.06, 1.05, 0, 0, -0.25), STONE),
+          ...timberBlock(1.5, 0.55, 0.95, 0.06, 0, -0.25), paint(attic, PLASTER), tiles,
+          paint(box(0.28, 0.38, 0.03, 0, 0.06, 0.24), DARKWOOD), ...windowAt(-0.45, 0.42, 0.235, 'z'), ...windowAt(0.45, 0.42, 0.235, 'z'),
+          paint(box(0.9, 0.04, 0.04, -0.4, 0.4, 0.6), TIMBER), ...racks,
+          paint(cyl(0.12, 0.1, 10, 0.55, 0.06, 0.6), HAY), paint(box(0.04, 0.4, 0.04, 0.55, 0.16, 0.6), TIMBER),
+        ]),
+        trim: merge([roof, plain(box(0.22, 0.32, 0.01, 0.55, 0.3, 0.63))]),
+      };
+    }
+    case 'workshop': {
+      const [roof, attic, tiles] = gable(1.4, 1.0, 0.32, 0.06 + 0.6, 0.07, 0.045, 0, -0.2);
+      return {
+        body: merge([
+          paint(box(1.85, 0.05, 1.85), SOIL),
+          paint(box(1.4, 0.6, 1.0, 0, 0.06, -0.2), PLANK), paint(attic, PLANK), tiles,
+          paint(box(0.7, 0.5, 0.03, 0, 0.06, 0.31), DARKWOOD),
+          paint(cyl(0.06, 0.9, 8, 0.45, 0.07, 0.65).rotateZ(Math.PI / 2).translate(0.45, 0.07, 0), BARK),
+          paint(cyl(0.12, 0.05, 10, 0.4, 0.12, 0.62).rotateX(Math.PI / 2), DARKWOOD), paint(cyl(0.12, 0.05, 10, -0.4, 0.12, 0.62).rotateX(Math.PI / 2), DARKWOOD),
+          paint(box(0.3, 0.2, 0.2, -0.6, 0.05, 0.6), PLANK),
+        ]),
+        trim: roof,
+      };
+    }
+    case 'dock': {
+      const piles: G[] = [];
+      for (const [x, z] of [[-0.8, 0.5], [-0.3, 0.5], [0.2, 0.5], [0.7, 0.5], [-0.8, 0.9], [0.7, 0.9]]) piles.push(paint(cyl(0.04, 0.35, 6, x, -0.2, z), TIMBER));
+      const [roof, attic, tiles] = gable(0.8, 0.6, 0.24, 0.45, 0.05, 0.035, -0.4, -0.45);
+      return {
+        body: merge([
+          ...piles, paint(box(1.8, 0.05, 0.6, 0, 0.12, 0.65), PLANK),
+          paint(box(0.8, 0.45, 0.6, -0.4, 0, -0.45), PLANK), paint(attic, PLANK), tiles,
+          paint(box(0.2, 0.3, 0.02, -0.4, 0, -0.14), DARKWOOD),
+          paint(cyl(0.02, 1.1, 5, 0.5, 0.12, -0.3), DARKWOOD), paint(box(0.5, 0.02, 0.02, 0.5, 1.05, -0.3), DARKWOOD),
+          paint(cyl(0.06, 0.12, 8, 0.4, 0.17, 0.6), PLANK),
+        ]),
+        trim: merge([roof, plain(box(0.25, 0.15, 0.01, 0.62, 0.85, -0.3))]),
+      };
+    }
+    case 'wall': return {
+      body: merge([
+        paint(box(0.98, 0.62, 0.62), STONE), paint(box(0.98, 0.04, 0.66, 0, 0.62, 0), STONE_D),
+        ...[-0.36, 0, 0.36].map((x) => paint(box(0.18, 0.14, 0.62, x, 0.66, 0), STONE)),
+        paint(box(0.98, 0.08, 0.66, 0, 0, 0), STONE_D),
+      ]),
+      trim: plain(box(0.001, 0.001, 0.001)),
+    };
+    case 'gate': return {
+      body: merge([
+        paint(box(0.3, 0.85, 0.66, -0.34, 0, 0), STONE), paint(box(0.3, 0.85, 0.66, 0.34, 0, 0), STONE),
+        paint(box(0.98, 0.22, 0.66, 0, 0.63, 0), STONE), paint(box(0.38, 0.6, 0.06, 0, 0, 0.0), DARKWOOD),
+        ...[-0.08, 0.08].map((x) => paint(box(0.02, 0.6, 0.07, x, 0, 0), IRON)),
+      ]),
+      trim: merge([plain(box(0.2, 0.2, 0.01, -0.34, 0.95, 0.34)), plain(box(0.2, 0.2, 0.01, 0.34, 0.95, 0.34))]),
+    };
+    case 'tower': {
+      const crenels: G[] = [];
+      for (let i = 0; i < 8; i++) { const a = (i / 8) * Math.PI * 2; crenels.push(paint(box(0.11, 0.12, 0.11, Math.cos(a) * 0.36, 1.56, Math.sin(a) * 0.36), STONE)); }
+      return {
+        body: merge([
+          paint(cyl(0.4, 1.5, 10, 0, 0, 0, 0.36), STONE), paint(cyl(0.44, 0.08, 10, 0, 1.48, 0), STONE_D), ...crenels,
+          paint(box(0.18, 0.3, 0.03, 0, 0.02, 0.38), DARKWOOD), ...windowAt(0, 0.9, 0.38, 'z', 0.06, 0.14), ...windowAt(0.38, 1.15, 0, 'x', 0.06, 0.12),
+          paint(cyl(0.02, 0.55, 4, 0, 1.56, 0), DARKWOOD),
+        ]),
+        trim: plain(box(0.26, 0.17, 0.01, 0.13, 1.9, 0)),
+      };
+    }
   }
   void s;
 }
@@ -245,9 +317,66 @@ function person(tunic: number, extra: G[] = []): G {
   ]);
 }
 
+export type UnitModelName = 'scout' | 'worker' | 'settler' | 'spearman' | 'archer' | 'rider' | 'ram' | 'spy' | 'saboteur' | 'warship' | 'transport' | 'animal' | 'carcass';
+
 /** Unit models. */
-export function unitModel(kind: 'scout' | 'worker' | 'settler' | 'animal' | 'carcass'): Model {
+export function unitModel(kind: UnitModelName): Model {
   switch (kind) {
+    case 'spearman': return {
+      body: person(0x6e6a64, [paint(box(0.19, 0.12, 0.13, 0, 0.3, 0), IRON), paint(cyl(0.013, 0.85, 4, 0.15, 0.0, 0.05), DARKWOOD), paint(cone(0.03, 0.12, 4, 0.15, 0.85, 0.05), IRON)]),
+      trim: merge([plain(new THREE.BoxGeometry(0.03, 0.26, 0.2).translate(-0.15, 0.3, 0.04)), plain(cyl(0.075, 0.06, 8, 0, 0.55, 0, 0.06))]),
+    };
+    case 'archer': return {
+      body: person(0x5d6b48, [paint(new THREE.TorusGeometry(0.17, 0.012, 4, 10, Math.PI).rotateZ(Math.PI / 2).translate(0.15, 0.32, 0.03), DARKWOOD), paint(cyl(0.04, 0.24, 6, -0.03, 0.22, -0.08), PLANK)]),
+      trim: plain(cone(0.09, 0.14, 8, 0, 0.55, 0)),
+    };
+    case 'rider': {
+      const legs: G[] = [];
+      for (const [x, z] of [[-0.16, -0.07], [-0.16, 0.07], [0.16, -0.07], [0.16, 0.07]]) legs.push(paint(box(0.05, 0.26, 0.05, x, 0, z), 0x4e3423));
+      return {
+        body: merge([
+          ...legs, paint(ball(0.13, 0, 0.34, 0, 8, 6).scale(1.7, 0.85, 0.8), 0x6b4428), paint(box(0.08, 0.2, 0.08, 0.26, 0.38, 0).rotateZ(-0.6).translate(0.08, 0, 0), 0x6b4428),
+          paint(ball(0.07, 0.36, 0.53, 0), 0x6b4428),
+          paint(box(0.14, 0.2, 0.12, 0, 0.45, 0), 0x6e6a64), paint(ball(0.065, 0, 0.72, 0), SKIN), paint(cyl(0.012, 0.7, 4, 0.08, 0.45, 0.1).rotateZ(-1.2).translate(0.3, 0.2, 0), DARKWOOD),
+        ]),
+        trim: merge([plain(box(0.36, 0.03, 0.26, 0, 0.42, 0)), plain(cone(0.07, 0.1, 8, 0, 0.77, 0))]),
+      };
+    }
+    case 'ram': {
+      const wheels: G[] = [];
+      for (const [x, z] of [[-0.25, 0.2], [0.25, 0.2], [-0.25, -0.2], [0.25, -0.2]]) wheels.push(paint(cyl(0.11, 0.04, 10).rotateX(Math.PI / 2).translate(x, 0.11, z), DARKWOOD));
+      const [roof] = gable(0.7, 0.42, 0.28, 0.22, 0.04, 0.035);
+      return {
+        body: merge([...wheels, paint(box(0.7, 0.06, 0.42, 0, 0.12, 0), PLANK), paint(cyl(0.07, 0.95, 8).rotateZ(Math.PI / 2).translate(0.05, 0.3, 0), BARK), paint(cone(0.09, 0.12, 8).rotateZ(-Math.PI / 2).translate(0.58, 0.3, 0), IRON)]),
+        trim: roof,
+      };
+    }
+    case 'spy': return {
+      body: person(0x2e3138, [paint(cone(0.12, 0.3, 8, 0, 0.0, 0).scale(1, 1, 0.8), 0x2e3138)]),
+      trim: plain(new THREE.SphereGeometry(0.085, 8, 5, 0, Math.PI * 2, 0, Math.PI / 1.8).translate(0, 0.51, 0)),
+    };
+    case 'saboteur': return {
+      body: person(0x3b3530, [paint(ball(0.06, 0.15, 0.18, 0.05), 0x222222), paint(cyl(0.006, 0.08, 3, 0.15, 0.24, 0.05), 0xe8d26a)]),
+      trim: plain(box(0.17, 0.05, 0.12, 0, 0.36, 0)),
+    };
+    case 'warship': {
+      return {
+        body: merge([
+          paint(box(1.0, 0.18, 0.36, 0, 0.0, 0), PLANK), paint(cone(0.18, 0.3, 4).rotateZ(-Math.PI / 2).scale(1, 1, 1).translate(0.62, 0.09, 0), PLANK),
+          paint(box(0.3, 0.15, 0.3, -0.35, 0.18, 0), DARKWOOD), paint(cyl(0.025, 0.9, 5, 0.05, 0.18, 0), DARKWOOD),
+          ...[-0.2, 0.1, 0.4].map((x) => paint(cyl(0.03, 0.12, 6, x, 0.12, 0.18).rotateX(Math.PI / 2).translate(0, 0, 0.0), IRON)),
+        ]),
+        trim: merge([plain(box(0.04, 0.5, 0.5, 0.05, 0.45, 0)), plain(box(0.15, 0.08, 0.01, 0.13, 1.03, 0))]),
+      };
+    }
+    case 'transport': return {
+      body: merge([
+        paint(box(0.9, 0.16, 0.42, 0, 0, 0), PLANK), paint(cone(0.21, 0.26, 4).rotateZ(-Math.PI / 2).translate(0.56, 0.08, 0), PLANK),
+        paint(box(0.5, 0.05, 0.36, -0.1, 0.16, 0), DARKWOOD), paint(cyl(0.02, 0.7, 5, 0.1, 0.16, 0), DARKWOOD),
+        ...[-0.3, -0.1].map((x) => paint(box(0.14, 0.12, 0.14, x, 0.18, 0.06), PLANK)),
+      ]),
+      trim: plain(box(0.04, 0.4, 0.42, 0.1, 0.38, 0)),
+    };
     case 'worker': return {
       body: person(CLOTH, [paint(cyl(0.012, 0.32, 4, 0.14, 0.12, 0.04), DARKWOOD), paint(box(0.1, 0.035, 0.03, 0.14, 0.42, 0.04), IRON)]),
       trim: plain(cyl(0.075, 0.05, 8, 0, 0.55, 0, 0.05)),

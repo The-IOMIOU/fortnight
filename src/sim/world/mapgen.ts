@@ -10,10 +10,12 @@ import { fbm, valueNoise } from './noise';
 export const Biome = {
   OCEAN: 0, LAKE: 1, RIVER: 2, ICE: 3,
   COAST: 4, PLAINS: 5, FOREST: 6, DESERT: 7, SWAMP: 8, MOUNTAIN: 9, TUNDRA: 10, SNOW: 11,
+  // player-made terrain (never produced by the generator)
+  TRENCH: 12, MOAT: 13,
 } as const;
 export type BiomeId = (typeof Biome)[keyof typeof Biome];
-export const BIOME_NAMES = ['ocean', 'lake', 'river', 'ice', 'coast', 'plains', 'forest', 'desert', 'swamp', 'mountain', 'tundra', 'snow'];
-export const isWaterBiome = (b: number): boolean => b <= Biome.ICE;
+export const BIOME_NAMES = ['ocean', 'lake', 'river', 'ice', 'coast', 'plains', 'forest', 'desert', 'swamp', 'mountain', 'tundra', 'snow', 'trench', 'moat'];
+export const isWaterBiome = (b: number): boolean => b <= Biome.ICE || b === Biome.MOAT;
 
 export interface GameMap {
   seed: string;

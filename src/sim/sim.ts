@@ -11,10 +11,12 @@ import { animalSpawns, placeResources, type ResourceLayer } from './world/deposi
 import { Entities } from './entities/entities';
 import { PathFinder, type GoalRect } from './path/astar';
 import { compareCommands, type Command } from './commands';
+import { FlowFields } from './path/flowfield';
+import { Military, formationSlots } from './military';
 import baselineRace from '../data/races/baseline.json' with { type: 'json' };
 import {
   BUILDABLE, BUILDING_TYPES, DROPOFF, FARM_YIELD, Kind, MOVE_COST, NATURE_OWNER, NUM_RES, Res, RES_NONE, TICKS_PER_MIN, TOWN_CENTERS,
-  TRAINS, Task, UNIT_TYPES, WALKABLE_BUILDING, buildingDef, buildingKind, buildingTypeOfKind, isBuildingKind, isUnitKind,
+  TRAINS, Task, UNIT_TYPES, WALKABLE_BUILDING, WATER_COST, DEFENSIVE, buildingDef, buildingKind, buildingTypeOfKind, isBuildingKind, isUnitKind,
   unitDef, unitKind, unitTypeOfKind, upgradeDef, type BuildingTypeName, type UnitTypeName,
 } from './defs';
 
@@ -45,6 +47,8 @@ export interface PlayerState {
   seq: number;
   /** Cumulative income per resource since the start. */
   totalIncome: number[];
+  /** Lost every town (Phase 3): units removed, may only spectate. */
+  eliminated: boolean;
 }
 
 export interface SimEvent { tick: number; player: number; type: string; a?: number; b?: number }
@@ -76,6 +80,17 @@ export class Sim {
   fogForce: Uint8Array;
   private lastTile: Int32Array;
   private pf: PathFinder;
+  private pfWater: PathFinder;
+  /** Player whose gates count as open during the current land path search. */
+  private pathPlayer = -1;
+  readonly flows: FlowFields;
+  readonly mil: Military;
+  /** Remaining burn ticks per tile (0 = not burning) and the burning tile list. */
+  burning: Uint16Array;
+  burningList: number[] = [];
+  rngFire: Rng;
+  /** Dry trench tiles (candidates for flooding). */
+  trenchList: number[] = [];
   readonly dayLength = TUNING.dayNight.dayLengthTicks;
   readonly nightStart = TUNING.dayNight.dayLengthTicks - TUNING.dayNight.nightTicks;
 
@@ -92,7 +107,12 @@ export class Sim {
     this.rngAnimals = Rng.stream(settings.seed, 'animals');
     this.fogForce = new Uint8Array(this.players).fill(1);
     this.lastTile = new Int32Array(256).fill(-1);
-    this.pf = new PathFinder(w, h, (t) => this.cost(t));
+    this.pf = new PathFinder(w, h, (t) => this.cost(t, this.pathPlayer));
+    this.pfWater = new PathFinder(w, h, (t) => this.waterCost(t));
+    this.flows = new FlowFields(w, h, TUNING.groups.flowFieldCache);
+    this.burning = new Uint16Array(w * h);
+    this.rngFire = Rng.stream(settings.seed, 'fire');
+    this.mil = new Military(this);
     let land = 0;
     for (let i = 0; i < w * h; i++) if (!isWaterBiome(this.map.biome[i])) land++;
     this.totalLand = land;
@@ -102,7 +122,7 @@ export class Sim {
       this.ps.push({
         stock: new Array(NUM_RES).fill(0), ring: new Array(NUM_RES * RING).fill(0), upkeepAcc: 0, starving: false, pop: 0, housing: 0,
         landOwned: 0, found: new Array(NUM_RES).fill(0), foundMask: 0, dominationTicks: 0, housingWarned: false, seq: 0,
-        totalIncome: new Array(NUM_RES).fill(0),
+        totalIncome: new Array(NUM_RES).fill(0), eliminated: false,
       });
     }
     if (opts.skipSetup) return;
@@ -139,30 +159,42 @@ export class Sim {
 
   // ------------------------------------------------------------------ tiles
 
-  /** Path cost of entering a tile; 0 = impassable. */
-  cost(t: number): number {
+  /** Land path cost of entering a tile for player p (gates open only for their owner); 0 = impassable. */
+  cost(t: number, p = -1): number {
     const b = this.map.biome[t];
     if (isWaterBiome(b) && b !== Biome.RIVER) return 0;
     const o = this.occ[t];
-    if (o && !WALKABLE_BUILDING[buildingTypeOfKind(this.ents.kind[o - 1])]) return 0;
+    if (o) {
+      const bt = buildingTypeOfKind(this.ents.kind[o - 1]);
+      if (bt === 'gate') return this.ents.owner[o - 1] === p && this.ents.complete[o - 1] ? 10 : 0;
+      if (!WALKABLE_BUILDING[bt]) return 0;
+    }
     const rt = this.res.type[t];
     if (rt !== RES_NONE && rt !== Res.WOOD && this.res.amount[t] > 0) return 0;
     return MOVE_COST[b];
   }
 
-  private tileOf(id: number): number { return (this.ents.posY[id] >> FP_SHIFT) * this.map.w + (this.ents.posX[id] >> FP_SHIFT); }
+  /** Ship path cost: open water only. */
+  waterCost(t: number): number { return this.occ[t] ? 0 : WATER_COST[this.map.biome[t]]; }
+  isNaval(id: number): boolean { return isUnitKind(this.ents.kind[id]) && unitDef(unitTypeOfKind(this.ents.kind[id])).water === 1; }
+  /** Cost of entering tile t for unit id. */
+  costFor(id: number, t: number): number { return this.isNaval(id) ? this.waterCost(t) : this.cost(t, this.ents.owner[id]); }
 
-  private setBiome(t: number, b: number): void {
+  tileOf(id: number): number { return (this.ents.posY[id] >> FP_SHIFT) * this.map.w + (this.ents.posX[id] >> FP_SHIFT); }
+
+  setBiome(t: number, b: number): void {
     if (this.map.biome[t] === b) return;
     this.map.biome[t] = b;
     this.changedTiles.push(t);
+    this.flows?.clear();
   }
 
   /** Remove resource from a tile; forests become plains when cut down. */
-  private depleteTile(t: number): void {
+  depleteTile(t: number): void {
     if (this.res.type[t] === Res.WOOD) this.setBiome(t, Biome.PLAINS);
     this.res.type[t] = RES_NONE; this.res.amount[t] = 0;
     this.changedTiles.push(t);
+    this.flows?.clear();
   }
 
   // ------------------------------------------------------------------ buildings
@@ -187,7 +219,7 @@ export class Sim {
       if (bt === 'farm' && FARM_YIELD[b] <= 0) return 'cannot farm here';
       const o = this.tileOwner[t];
       if (bt === 'settlement') { if (o !== NO_OWNER) return 'land already claimed'; }
-      else if (bt === 'outpost') { if (o !== NO_OWNER && o !== p) return 'enemy land'; }
+      else if (bt === 'outpost' || DEFENSIVE[bt]) { if (o !== NO_OWNER && o !== p) return 'enemy land'; }
       else if (o !== p) return 'outside your territory';
     }
     for (let dy = -1; dy <= d.size; dy++) for (let dx = -1; dx <= d.size; dx++) {
@@ -197,7 +229,15 @@ export class Sim {
       if (b === Biome.OCEAN || b === Biome.LAKE || b === Biome.RIVER) nearWater = true;
     }
     if (bt === 'fishingHut' && !nearWater) return 'must be next to water';
-    if (bt === 'outpost') {
+    if (bt === 'dock') {
+      let sea = false;
+      for (let dy = -1; dy <= d.size && !sea; dy++) for (let dx = -1; dx <= d.size; dx++) {
+        const x = ax + dx, y = ay + dy;
+        if (x >= 0 && y >= 0 && x < w && y < h && (biome[y * w + x] === Biome.OCEAN || biome[y * w + x] === Biome.LAKE)) { sea = true; break; }
+      }
+      if (!sea) return 'must be next to the sea or a lake';
+    }
+    if (bt === 'outpost' || DEFENSIVE[bt]) {
       const r = ECO.outpostReachOutsideTerritory;
       for (let dy = -r; dy < d.size + r && !nearOwn; dy++) for (let dx = -r; dx < d.size + r; dx++) {
         const x = ax + dx, y = ay + dy;
@@ -216,18 +256,21 @@ export class Sim {
     return null;
   }
 
-  private createBuilding(p: number, bt: BuildingTypeName, anchor: number, complete: boolean): number {
+  createBuilding(p: number, bt: BuildingTypeName, anchor: number, complete: boolean): number {
     const { w } = this.map, d = buildingDef(bt);
     const ax = anchor % w, ay = (anchor - ax) / w;
     const cx = (ax << FP_SHIFT) + ((d.size << FP_SHIFT) >> 1), cy = (ay << FP_SHIFT) + ((d.size << FP_SHIFT) >> 1);
     const id = this.ents.spawn(buildingKind(bt), p, cx, cy, 0, d.vision);
     const e = this.ents;
     e.anchor[id] = anchor; e.level[id] = 1; e.btype[id] = BUILDING_TYPES.indexOf(bt);
+    e.maxHp[id] = d.hp; e.hp[id] = complete ? d.hp : Math.max(1, Math.floor(d.hp / 10));
+    const footprint: number[] = [];
     let yieldSum = 0, water = 0;
     for (let dy = 0; dy < d.size; dy++) for (let dx = 0; dx < d.size; dx++) {
       const t = (ay + dy) * w + (ax + dx);
       if (this.res.type[t] !== RES_NONE) this.depleteTile(t); // starting capital may sit on trees
       this.occ[t] = id + 1;
+      footprint.push(t);
       yieldSum += FARM_YIELD[this.map.biome[t]];
     }
     if (bt === 'farm') e.yieldPct[id] = Math.floor(yieldSum / (d.size * d.size));
@@ -243,12 +286,14 @@ export class Sim {
     }
     this.fogForce[p] = 1;
     if (complete) this.completeBuilding(id, false);
+    if (this.mil) this.mil.onTerrainChanged(footprint);
     return id;
   }
 
-  private completeBuilding(id: number, announce = true): void {
+  completeBuilding(id: number, announce = true): void {
     const e = this.ents, p = e.owner[id], bt = buildingTypeOfKind(e.kind[id]);
-    e.complete[id] = 1; e.progress[id] = buildingDef(bt).buildPoints;
+    e.complete[id] = 1; e.progress[id] = buildingDef(bt).buildPoints; e.hp[id] = e.maxHp[id];
+    this.flows?.clear();
     this.claimAround(id);
     this.fogForce[p] = 1;
     if (announce) this.emit(p, 'built', e.btype[id], id);
@@ -269,7 +314,7 @@ export class Sim {
     return hs;
   }
 
-  private claimAround(id: number): void {
+  claimAround(id: number): void {
     const r = this.territoryRadius(id);
     if (r <= 0) return;
     const e = this.ents, p = e.owner[id], { w, h } = this.map;
@@ -288,7 +333,7 @@ export class Sim {
 
   // ------------------------------------------------------------------ units
 
-  private spawnUnitNear(p: number, u: UnitTypeName, buildingId: number): number {
+  spawnUnitNear(p: number, u: UnitTypeName, buildingId: number): number {
     const d = unitDef(u), r0 = this.footprintRect(buildingId, 1), { w, h } = this.map;
     let tile = -1;
     for (let m = 1; m <= 6 && tile < 0; m++) {
@@ -297,13 +342,26 @@ export class Sim {
         if (x !== r.x0 && x !== r.x1 && y !== r.y0 && y !== r.y1) continue;
         if (x < 0 || y < 0 || x >= w || y >= h) continue;
         const t = y * w + x;
-        if (this.cost(t) > 0 && !this.unitOnTile(t)) { tile = t; break; }
+        if ((d.water ? this.waterCost(t) : this.cost(t, p)) > 0 && !this.unitOnTile(t)) { tile = t; break; }
       }
     }
     if (tile < 0) tile = this.ents.anchor[buildingId];
     const x = tile % w, y = (tile - x) / w;
     const id = this.ents.spawn(unitKind(u), p, tileCenter(x), tileCenter(y), d.speed, d.vision);
+    this.ents.hp[id] = this.ents.maxHp[id] = d.hp;
+    this.ents.morale[id] = TUNING.morale.max;
     this.ensureLastTile();
+    return id;
+  }
+
+  /** Spawn a unit on a tile (setup, tests, transports unloading). */
+  spawnUnitAt(p: number, u: UnitTypeName, tile: number): number {
+    const d = unitDef(u), x = tile % this.map.w, y = (tile - x) / this.map.w;
+    const id = this.ents.spawn(unitKind(u), p, tileCenter(x), tileCenter(y), d.speed, d.vision);
+    this.ents.hp[id] = this.ents.maxHp[id] = d.hp;
+    this.ents.morale[id] = TUNING.morale.max;
+    this.ensureLastTile();
+    if (p < this.players) this.fogForce[p] = 1;
     return id;
   }
 
@@ -320,7 +378,7 @@ export class Sim {
   }
 
   /** Ask for a path to `rect` (processed in deterministic FIFO order, budgeted per tick). */
-  private goTo(id: number, rect: GoalRect, finX = -1, finY = -1): void {
+  goTo(id: number, rect: GoalRect, finX = -1, finY = -1): void {
     const e = this.ents;
     e.gx0[id] = rect.x0; e.gy0[id] = rect.y0; e.gx1[id] = rect.x1; e.gy1[id] = rect.y1;
     e.hasFinal[id] = finX >= 0 ? 1 : 0; e.finX[id] = finX; e.finY[id] = finY;
@@ -328,10 +386,27 @@ export class Sim {
     if (!e.waitPath[id]) { e.waitPath[id] = 1; this.pathQueue.push(id); }
   }
 
-  private stop(id: number): void {
+  stop(id: number): void {
     const e = this.ents;
     e.task[id] = Task.IDLE; e.phase[id] = 0; e.moving[id] = 0; e.paths[id] = null; e.taskEnt[id] = -1; e.srcEnt[id] = -1;
     if (e.waitPath[id]) { e.waitPath[id] = 0; this.pathQueue = this.pathQueue.filter((q) => q !== id); }
+  }
+
+  tileRectAround(t: number, margin = 1): GoalRect { const w = this.map.w, x = t % w, y = (t - x) / w; return { x0: x - margin, y0: y - margin, x1: x + margin, y1: y + margin }; }
+
+  /** First free tile in rings around a rectangle (land or water class). */
+  freeTileNear(r0: GoalRect, water: boolean): number {
+    const { w, h } = this.map;
+    for (let m = 0; m <= 8; m++) {
+      const r = { x0: r0.x0 - m, y0: r0.y0 - m, x1: r0.x1 + m, y1: r0.y1 + m };
+      for (let y = r.y0; y <= r.y1; y++) for (let x = r.x0; x <= r.x1; x++) {
+        if (x !== r.x0 && x !== r.x1 && y !== r.y0 && y !== r.y1) continue;
+        if (x < 0 || y < 0 || x >= w || y >= h) continue;
+        const t = y * w + x;
+        if ((water ? this.waterCost(t) : this.cost(t)) > 0) return t;
+      }
+    }
+    return Math.max(0, r0.y0) * w + Math.max(0, r0.x0);
   }
 
   private processPaths(): void {
@@ -342,10 +417,21 @@ export class Sim {
       if (!e.alive[id] || !e.waitPath[id]) continue;
       e.waitPath[id] = 0;
       n++;
-      const path = this.pf.find(this.tileOf(id), { x0: e.gx0[id], y0: e.gy0[id], x1: e.gx1[id], y1: e.gy1[id] });
+      const goal = { x0: e.gx0[id], y0: e.gy0[id], x1: e.gx1[id], y1: e.gy1[id] };
+      let path: number[] | null;
+      if (this.isNaval(id)) path = this.pfWater.find(this.tileOf(id), goal);
+      else {
+        this.pathPlayer = e.owner[id];
+        // chases are re-planned often: cap their search so unreachable targets fail fast
+        path = this.pf.find(this.tileOf(id), goal, e.task[id] === Task.ATTACK ? { maxNodes: 6000 } : {});
+        this.pathPlayer = -1;
+      }
       if (!path) {
         // unreachable (e.g. on another continent): hunters keep trying, everyone else gives up
         if (e.task[id] === Task.HUNT) { e.repathAt[id] = this.tick + 30; e.moving[id] = 0; }
+        else if (e.task[id] === Task.ATTACK) this.mil.onAttackPathFailed(id);
+        // home unreachable (e.g. on another continent): stand fast, try again in 10 s
+        else if (e.task[id] === Task.ROUT || e.task[id] === Task.RETREAT) { e.repathAt[id] = this.tick + 100; e.moving[id] = 0; }
         else { this.emit(e.owner[id], 'unreachable', id); this.stop(id); }
         continue;
       }
@@ -353,7 +439,7 @@ export class Sim {
     }
   }
 
-  private arrived(id: number): boolean {
+  arrived(id: number): boolean {
     const e = this.ents, t = this.tileOf(id), x = t % this.map.w, y = (t - x) / this.map.w;
     return x >= e.gx0[id] && x <= e.gx1[id] && y >= e.gy0[id] && y <= e.gy1[id] && !e.moving[id];
   }
@@ -361,12 +447,13 @@ export class Sim {
   private moveUnits(): void {
     const e = this.ents, w = this.map.w;
     for (let id = 0; id < e.count; id++) {
-      if (!e.alive[id] || !e.moving[id] || !isUnitKind(e.kind[id])) continue;
+      if (!e.alive[id] || !e.moving[id] || !isUnitKind(e.kind[id]) || e.carrier[id] >= 0) continue;
       // Movement budget for this tick depends on the terrain the unit starts the tick on.
-      const mc = MOVE_COST[this.map.biome[this.tileOf(id)]] || 10;
+      const mc = this.isNaval(id) ? 10 : MOVE_COST[this.map.biome[this.tileOf(id)]] || 10;
       let budget = Math.max(1, Math.floor((e.speed[id] * 10) / mc));
       // Spend the budget along the path; leftover carries past waypoints within the same tick.
       for (let guard = 0; guard < 8 && budget > 0 && e.moving[id]; guard++) {
+        if (e.flowGoal[id] >= 0 && (!e.paths[id] || e.pathIdx[id] >= e.paths[id]!.length) && !this.flowStep(id)) break;
         const path = e.paths[id];
         let tx: number, ty: number;
         const last = !path || e.pathIdx[id] >= path.length;
@@ -375,7 +462,7 @@ export class Sim {
           tx = e.finX[id]; ty = e.finY[id];
         } else {
           const t = path![e.pathIdx[id]];
-          if (this.cost(t) === 0) { // something was built in the way: ask for a new path
+          if (this.costFor(id, t) === 0) { // something was built in the way: ask for a new path
             this.goTo(id, { x0: e.gx0[id], y0: e.gy0[id], x1: e.gx1[id], y1: e.gy1[id] }, e.hasFinal[id] ? e.finX[id] : -1, e.finY[id]);
             break;
           }
@@ -390,9 +477,28 @@ export class Sim {
         budget -= dist;
         if (last) { e.moving[id] = 0; e.paths[id] = null; break; }
         e.pathIdx[id]++;
+        if (e.flowGoal[id] >= 0) continue; // next flow-field step
         if (e.pathIdx[id] >= path!.length && !(e.hasFinal[id] && (tx !== e.finX[id] || ty !== e.finY[id]))) { e.moving[id] = 0; e.paths[id] = null; }
       }
     }
+  }
+
+  /** Advance a flow-field unit by one tile (returns false when it stopped). Near its slot it switches to A*. */
+  private flowStep(id: number): boolean {
+    const e = this.ents, w = this.map.w, here = this.tileOf(id);
+    const gt = e.gy0[id] * w + e.gx0[id], x = here % w, y = (here - x) / w;
+    if (Math.max(Math.abs(x - e.gx0[id]), Math.abs(y - e.gy0[id])) <= 3) {
+      e.flowGoal[id] = -1;
+      this.goTo(id, { x0: e.gx0[id], y0: e.gy0[id], x1: e.gx1[id], y1: e.gy1[id] }, e.hasFinal[id] ? e.finX[id] : -1, e.finY[id]);
+      return false;
+    }
+    const p = e.owner[id];
+    const field = this.flows.get(e.flowGoal[id], 'L' + p, (t) => this.cost(t, p));
+    const nxt = FlowFields.next(field, here, w, this.map.h, (t) => this.cost(t, p));
+    if (nxt < 0) { e.flowGoal[id] = -1; this.goTo(id, { x0: e.gx0[id], y0: e.gy0[id], x1: e.gx1[id], y1: e.gy1[id] }, e.hasFinal[id] ? e.finX[id] : -1, e.finY[id]); return false; }
+    e.paths[id] = [nxt]; e.pathIdx[id] = 0;
+    void gt;
+    return true;
   }
 
   // ------------------------------------------------------------------ commands
@@ -407,7 +513,7 @@ export class Sim {
   }
   get pendingCommands(): readonly Command[] { return this.pending; }
 
-  private ownUnits(p: number, ids: number[], filter?: (k: number) => boolean): number[] {
+  ownUnits(p: number, ids: number[], filter?: (k: number) => boolean): number[] {
     const e = this.ents, out: number[] = [];
     for (const id of ids) {
       if (id < 0 || id >= e.count || !e.alive[id] || e.owner[id] !== p || !isUnitKind(e.kind[id])) continue;
@@ -417,12 +523,13 @@ export class Sim {
     return out.sort((a, b) => a - b);
   }
 
-  private canAfford(p: number, cost: number[]): boolean { return cost.every((c, r) => this.ps[p].stock[r] >= c); }
-  private pay(p: number, cost: number[], sign = 1): void { cost.forEach((c, r) => { this.ps[p].stock[r] -= sign * c; }); }
+  canAfford(p: number, cost: number[]): boolean { return cost.every((c, r) => this.ps[p].stock[r] >= c); }
+  pay(p: number, cost: number[], sign = 1): void { cost.forEach((c, r) => { this.ps[p].stock[r] -= sign * c; }); }
 
   private apply(c: Command): void {
     const e = this.ents, { w, h } = this.map, p = c.player;
-    if (p < 0 || p >= this.players) return;
+    if (p < 0 || p >= this.players || this.ps[p].eliminated) return;
+    if (this.mil.apply(c)) return;
     switch (c.type) {
       case 'move': {
         let x = Math.max(0, Math.min(w * FP_ONE - 1, c.x | 0)), y = Math.max(0, Math.min(h * FP_ONE - 1, c.y | 0));
@@ -433,11 +540,29 @@ export class Sim {
           if (near < 0) return;
           t = near; [x, y] = Sim.tileCenterFp(t, w);
         }
-        for (const id of this.ownUnits(p, c.ids)) {
-          this.stop(id);
-          e.task[id] = Task.MOVE;
-          this.goTo(id, { x0: t % w, y0: (t - (t % w)) / w, x1: t % w, y1: (t - (t % w)) / w }, x, y);
+        const units = this.ownUnits(p, c.ids);
+        if (units.length <= 1) {
+          for (const id of units) { this.stop(id); e.task[id] = Task.MOVE; this.goTo(id, this.tileRectAround(t, 0), x, y); }
+          break;
         }
+        // groups: formation slots; big land groups share a flow field to the centre
+        const slots = formationSlots(this, units, t, c.formation === 'line');
+        const land = units.filter((id) => !this.isNaval(id));
+        const useFlow = land.length >= TUNING.groups.flowFieldMinUnits;
+        const used = new Set<number>();
+        units.forEach((id, i) => {
+          let slot = slots[i];
+          if (!this.isNaval(id) && (this.costFor(id, slot) === 0 || used.has(slot))) { const n = this.nearestFree(slot, 6, p, used); if (n >= 0) slot = n; }
+          used.add(slot);
+          const [sx, sy] = Sim.tileCenterFp(slot, w);
+          this.stop(id); e.task[id] = Task.MOVE;
+          this.goTo(id, this.tileRectAround(slot, 0), sx, sy);
+          if (useFlow && !this.isNaval(id)) {
+            // skip A*: follow the shared field until close to the slot
+            e.waitPath[id] = 0; this.pathQueue = this.pathQueue.filter((q) => q !== id);
+            e.flowGoal[id] = t; e.paths[id] = null; e.moving[id] = 1;
+          }
+        });
         break;
       }
       case 'gather': {
@@ -449,6 +574,7 @@ export class Sim {
       case 'interact': {
         const tg = c.target;
         if (tg < 0 || tg >= e.count || !e.alive[tg]) return;
+        if (this.mil.interact(p, c.ids, tg)) return;
         const k = e.kind[tg];
         const workers = this.ownUnits(p, c.ids, (kk) => kk === Kind.WORKER);
         if (k === Kind.ANIMAL) for (const id of workers) { this.stop(id); e.task[id] = Task.HUNT; e.taskEnt[id] = tg; this.goTo(id, this.tileRectAround(this.tileOf(tg))); }
@@ -521,16 +647,15 @@ export class Sim {
     }
   }
 
-  private tileRectAround(t: number): GoalRect { const w = this.map.w, x = t % w, y = (t - x) / w; return { x0: x - 1, y0: y - 1, x1: x + 1, y1: y + 1 }; }
 
-  private workersAt(b: number): number {
+  workersAt(b: number): number {
     const e = this.ents;
     let n = 0;
     for (let id = 0; id < e.count; id++) if (e.alive[id] && e.task[id] === Task.WORK && e.taskEnt[id] === b) n++;
     return n;
   }
 
-  private startGather(id: number, t: number): void {
+  startGather(id: number, t: number): void {
     const e = this.ents;
     const carryKeep = e.carryType[id] === this.res.type[t] ? e.carryAmt[id] : 0;
     this.stop(id);
@@ -556,9 +681,16 @@ export class Sim {
     if (this.tick % 10 === 0) { const b = Math.floor(this.tick / 10) % RING; for (const ps of this.ps) for (let r = 0; r < NUM_RES; r++) ps.ring[r * RING + b] = 0; }
     this.processPaths();
     this.moveUnits();
+    this.syncCarried();
     this.moveAnimals();
+    this.mil.combatTick();
     this.unitTasks();
+    this.mil.moraleTick();
+    this.mil.fireTick();
+    this.mil.moatTick();
     this.production();
+    this.mil.cleanupDead();
+    this.mil.victoryTick();
     this.recount();
     this.upkeep();
     this.updateFog();
@@ -566,7 +698,7 @@ export class Sim {
     this.tick++;
   }
 
-  private mult(p: number): number { return this.ps[p].starving ? ECO.starvingRatePct : 100; }
+  mult(p: number): number { return this.ps[p].starving ? ECO.starvingRatePct : 100; }
 
   private addIncome(p: number, r: number, amt: number): void {
     this.ps[p].stock[r] += amt;
@@ -577,9 +709,10 @@ export class Sim {
   private unitTasks(): void {
     const e = this.ents;
     for (let id = 0; id < e.count; id++) {
-      if (!e.alive[id] || !isUnitKind(e.kind[id])) continue;
+      if (!e.alive[id] || !isUnitKind(e.kind[id]) || e.carrier[id] >= 0) continue;
       const task = e.task[id];
       if (task === Task.IDLE) continue;
+      if (task >= Task.ATTACK) { this.mil.taskTick(id); continue; }
       if (e.waitPath[id]) continue;
       if (!e.moving[id] && !this.arrived(id)) {
         // path failed or never reached: retry later
@@ -633,12 +766,25 @@ export class Sim {
     if (next >= 0) this.startGather(id, next); else this.stop(id);
   }
 
-  private nearestPassable(t: number, R: number): number {
+  /** Nearest walkable tile not in `used` (formation slots). */
+  nearestFree(t: number, R: number, p: number, used: Set<number>): number {
+    const { w, h } = this.map, x0 = t % w, y0 = (t - x0) / w;
+    for (let r = 0; r <= R; r++) for (let dy = -r; dy <= r; dy++) for (let dx = -r; dx <= r; dx++) {
+      if (Math.max(Math.abs(dx), Math.abs(dy)) !== r) continue;
+      const x = x0 + dx, y = y0 + dy;
+      if (x < 0 || y < 0 || x >= w || y >= h) continue;
+      const q = y * w + x;
+      if (!used.has(q) && this.cost(q, p) > 0) return q;
+    }
+    return -1;
+  }
+
+  nearestPassable(t: number, R: number, p = -1): number {
     const { w, h } = this.map, x0 = t % w, y0 = (t - x0) / w;
     for (let r = 1; r <= R; r++) for (let dy = -r; dy <= r; dy++) for (let dx = -r; dx <= r; dx++) {
       if (Math.max(Math.abs(dx), Math.abs(dy)) !== r) continue;
       const x = x0 + dx, y = y0 + dy;
-      if (x >= 0 && y >= 0 && x < w && y < h && this.cost(y * w + x) > 0) return y * w + x;
+      if (x >= 0 && y >= 0 && x < w && y < h && this.cost(y * w + x, p) > 0) return y * w + x;
     }
     return -1;
   }
@@ -689,11 +835,15 @@ export class Sim {
     e.acc[id] += ECO.buildPointsPerWorkerTick * this.mult(p);
     while (e.acc[id] >= 100) { e.acc[id] -= 100; e.progress[b]++; }
     const bp = buildingDef(buildingTypeOfKind(e.kind[b])).buildPoints;
+    e.hp[b] = Math.max(e.hp[b], Math.floor((e.maxHp[b] * Math.min(e.progress[b], bp)) / bp));
     if (e.progress[b] >= bp) { this.completeBuilding(b); this.afterBuilt(id, b); }
   }
 
   private afterBuilt(id: number, b: number): void {
     const e = this.ents, def = buildingDef(buildingTypeOfKind(e.kind[b]));
+    const q = e.queues[id];
+    while (q.length && !(e.alive[q[0]] && isBuildingKind(e.kind[q[0]]) && !e.complete[q[0]])) q.shift();
+    if (q.length) { const nb = q.shift()!; e.task[id] = Task.BUILD; e.taskEnt[id] = nb; this.goTo(id, this.footprintRect(nb, 1)); return; }
     this.stop(id);
     if (def.maxWorkers && this.workersAt(b) < def.maxWorkers) { e.task[id] = Task.WORK; e.taskEnt[id] = b; this.goTo(id, this.footprintRect(b, 1)); }
   }
@@ -766,7 +916,12 @@ export class Sim {
       this.ps[p].housingWarned = false;
       q.shift();
       e.trainProgress[b] = 0;
-      this.spawnUnitNear(p, ut, b);
+      const nu = this.spawnUnitNear(p, ut, b);
+      const rally = e.rally[b];
+      if (rally >= 0) {
+        if (ut === 'worker' && this.res.type[rally] !== RES_NONE && this.res.amount[rally] > 0) this.startGather(nu, rally);
+        else if (this.costFor(nu, rally) > 0 || this.isNaval(nu)) { e.task[nu] = Task.MOVE; const [rx, ry] = Sim.tileCenterFp(rally, this.map.w); this.goTo(nu, this.tileRectAround(rally, 0), rx, ry); }
+      }
       this.ps[p].pop += d.pop;
       this.emit(p, 'trained', UNIT_TYPES.indexOf(ut));
     }
@@ -796,6 +951,17 @@ export class Sim {
         else if (!ps.starving) { ps.starving = true; this.emit(p, 'starving'); }
       }
       if (ps.starving && ps.stock[Res.FOOD] >= 10) { ps.starving = false; this.emit(p, 'fed'); }
+    }
+  }
+
+  /** Units inside a building or ship move with it. */
+  private syncCarried(): void {
+    const e = this.ents;
+    for (let id = 0; id < e.count; id++) {
+      const c = e.carrier[id];
+      if (!e.alive[id] || c < 0) continue;
+      if (!e.alive[c]) { e.carrier[id] = -1; continue; }
+      e.posX[id] = e.posX[c]; e.posY[id] = e.posY[c]; e.moving[id] = 0;
     }
   }
 
@@ -837,7 +1003,7 @@ export class Sim {
       const f = this.fog[p];
       f.begin();
       for (let id = 0; id < e.count; id++) {
-        if (!e.alive[id] || e.owner[id] !== p) continue;
+        if (!e.alive[id] || e.owner[id] !== p || e.carrier[id] >= 0) continue;
         f.stampCircle(e.posX[id] >> FP_SHIFT, e.posY[id] >> FP_SHIFT, e.vision[id]);
       }
       // own territory is always visible
@@ -860,13 +1026,14 @@ export class Sim {
     const D = ECO;
     for (let p = 0; p < this.players; p++) {
       const ps = this.ps[p];
+      if (ps.eliminated || this.winner >= 0) continue;
       if (ps.landOwned * 100 >= D.dominationPct * this.totalLand) {
-        if (++ps.dominationTicks >= D.dominationHoldTicks) { this.winner = p; this.emit(p, 'victory'); }
+        if (++ps.dominationTicks >= D.dominationHoldTicks) { this.winner = p; this.emit(p, 'victory', 0); }
       } else ps.dominationTicks = 0;
     }
   }
 
-  private emit(player: number, type: string, a?: number, b?: number): void { this.events.push({ tick: this.tick, player, type, a, b }); }
+  emit(player: number, type: string, a?: number, b?: number): void { this.events.push({ tick: this.tick, player, type, a, b }); }
   drainEvents(): SimEvent[] { const ev = this.events; this.events = []; return ev; }
   drainChangedTiles(): number[] { const c = this.changedTiles; this.changedTiles = []; return c; }
 
@@ -878,7 +1045,19 @@ export class Sim {
   /** Is entity `id` visible to `viewer`? (-1 = spectator sees all.) */
   visibleTo(id: number, viewer: number): boolean {
     const e = this.ents;
+    if (e.carrier[id] >= 0) return false;
     if (viewer < 0 || e.owner[id] === viewer) return true;
+    if (isUnitKind(e.kind[id]) && unitDef(unitTypeOfKind(e.kind[id])).stealth) {
+      // stealthed units are only seen by enemies within 2 tiles of one of their entities
+      const R = 2 * FP_ONE;
+      let seen = false;
+      for (let o = 0; o < e.count && !seen; o++) {
+        if (!e.alive[o] || e.owner[o] !== viewer || e.carrier[o] >= 0) continue;
+        const dx = e.posX[o] - e.posX[id], dy = e.posY[o] - e.posY[id];
+        seen = dx * dx + dy * dy <= R * R;
+      }
+      if (!seen) return false;
+    }
     if (isBuildingKind(e.kind[id])) {
       // buildings are remembered once seen (any footprint tile explored)
       const r = this.footprintRect(id);
@@ -910,6 +1089,11 @@ export class Sim {
     hs.u32(this.pending.length);
     for (const q of this.pathQueue) hs.u32(q);
     for (const s of this.rngAnimals.getState()) hs.u32(s);
+    for (const s of this.rngFire.getState()) hs.u32(s);
+    hs.bytes(this.burning);
+    for (const t of this.burningList) hs.u32(t);
+    for (const t of this.trenchList) hs.u32(t);
+    for (const ps of this.ps) hs.u32(ps.eliminated ? 1 : 0);
     hs.u32(this.winner + 1);
     return hs.digest();
   }
@@ -926,7 +1110,7 @@ export function costOf(wood: number, stone: number, gold: number, food: number):
 function resIndex(name: string): number { return ['food', 'wood', 'stone', 'gold', 'carbon', 'adamite'].indexOf(name); }
 function resKey(r: number): 'wood' | 'stone' | 'gold' | 'carbon' | 'adamite' { return (['food', 'wood', 'stone', 'gold', 'carbon', 'adamite'] as const)[r] as 'wood'; }
 
-export const ENTITY_STRIDE = 8; // id, kind, owner, posX, posY, flags, a, b
+export const ENTITY_STRIDE = 9; // id, kind, owner, posX, posY, flags, a, b, hp‰
 
 /**
  * Fog-filtered entity list for one viewer (what the renderer may know about).
@@ -944,11 +1128,11 @@ export function packVisibleEntities(sim: Sim, viewer: number): Int32Array {
     const flags = (e.moving[id] ? 1 : 0) | (e.complete[id] ? 2 : 0) | (e.carryAmt[id] > 0 ? 4 : 0);
     if (isUnitKind(k)) { a = e.task[id]; b = e.carryAmt[id] | (e.carryType[id] << 16); }
     else if (isBuildingKind(k)) {
-      a = e.btype[id] | (e.level[id] << 8) | (e.upTo[id] << 16);
+      a = e.btype[id] | (e.level[id] << 8) | (e.upTo[id] << 16) | (Math.min(15, sim.mil.garrisonCount(id)) << 20);
       const bp = buildingDef(buildingTypeOfKind(k)).buildPoints;
       b = e.complete[id] ? 1000 : bp > 0 ? Math.floor((e.progress[id] * 1000) / bp) : 1000;
     } else a = e.food[id];
-    out.push(id, k, e.owner[id], e.posX[id], e.posY[id], flags, a, b);
+    out.push(id, k, e.owner[id], e.posX[id], e.posY[id], flags, a, b, e.maxHp[id] > 0 ? Math.max(0, Math.floor((e.hp[id] * 1000) / e.maxHp[id])) : 1000);
   }
   return new Int32Array(out);
 }

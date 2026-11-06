@@ -38,6 +38,21 @@ export function findPlacement(sim: Sim, p: number, btype: (typeof BUILDING_TYPES
   return -1;
 }
 
+/** Small starting army per player (4 spearmen, 2 archers) so scripted matches always include combat. */
+export function addStartingArmy(sim: Sim): void {
+  for (let p = 0; p < sim.players; p++) {
+    const cap = ownedOfKind(sim, p, Kind.BUILDING_BASE)[0];
+    if (cap === undefined) continue;
+    const r = sim.footprintRect(cap, 2);
+    for (const u of ['spearman', 'spearman', 'spearman', 'spearman', 'archer', 'archer'] as const) {
+      const t = sim.freeTileNear(r, false);
+      const id = sim.spawnUnitAt(p, u, t);
+      r.x0--; r.y0--; r.x1++; r.y1++;
+      void id;
+    }
+  }
+}
+
 export function issue(sim: Sim, p: number, body: CommandBody): void {
   const seq = sim.ps[p].seq++;
   sim.enqueue({ ...body, tick: sim.tick, player: p, seq } as Command);
@@ -46,6 +61,7 @@ export function issue(sim: Sim, p: number, body: CommandBody): void {
 /** Runs a match with a seeded scripted command log; returns state hash at each checkpoint tick. */
 export function scriptedRun(seed: string, size: MapSize, players: number, checkpoints: number[], onTick?: (sim: Sim) => void): Record<number, number> {
   const sim = new Sim({ seed, size, players });
+  addStartingArmy(sim);
   const rng = Rng.stream(seed, 'script');
   const out: Record<number, number> = {};
   const last = Math.max(...checkpoints);
@@ -73,7 +89,13 @@ export function scriptTick(sim: Sim, rng: Rng): void {
       const capTile = sim.ents.anchor[cap];
       const workers = ownedOfKind(sim, p, Kind.WORKER);
       const idle = workers.filter((id) => sim.ents.task[id] === Task.IDLE);
+      const farms = ownedOfKind(sim, p, Kind.BUILDING_BASE + BUILDING_TYPES.indexOf('farm')).filter((f) => sim.ents.complete[f]);
       for (const id of idle) {
+        if (sim.ps[p].stock[Res.FOOD] < 150 && farms.length) {
+          // feed the people: put idle workers on a farm with a free slot
+          const f = farms.find((b) => sim.workersAt(b) < 2);
+          if (f !== undefined) { issue(sim, p, { type: 'interact', ids: [id], target: f }); continue; }
+        }
         const pick = rng.int(4);
         if (pick === 0) {
           // hunt the nearest visible-or-not animal (script only, not an AI)
@@ -93,9 +115,36 @@ export function scriptTick(sim: Sim, rng: Rng): void {
       if (ps.stock[Res.WOOD] >= 70 && ps.pop + 2 >= ps.housing && workers.length) {
         const a = findPlacement(sim, p, 'house', capTile);
         if (a >= 0) issue(sim, p, { type: 'place', ids: [workers[0]], btype: BUILDING_TYPES.indexOf('house'), tile: a });
-      } else if (ps.stock[Res.WOOD] >= 120 && workers.length > 3 && rng.int(3) === 0) {
+      } else if (ps.stock[Res.WOOD] >= 70 && workers.length > 3 && (ps.stock[Res.FOOD] < 150 || rng.int(3) === 0)) {
         const a = findPlacement(sim, p, 'farm', capTile);
         if (a >= 0) issue(sim, p, { type: 'place', ids: [workers[1]], btype: BUILDING_TYPES.indexOf('farm'), tile: a });
+      }
+      // ---- military (Phase 3) ----
+      const barracks = ownedOfKind(sim, p, Kind.BUILDING_BASE + BUILDING_TYPES.indexOf('barracks'));
+      if (!barracks.length && t > 1200 && ps.stock[Res.WOOD] >= 120 && ps.stock[Res.STONE] >= 30 && workers.length > 2) {
+        const a = findPlacement(sim, p, 'barracks', capTile);
+        if (a >= 0) issue(sim, p, { type: 'place', ids: [workers[2]], btype: BUILDING_TYPES.indexOf('barracks'), tile: a });
+      } else if (barracks.length && sim.ents.complete[barracks[0]] && sim.ents.queues[barracks[0]].length < 1 && ps.stock[Res.FOOD] >= 60 && ps.stock[Res.WOOD] >= 50) {
+        issue(sim, p, { type: 'train', building: barracks[0], utype: UNIT_TYPES.indexOf(rng.int(2) ? 'spearman' : 'archer') });
+      }
+      if (t % 300 === 3) {
+        const army = [...ownedOfKind(sim, p, Kind.SPEARMAN), ...ownedOfKind(sim, p, Kind.ARCHER)].filter((id) => sim.ents.task[id] === Task.IDLE);
+        if (army.length) {
+          // attack the nearest enemy on the same continent, else patrol near the capital
+          let target = -1, bd = 80 * FP_ONE;
+          const home = sim.map.continent[sim.tileOf(army[0])];
+          for (let o = 0; o < sim.ents.count; o++) if (sim.ents.alive[o] && sim.ents.owner[o] !== p && sim.ents.owner[o] < sim.players && sim.ents.carrier[o] < 0 && !sim.ps[sim.ents.owner[o]].eliminated && sim.map.continent[sim.tileOf(o)] === home) {
+            const d = Math.abs(sim.ents.posX[o] - sim.ents.posX[army[0]]) + Math.abs(sim.ents.posY[o] - sim.ents.posY[army[0]]);
+            if (d < bd) { bd = d; target = o; }
+          }
+          if (target >= 0) issue(sim, p, { type: 'attack', ids: army, target });
+          else issue(sim, p, { type: 'patrol', ids: army, x: (capTile % w) * FP_ONE + rng.int(16 * FP_ONE) - 8 * FP_ONE, y: Math.floor(capTile / w) * FP_ONE + rng.int(16 * FP_ONE) - 8 * FP_ONE });
+        }
+      }
+      if (t % 700 === 3 && ps.stock[Res.STONE] >= 40 && workers.length > 2) {
+        const x = (capTile % w) + 6, y = Math.floor(capTile / w) - 2;
+        const line = [0, 1, 2].map((k) => (y + k) * w + x);
+        issue(sim, p, rng.int(2) ? { type: 'placeLine', ids: [workers[0]], btype: BUILDING_TYPES.indexOf('wall'), tiles: line } : { type: 'dig', ids: [workers[1]], tiles: line.map((q) => q + 1) });
       }
     }
   }

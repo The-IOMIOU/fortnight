@@ -70,21 +70,72 @@
     "dominationHoldTicks": 3000
   },
   "unitTypes": {
-    "worker":  { "food": 50,  "wood": 0,  "trainTicks": 120, "pop": 1, "speed": 280, "vision": 5 },
-    "settler": { "food": 120, "wood": 60, "trainTicks": 250, "pop": 2, "speed": 240, "vision": 5 },
-    "scout":   { "food": 40,  "wood": 0,  "trainTicks": 100, "pop": 1, "speed": 358, "vision": 7 }
+    "scout":     { "food": 40,  "wood": 0,   "gold": 0,  "trainTicks": 100, "pop": 1, "speed": 358, "vision": 7, "hp": 50,  "attack": 3,  "range": 12, "cooldown": 12, "armor": 0, "vsUnits": 100, "vsBuildings": 30,  "water": 0, "stealth": 0, "capacity": 0 },
+    "worker":    { "food": 50,  "wood": 0,   "gold": 0,  "trainTicks": 120, "pop": 1, "speed": 280, "vision": 5, "hp": 40,  "attack": 2,  "range": 12, "cooldown": 15, "armor": 0, "vsUnits": 100, "vsBuildings": 30,  "water": 0, "stealth": 0, "capacity": 0 },
+    "settler":   { "food": 120, "wood": 60,  "gold": 0,  "trainTicks": 250, "pop": 2, "speed": 240, "vision": 5, "hp": 60,  "attack": 0,  "range": 0,  "cooldown": 0,  "armor": 0, "vsUnits": 0,   "vsBuildings": 0,   "water": 0, "stealth": 0, "capacity": 0 },
+    "spearman":  { "food": 50,  "wood": 20,  "gold": 0,  "trainTicks": 150, "pop": 1, "speed": 260, "vision": 6, "hp": 110, "attack": 11, "range": 12, "cooldown": 10, "armor": 2, "vsUnits": 100, "vsBuildings": 50,  "water": 0, "stealth": 0, "capacity": 0 },
+    "archer":    { "food": 40,  "wood": 45,  "gold": 0,  "trainTicks": 160, "pop": 1, "speed": 270, "vision": 8, "hp": 65,  "attack": 8,  "range": 65, "cooldown": 15, "armor": 0, "vsUnits": 100, "vsBuildings": 20,  "water": 0, "stealth": 0, "capacity": 0 },
+    "rider":     { "food": 80,  "wood": 0,   "gold": 40, "trainTicks": 200, "pop": 2, "speed": 430, "vision": 8, "hp": 150, "attack": 13, "range": 13, "cooldown": 12, "armor": 1, "vsUnits": 100, "vsBuildings": 40,  "water": 0, "stealth": 0, "capacity": 0 },
+    "ram":       { "food": 0,   "wood": 120, "gold": 0,  "trainTicks": 300, "pop": 3, "speed": 150, "vision": 4, "hp": 260, "attack": 30, "range": 13, "cooldown": 25, "armor": 6, "vsUnits": 20,  "vsBuildings": 500, "water": 0, "stealth": 0, "capacity": 0 },
+    "spy":       { "food": 40,  "wood": 0,   "gold": 40, "trainTicks": 150, "pop": 1, "speed": 320, "vision": 9, "hp": 40,  "attack": 0,  "range": 0,  "cooldown": 0,  "armor": 0, "vsUnits": 0,   "vsBuildings": 0,   "water": 0, "stealth": 1, "capacity": 0 },
+    "saboteur":  { "food": 40,  "wood": 0,   "gold": 50, "trainTicks": 180, "pop": 1, "speed": 300, "vision": 6, "hp": 50,  "attack": 12, "range": 12, "cooldown": 20, "armor": 0, "vsUnits": 30,  "vsBuildings": 300, "water": 0, "stealth": 1, "capacity": 0 },
+    "warship":   { "food": 0,   "wood": 150, "gold": 20, "trainTicks": 300, "pop": 3, "speed": 300, "vision": 9, "hp": 220, "attack": 12, "range": 55, "cooldown": 18, "armor": 2, "vsUnits": 100, "vsBuildings": 60,  "water": 1, "stealth": 0, "capacity": 0 },
+    "transport": { "food": 0,   "wood": 100, "gold": 0,  "trainTicks": 220, "pop": 1, "speed": 320, "vision": 6, "hp": 160, "attack": 0,  "range": 0,  "cooldown": 0,  "armor": 1, "vsUnits": 0,   "vsBuildings": 0,   "water": 1, "stealth": 0, "capacity": 8 }
   },
   "buildingTypes": {
-    "capital":    { "size": 3, "wood": 0,  "stone": 0,  "buildPoints": 0,   "housing": 10, "territory": 7, "vision": 9 },
-    "settlement": { "size": 2, "wood": 0,  "stone": 0,  "buildPoints": 0,   "housing": 5,  "territory": 6, "vision": 8 },
-    "house":      { "size": 1, "wood": 40, "stone": 0,  "buildPoints": 200, "housing": 6,  "territory": 0, "vision": 3 },
-    "farm":       { "size": 2, "wood": 60, "stone": 0,  "buildPoints": 250, "housing": 0,  "territory": 0, "vision": 3, "maxWorkers": 2 },
-    "lumberCamp": { "size": 1, "wood": 50, "stone": 0,  "buildPoints": 150, "housing": 0,  "territory": 0, "vision": 4 },
-    "mineCamp":   { "size": 1, "wood": 60, "stone": 0,  "buildPoints": 200, "housing": 0,  "territory": 0, "vision": 4 },
-    "fishingHut": { "size": 1, "wood": 50, "stone": 0,  "buildPoints": 180, "housing": 0,  "territory": 0, "vision": 4, "maxWorkers": 3 },
-    "storehouse": { "size": 2, "wood": 80, "stone": 20, "buildPoints": 300, "housing": 0,  "territory": 0, "vision": 4 },
-    "outpost":    { "size": 1, "wood": 40, "stone": 40, "buildPoints": 250, "housing": 0,  "territory": 4, "vision": 7 }
+    "capital":    { "size": 3, "wood": 0,   "stone": 0,  "buildPoints": 0,   "housing": 10, "territory": 7, "vision": 9, "hp": 3000, "attack": 6, "range": 70, "cooldown": 15, "garrison": 10 },
+    "settlement": { "size": 2, "wood": 0,   "stone": 0,  "buildPoints": 0,   "housing": 5,  "territory": 6, "vision": 8, "hp": 1500, "attack": 0, "range": 70, "cooldown": 15, "garrison": 6 },
+    "house":      { "size": 1, "wood": 40,  "stone": 0,  "buildPoints": 200, "housing": 6,  "territory": 0, "vision": 3, "hp": 300,  "attack": 0, "range": 0,  "cooldown": 0,  "garrison": 0 },
+    "farm":       { "size": 2, "wood": 60,  "stone": 0,  "buildPoints": 250, "housing": 0,  "territory": 0, "vision": 3, "hp": 250,  "attack": 0, "range": 0,  "cooldown": 0,  "garrison": 0, "maxWorkers": 2 },
+    "lumberCamp": { "size": 1, "wood": 50,  "stone": 0,  "buildPoints": 150, "housing": 0,  "territory": 0, "vision": 4, "hp": 300,  "attack": 0, "range": 0,  "cooldown": 0,  "garrison": 0 },
+    "mineCamp":   { "size": 1, "wood": 60,  "stone": 0,  "buildPoints": 200, "housing": 0,  "territory": 0, "vision": 4, "hp": 300,  "attack": 0, "range": 0,  "cooldown": 0,  "garrison": 0 },
+    "fishingHut": { "size": 1, "wood": 50,  "stone": 0,  "buildPoints": 180, "housing": 0,  "territory": 0, "vision": 4, "hp": 250,  "attack": 0, "range": 0,  "cooldown": 0,  "garrison": 0, "maxWorkers": 3 },
+    "storehouse": { "size": 2, "wood": 80,  "stone": 20, "buildPoints": 300, "housing": 0,  "territory": 0, "vision": 4, "hp": 600,  "attack": 0, "range": 0,  "cooldown": 0,  "garrison": 0 },
+    "outpost":    { "size": 1, "wood": 40,  "stone": 40, "buildPoints": 250, "housing": 0,  "territory": 4, "vision": 7, "hp": 400,  "attack": 0, "range": 0,  "cooldown": 0,  "garrison": 0 },
+    "barracks":   { "size": 2, "wood": 120, "stone": 30, "buildPoints": 350, "housing": 0,  "territory": 0, "vision": 4, "hp": 900,  "attack": 0, "range": 0,  "cooldown": 0,  "garrison": 0 },
+    "workshop":   { "size": 2, "wood": 150, "stone": 60, "buildPoints": 400, "housing": 0,  "territory": 0, "vision": 4, "hp": 800,  "attack": 0, "range": 0,  "cooldown": 0,  "garrison": 0 },
+    "dock":       { "size": 2, "wood": 120, "stone": 0,  "buildPoints": 350, "housing": 0,  "territory": 0, "vision": 6, "hp": 700,  "attack": 0, "range": 0,  "cooldown": 0,  "garrison": 0 },
+    "wall":       { "size": 1, "wood": 0,   "stone": 8,  "buildPoints": 50,  "housing": 0,  "territory": 0, "vision": 3, "hp": 500,  "attack": 0, "range": 0,  "cooldown": 0,  "garrison": 0 },
+    "gate":       { "size": 1, "wood": 10,  "stone": 20, "buildPoints": 80,  "housing": 0,  "territory": 0, "vision": 3, "hp": 600,  "attack": 0, "range": 0,  "cooldown": 0,  "garrison": 0 },
+    "tower":      { "size": 1, "wood": 40,  "stone": 60, "buildPoints": 300, "housing": 0,  "territory": 0, "vision": 9, "hp": 800,  "attack": 9, "range": 70, "cooldown": 15, "garrison": 4 }
   },
+  "combat": {
+    "heightBonusPct": 25,
+    "heightPenaltyPct": 15,
+    "forestCoverPct": 25,
+    "trenchCoverPct": 35,
+    "trenchMeleePenaltyPct": 20,
+    "fortifiedPct": 40,
+    "weaponTierPct": 15,
+    "armorTierPct": 15,
+    "garrisonArrowBonus": 3,
+    "acquireRange": 7,
+    "meleeBlockedSearch": 12
+  },
+  "morale": {
+    "max": 100,
+    "routBelow": 25,
+    "rallyAbove": 55,
+    "lossPerHpPct": 150,
+    "allyDeathLoss": 15,
+    "allyDeathRadius": 4,
+    "recoverPerSecond": 4,
+    "recoverDelayTicks": 50
+  },
+  "terrainEdit": {
+    "trenchBuildPoints": 120,
+    "trenchMoveCost": 35,
+    "moatFillTicks": 20
+  },
+  "fire": {
+    "burnTicks": 300,
+    "spreadEveryTicks": 20,
+    "spreadChancePct": 35,
+    "unitDamagePerSecond": 6,
+    "buildingDamagePerSecond": 25,
+    "igniteTicks": 30
+  },
+  "groups": { "flowFieldMinUnits": 6, "flowFieldCache": 12, "transportBoardRange": 2 },
   "upgrades": {
     "capital2": { "wood": 150, "stone": 100, "gold": 0,   "ticks": 400, "housing": 10, "territory": 2 },
     "capital3": { "wood": 300, "stone": 250, "gold": 100, "ticks": 600, "housing": 10, "territory": 2 },

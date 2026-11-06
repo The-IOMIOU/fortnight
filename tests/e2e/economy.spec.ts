@@ -262,6 +262,6 @@ test('F-099 / F-170 menu: race and rivals shape the started match', async ({ pag
   await page.waitForFunction(() => (window as any).__game?.state().screen === 'game' && (window as any).__game.state().stats, null, { timeout: 60_000 });
   const d = await g(page, `return await G.dump();`);
   console.log(`[F-099] Wayfolk start: ${JSON.stringify(d.units)}, stock ${JSON.stringify(d.stock)}, census rows ${d.census.length}`);
-  expect(d.units).toEqual({ scout: 1, worker: 3, settler: 0 });
+  expect(Object.entries(d.units).filter(([, n]) => n)).toEqual([['scout', 1], ['worker', 3]]); // every other unit type starts at 0
   expect(d.census.length).toBe(3);
 });

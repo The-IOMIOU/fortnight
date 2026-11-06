@@ -450,6 +450,9 @@ describe('F-059 stats match the simulation', () => {
       expect(s.units.worker).toBe(workers);
       expect(s.stock).toEqual(sim.ps[p].stock);
       expect(s.foodBalancePerMin).toBe(s.foodIncomePerMin - pop * ECO.foodPerPopPerMin);
+      let army = 0;
+      for (let id = 0; id < e.count; id++) if (e.alive[id] && e.owner[id] === p && [Kind.SPEARMAN, Kind.ARCHER, Kind.RIDER, Kind.RAM, Kind.SABOTEUR, Kind.WARSHIP].includes(e.kind[id] as never)) army += Math.ceil((TUNING.unitTypes[UNIT_TYPES[e.kind[id] - 1]].attack * e.maxHp[id]) / 100);
+      expect(s.army).toBe(army);
       expect(s.continents.reduce((a, c) => a + c.owned, 0)).toBeLessThanOrEqual(s.landOwned);
       if (p === 0) console.log(`[F-059] p0 @${s.tick}: land ${s.landOwned}/${s.landTotal}, pop ${s.pop}/${s.housing}, stock ${JSON.stringify(s.stock)}, income/min ${JSON.stringify(s.incomePerMin)}, deposits found ${JSON.stringify(s.depositsFound)}`);
     }

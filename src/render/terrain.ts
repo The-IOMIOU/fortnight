@@ -17,6 +17,8 @@ export function tileTopY(map: MapPayload, i: number): number {
   const b = map.biome[i];
   if (b === Biome.OCEAN || b === Biome.ICE) return OCEAN_Y + (b === Biome.ICE ? 0.04 : 0);
   if (b === Biome.LAKE || b === Biome.RIVER) return map.height[i] * LEVEL_H - INLAND_WATER_DROP;
+  if (b === Biome.TRENCH) return map.height[i] * LEVEL_H - 0.32;
+  if (b === Biome.MOAT) return map.height[i] * LEVEL_H - 0.36;
   return map.height[i] * LEVEL_H;
 }
 

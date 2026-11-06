@@ -20,6 +20,10 @@ const FIELDS: [string, Ctor][] = [
   ['upTo', Uint8Array], ['upProgress', Int32Array], ['trainProgress', Int32Array], ['yieldPct', Int32Array],
   // wildlife
   ['food', Int32Array], ['homeTile', Int32Array],
+  // combat (Phase 3)
+  ['hp', Int32Array], ['maxHp', Int32Array], ['morale', Int32Array], ['cooldown', Int32Array], ['lastHit', Int32Array],
+  ['weaponTier', Uint8Array], ['armorTier', Uint8Array], ['carrier', Int32Array],
+  ['patrolA', Int32Array], ['patrolB', Int32Array], ['rally', Int32Array], ['flowGoal', Int32Array], ['resumeTask', Uint8Array],
 ];
 
 export class Entities {
@@ -35,6 +39,9 @@ export class Entities {
   btype!: Uint8Array; level!: Uint8Array; progress!: Int32Array; anchor!: Int32Array; complete!: Uint8Array;
   upTo!: Uint8Array; upProgress!: Int32Array; trainProgress!: Int32Array; yieldPct!: Int32Array;
   food!: Int32Array; homeTile!: Int32Array;
+  hp!: Int32Array; maxHp!: Int32Array; morale!: Int32Array; cooldown!: Int32Array; lastHit!: Int32Array;
+  weaponTier!: Uint8Array; armorTier!: Uint8Array; carrier!: Int32Array;
+  patrolA!: Int32Array; patrolB!: Int32Array; rally!: Int32Array; flowGoal!: Int32Array; resumeTask!: Uint8Array;
   /** Path (tile list) per entity; null when none. */
   paths: (number[] | null)[] = [];
   /** Training queue (unit type indices) per building. */
@@ -72,6 +79,7 @@ export class Entities {
     this.posX[id] = x; this.posY[id] = y; this.tgtX[id] = x; this.tgtY[id] = y;
     this.speed[id] = speed; this.vision[id] = vision;
     this.taskEnt[id] = -1; this.taskTile[id] = -1; this.anchor[id] = -1; this.homeTile[id] = -1; this.srcEnt[id] = -1;
+    this.carrier[id] = -1; this.patrolA[id] = -1; this.patrolB[id] = -1; this.rally[id] = -1; this.flowGoal[id] = -1; this.lastHit[id] = -100000;
     this.paths[id] = null; this.queues[id] = [];
     return id;
   }

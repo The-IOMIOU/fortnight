@@ -12,6 +12,18 @@ Status: **approved 2026-11-05** ("okay do phase 1") with these owner amendments:
 6. **Phase 2 with full autonomy (2026-11-06).** Decisions taken without asking, all recorded in the ledger: the Baseline race (P-001); single-unit A* pathfinding now (flow fields stay Phase 3, F-078); a move order onto water goes to the nearest walkable tile; the simulation worker is inlined into the page bundle so offline play needs no extra file.
 7. **Higher-quality models (2026-11-06, owner request, F-184):** detailed but stylized models generated in code. Photo-realistic models would need external texture/model assets, which conflicts with the small-repo and original-art rules (§9) and the performance budget; that remains an option for later (CC0 packs or generated models, recorded in ASSETS.md).
 
+8. **Phase 3 decisions (2026-11-06, owner: "do 3 and commit").**
+   - **Conquest:** you win when you are the only player with a capital (spec §1.1, "every enemy capital destroyed").
+   - **Elimination:** a player who has lost the capital *and* every settlement is eliminated. Their units and buildings are removed and their land is released. A human who is eliminated becomes a spectator of the whole map.
+   - **Trenches:** they flood automatically, one tile every 2 s, once they touch the sea, a lake, a river or another moat. You get a dry trench by not connecting it.
+   - **Morale:** soldiers rout at roughly half health (`morale.lossPerHpPct` raised from 60 to 150 after testing showed units dying before ever routing).
+   - **Melee units:** when they can't reach their target (wall + moat), they try the nearest enemy defence once, then give up for 10 s. This prevents the path-search storm found during testing.
+   - **Fire:** set by an explicit "Set fire" order.
+   - **Formations:** simple: box (default) or line.
+   - **Spies and saboteurs:** stealth only for now. Their actions (reveal, sabotage, steal, poison) are Phase 6 (F-140–F-142).
+   - **Heroes:** optional and not built (F-073, Phase 9).
+   - **Demolishing your own building:** gives no refund.
+
 Items in §7 that weren't commented on are taken as accepted. Proposals P-001…P-005 stay open until answered.
 
 Companion files: [FEATURES.md](FEATURES.md) (feature ledger), [CONTINENT_STRATEGY_GAME.md](CONTINENT_STRATEGY_GAME.md) (master spec).
