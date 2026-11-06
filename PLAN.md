@@ -79,6 +79,11 @@ Status: **approved 2026-11-05** ("okay do phase 1") with these owner amendments:
    - **Unit caps:** population per player 200 (Small/Medium), 150 (Large), 100 (Huge), also with the "no housing cap" test option (it lifts housing, not the performance cap). Effects drawn: 60 % on Large, 35 % on Huge.
    - **Tutorial:** 7 short steps on an empty Small map, each checked from the game state, skippable. **Touch:** tap, drag, pinch, long press.
    - **Heroes (F-073)** stay unbuilt: optional, needs the owner's go-ahead.
+15. **Start screen and 3D globe (2026-11-06, owner requests after Phase 9).**
+   - **Start screen:** pixel-font title over a living planet; PLAY / MULTIPLAYER / TUTORIAL (CONTINUE with a save), Settings in the footer; MULTIPLAYER has Host and Join. New Game is one level down (`?menu=new` opens it directly).
+   - **Globe = a real 3D planet** (owner: "an actual globe planet, not a repeating confusing square", "full on 360 up down globe just like earth"). This settles the F-195 question: the game world is drawn wrapped onto a sphere (x = longitude, z = latitude, poles at the top and bottom rows) by one vertex-shader projection used by every material; the camera orbits the planet and pans freely over the poles. The simulation keeps its grid (east–west wrap, poles are map edges in open ocean), so nothing in the rules changed.
+   - **Globe maps are 2:1** (width = 2 × height, same area as the square size), so tiles are square at the equator. The top and bottom 12 % of rows stay ocean under polar ice caps (the rows pinch together at the poles). Tiles get narrower towards the poles on screen (like a globe), not in the rules.
+   - **Sun:** circles the planet once per game day, placed so your home is dark exactly when the game says it is night; the dark side keeps enough light to play. A setting ("3D globe view for globe maps") switches the next game back to the flat wrap-around view.
 
 Items in §7 that weren't commented on are taken as accepted. Proposals P-001…P-005 stay open until answered.
 

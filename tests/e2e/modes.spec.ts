@@ -44,40 +44,38 @@ test('F-193 modes preset size, bots and world; F-196 more settings shape the mat
   console.log(`[F-196] started Short with day length 1800 ticks (state ${s.dayLength}), globe wrap ${wrap}, ${s.stats.census.length} players; settings remembered after reload`);
 });
 
-test('F-195 globe: camera circles the world, picking and unit screen positions work across the seam', async ({ page }) => {
+test('F-195 globe: a 3D planet; the camera goes round and over the poles; picking and screen positions on the sphere; flat view as a setting', async ({ page }) => {
   await openGame(page, 'globe-ui', 'small', '&world=globe&sea=mixed&reveal=1');
   const r = await g(page, `
-    const W = game.map.w;
-    game.cam.distance = 40; game.cam.setTarget(1, game.map.h / 2);
+    const W = game.map.w, H = game.map.h, on = game.globeOn();
+    const centre = () => game.pickTile(innerWidth / 2, innerHeight / 2);
+    game.cam.setTarget(2, H / 2); const a = centre();
+    game.cam.panWorld(-6, 0); const b = { x: game.cam.targetX, z: game.cam.targetZ }; // west, across the seam
+    // keep panning north: over the north pole, down the far side, over the south pole, back home
+    game.cam.setTarget(W / 4, H / 2);
+    const half = [];
+    for (let k = 0; k < 40; k++) { game.cam.panWorld(0, -H / 20); if (k === 19) half.push(game.cam.targetX, game.cam.targetZ); }
+    const c = { x: game.cam.targetX, z: game.cam.targetZ };
+    const u = game.screenOf({ x: c.x, y: 0, z: c.z });
     await new Promise((res) => setTimeout(res, 300));
-    const callsNear = game.renderer.info.render.calls;
-    const pickWest = game.pickTile(innerWidth * 0.3, innerHeight / 2), pickEast = game.pickTile(innerWidth * 0.7, innerHeight / 2);
-    game.cam.setTarget(-10, game.map.h / 2); const wrapped = game.cam.targetX;
-    game.cam.setTarget(W / 2, game.map.h / 2);
-    await new Promise((res) => setTimeout(res, 300));
-    const callsMid = game.renderer.info.render.calls;
-    // a unit near the east edge, seen from the west side of the seam, projects next to the camera
-    game.cam.setTarget(1, game.map.h / 2);
-    const s = game.screenOf({ x: W - 1, y: 0, z: game.map.h / 2 });
-    return { W, pickWest, pickEast, wrapped, callsNear, callsMid, sx: s.x, inner: innerWidth };
+    return { W, H, on, a, b, half, c, u, iw: innerWidth, ih: innerHeight };
   `);
   console.log(`[F-195] ${JSON.stringify(r)}`);
-  expect(r.pickWest.x).toBeGreaterThan(r.W - 20); // west of the seam = the east end of the map
-  expect(r.pickEast.x).toBeLessThan(20);
-  expect(r.wrapped).toBe(r.W - 10);
-  expect(r.callsNear).toBeGreaterThan(r.callsMid); // the seam copy is drawn only when visible
-  expect(r.sx).toBeGreaterThan(0);
-  expect(r.sx).toBeLessThan(r.inner);
-  // curved view toggle
+  expect(r.on).toBe(1);
+  expect(r.W).toBe(2 * r.H);
+  expect(Math.abs(r.a.x - 2) < 1.5 || Math.abs(r.a.x - 2 - r.W) < 1.5).toBe(true); // picking at the screen centre hits the target
+  expect(r.b.x).toBeGreaterThan(r.W - 8);                                             // west across the seam
+  expect(Math.abs(r.half[0] - (r.W / 4 + r.W / 2))).toBeLessThan(2);                 // half way: the other side of the planet
+  expect(Math.abs(r.half[1] - r.H / 2)).toBeLessThan(2);
+  expect(Math.abs(r.c.x - r.W / 4)).toBeLessThan(2);                                 // a full turn over both poles: back home
+  expect(Math.abs(r.c.z - r.H / 2)).toBeLessThan(2);
+  expect(Math.abs(r.u.x - r.iw / 2)).toBeLessThan(r.iw * 0.15);                       // the target projects near the screen centre
+  // the setting switches the next game to the flat view
   await page.getByTestId('settings-btn').click();
-  const curveOn = await g(page, 'return game.curveValue();');
-  await page.getByTestId('globe-curve').uncheck();
-  const curveOff = await g(page, 'return game.curveValue();');
-  await page.getByTestId('globe-curve').check();
-  console.log(`[F-195] curved view: on ${curveOn}, off ${curveOff}`);
-  expect(curveOn).toBeGreaterThan(0);
-  expect(curveOff).toBe(0);
-  await page.getByTestId('settings').getByRole('button', { name: 'Close' }).click();
+  await page.getByTestId('globe-view').uncheck();
+  await openGame(page, 'globe-ui', 'small', '&world=globe&sea=mixed&reveal=1');
+  expect(await g(page, 'return game.globeOn();')).toBe(0);
+  await page.evaluate(() => { const s = JSON.parse(localStorage.getItem('fortnight.settings.v1') || '{}'); s.globeView = true; localStorage.setItem('fortnight.settings.v1', JSON.stringify(s)); });
 });
 
 test('F-197 / F-198 test options: confirmation, cancel, modified badge, extra speeds, survives save/load', async ({ page, browser }) => {

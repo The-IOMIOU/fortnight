@@ -3,7 +3,7 @@
 // Fog of war, ownership overlay and day/night lighting are applied in a small custom shader.
 
 import * as THREE from 'three';
-import { CURVE } from './curve';
+import { GLOBE, GLOBE_GLSL } from './globe';
 import { Biome, isWaterBiome } from '../sim/world/mapgen';
 import type { MapPayload } from '../worker/protocol';
 import { BIOME_COLORS, CLIFF_COLOR, OCEAN_DEEP, PLAYER_COLORS } from './palette';
@@ -30,6 +30,7 @@ function jitter(i: number): number {
 }
 
 const VERT = /* glsl */ `
+${GLOBE_GLSL}
 attribute vec3 tcol;
 attribute float water;
 uniform float uTime;
@@ -38,7 +39,6 @@ uniform vec2 uMapSize;
 varying vec3 vCol;
 varying vec3 vNormal;
 varying vec2 vMapUv;
-uniform float uCurve;
 varying float vWater;
 varying vec3 vWorld;
 void main() {
@@ -46,9 +46,14 @@ void main() {
   if (water > 0.5 && uWater > 0.5) p.y += sin(uTime * 1.3 + p.x * 0.37 + p.z * 0.29) * 0.02;
   vCol = tcol; vNormal = normal; vWater = water; vWorld = p;
   vMapUv = vec2(p.x / uMapSize.x, p.z / uMapSize.y);
-  vec4 mv = modelViewMatrix * vec4(p, 1.0);
-  mv.y -= uCurve * dot(mv.xz, mv.xz); // globe curve (F-195)
-  gl_Position = projectionMatrix * mv;
+  if (uGlobeOn > 0.5) {
+    // 3D globe view (F-195): wrap the flat world onto the sphere; normals into the sphere's frame
+    vec3 w = (modelMatrix * vec4(p, 1.0)).xyz;
+    vNormal = gFrame(w) * normal;
+    gl_Position = projectionMatrix * viewMatrix * vec4(gPos(w), 1.0);
+  } else {
+    gl_Position = projectionMatrix * modelViewMatrix * vec4(p, 1.0);
+  }
 }`;
 
 const FRAG = /* glsl */ `
@@ -121,7 +126,7 @@ export class Terrain {
         uFog: { value: this.fogTex }, uOwner: { value: this.ownerTex }, uPalette: { value: palTex },
         uMapSize: { value: new THREE.Vector2(w, h) }, uTime: { value: 0 },
         uSunDir: { value: new THREE.Vector3(0.45, 1, 0.3) }, uSunCol: { value: new THREE.Vector3(0.75, 0.73, 0.68) },
-        uAmb: { value: new THREE.Vector3(0.45, 0.46, 0.5) }, uOwnerOverlay: { value: 1 }, uWater: { value: 1 }, uCurve: CURVE,
+        uAmb: { value: new THREE.Vector3(0.45, 0.46, 0.5) }, uOwnerOverlay: { value: 1 }, uWater: { value: 1 }, uGlobeOn: GLOBE.on, uGlobeSize: GLOBE.size,
       },
     });
 
@@ -134,7 +139,7 @@ export class Terrain {
     if (old) { this.triangles -= (old.geometry.index?.count ?? 0) / 3; old.geometry.dispose(); this.group.remove(old); this.chunks.delete(key); }
     const { w, h } = this.map;
     const mesh = this.buildChunk(cx * CHUNK, cy * CHUNK, Math.min(w, (cx + 1) * CHUNK), Math.min(h, (cy + 1) * CHUNK));
-    if (mesh) { this.group.add(mesh); this.chunks.set(key, mesh); }
+    if (mesh) { mesh.frustumCulled = GLOBE.on.value < 0.5; this.group.add(mesh); this.chunks.set(key, mesh); } // globe: flat bounds don't match
   }
 
   /** Apply tile deltas ([tile, biome, resType] triples) and rebuild affected chunks (incl. neighbours' cliffs). */
@@ -192,6 +197,7 @@ export class Terrain {
       ];
       for (const [nx, ny, sx, sz, ex, ez, nnx, nnz] of sides) {
         const wx = map.wrap ? (nx + w) % w : nx; // globe: the neighbour across the seam (no wall there)
+        if (map.wrap && (ny < 0 || ny >= h)) continue; // poles: no wall around the edge of the world
         const low = wx < 0 || ny < 0 || wx >= w || ny >= h ? 0 : tileTopY(map, ny * w + wx);
         if (low >= top - 1e-4) continue;
         quad(sx, top, sz, sx, low, sz, ex, low, ez, ex, top, ez, nnx, 0, nnz, cc, 0);

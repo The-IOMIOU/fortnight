@@ -21,7 +21,9 @@ export class Minimap {
     this.base = document.createElement('canvas');
     this.base.width = w; this.base.height = h;
     this.overlay = document.createElement('canvas');
-    this.overlay.width = 256; this.overlay.height = 256;
+    // keep the map's shape (globe maps are 2:1)
+    this.overlay.width = 256; this.overlay.height = Math.round((256 * h) / w);
+    if (w !== h) { this.root.style.aspectRatio = `${w} / ${h}`; this.root.style.height = 'auto'; }
     this.root.append(this.base, this.overlay);
     this.img = new ImageData(w, h);
     this.baseRgb = new Uint8ClampedArray(w * h * 3);
@@ -84,7 +86,7 @@ export class Minimap {
   /** Draw the camera footprint: corners in tile coordinates (null = sky). */
   drawView(corners: ({ x: number; z: number } | null)[], units: { x: number; z: number; owner: number }[]): void {
     const ctx = this.overlay.getContext('2d')!, S = this.overlay.width;
-    const sx = S / this.map.w, sz = S / this.map.h;
+    const sx = S / this.map.w, sz = this.overlay.height / this.map.h;
     ctx.clearRect(0, 0, S, S);
     for (const u of units) {
       const c = playerColor(u.owner);

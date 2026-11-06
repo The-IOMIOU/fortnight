@@ -126,8 +126,9 @@ export function generateMap(seed: string, size: MapSize, opts: MapOpts = {}): Ga
   //         (warped Voronoi); elevation = fractal noise minus that continent's elliptical falloff,
   //         and a forced ocean channel runs along every border between two continents. ----
   const K = Math.max(1, Math.min(8, opts.continents ?? sz.continents));
-  const border = cfg.borderOcean;
-  const inset = border + Math.floor(H * (globe ? 0.1 : 0.14));
+  // globe: keep land out of the polar rows (they pinch together at the poles of the 3D planet view)
+  const border = globe ? Math.max(cfg.borderOcean, Math.floor((H * cfg.globePolarOceanPct) / 100)) : cfg.borderOcean;
+  const inset = border + Math.floor(H * (globe ? 0.05 : 0.14));
   const insetX = globe ? seamBand + Math.floor(W * 0.1) : inset;
   const ccx: number[] = [], ccy: number[] = [], crx: number[] = [], cry: number[] = [];
   if (!opts.sea) {
@@ -152,19 +153,24 @@ export function generateMap(seed: string, size: MapSize, opts: MapOpts = {}): Ga
       const rx = Math.max(8, Math.floor((base * rng.range(85, 115)) / 100)), ry = Math.max(8, Math.floor((base * rng.range(85, 115)) / 100));
       const partner = k > 0 && (opts.sea === 'close' || (opts.sea === 'mixed' && k % 2 === 1));
       let bx = 0, by = 0, bestD = -1;
+      let fit = false; // partner: a spot at the intended distance from its neighbour was found
       for (let t = 0; t < (k === 0 ? 1 : 40); t++) {
-        let x: number, y: number;
+        let x: number, y: number, ok = true;
         if (partner) {
           // a spot touching continent k−1 (or any earlier one in 'close' mode), away from the others
           const j = opts.sea === 'close' ? rng.int(k) : k - 1;
           const want = Math.floor(((crx[j] + cry[j] + rx + ry) * cfg.partnerDistPct) / 400);
-          const ang = rng.int(360), [cs, sn] = cosSin(ang);
+          // flat: any direction; globe (2:1, little room north–south): east or west of the partner
+          const ang = globe ? rng.int(61) - 30 + (rng.int(2) ? 180 : 0) : rng.int(360), [cs, sn] = cosSin(ang);
           x = Math.min(W - 1 - insetX, Math.max(insetX, ccx[j] + ((want * cs) >> 12)));
           y = Math.min(H - 1 - inset, Math.max(inset, ccy[j] + ((want * sn) >> 12)));
+          let jdx = Math.abs(x - ccx[j]); if (globe) jdx = Math.min(jdx, W - jdx);
+          const got = isqrt(jdx * jdx + (y - ccy[j]) * (y - ccy[j]));
+          ok = Math.abs(got - want) * 100 <= want * 15; // clamped at an edge → too far or too close
         } else { x = rng.range(insetX, W - 1 - insetX); y = rng.range(inset, H - 1 - inset); }
         let d = Number.MAX_SAFE_INTEGER;
         for (let j = 0; j < k; j++) { let ddx = Math.abs(x - ccx[j]); if (globe) ddx = Math.min(ddx, W - ddx); d = Math.min(d, ddx * ddx + (y - ccy[j]) * (y - ccy[j])); }
-        if (d > bestD) { bestD = d; bx = x; by = y; }
+        if ((ok && !fit) || (ok === fit && d > bestD)) { bestD = d; bx = x; by = y; if (ok) fit = true; }
       }
       ccx.push(bx); ccy.push(by); crx.push(rx); cry.push(ry);
     }

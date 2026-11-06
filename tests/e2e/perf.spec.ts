@@ -80,3 +80,18 @@ test('F-195 globe world: 30 s camera sweep on medium (wrap + curve) keeps F-028 
   expect(s.avgFps).toBeGreaterThanOrEqual(59);
   expect(s.p95Ms).toBeLessThanOrEqual(20);
 });
+
+// F-195: the 3D globe view draws the whole planet (flat-space bounds can't be used for culling).
+for (const size of ['medium', 'huge'] as const) {
+  test(`F-195 3D globe view on ${size}: camera sweep frame rate`, async ({ page }) => {
+    await openGame(page, `perf-globe-${size}`, size, '&world=globe&sea=mixed&reveal=1');
+    await page.waitForTimeout(1500);
+    const on = await page.evaluate(() => (window as any).__game.game.globeOn());
+    const s: Sweep = await page.evaluate(() => (window as any).__game.sweep(20, 40));
+    const far: Sweep = await page.evaluate(() => { const g = (window as any).__game.game; g.cam.distance = g.cam.maxDist; g.cam.apply(); return (window as any).__game.sweep(8, 1e9); });
+    const tris = await page.evaluate(() => (window as any).__game.state().perf.triangles);
+    console.log(`[F-195] globe ${size}: mid zoom ${fmt(s)} | whole planet ${fmt(far)} | triangles ${tris}`);
+    expect(on).toBe(1);
+    expect(s.avgFps).toBeGreaterThanOrEqual(size === 'huge' ? 30 : 59);
+  });
+}

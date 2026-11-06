@@ -2,7 +2,7 @@
 // Middle- or right-drag pans, wheel zooms, WASD/arrows pan, screen edges scroll.
 // A right click without dragging is an order; a left click selects.
 // Touch (F-177): tap selects, one-finger drag pans, long press orders, two-finger pinch zooms.
-import type { RtsCamera } from '../render/camera';
+import type { ViewCamera } from '../render/globeCamera';
 
 export interface ControlHandlers {
   onLeftClick(clientX: number, clientY: number, shift: boolean): void;
@@ -29,7 +29,7 @@ export class Controls {
   /** Long press time (ms) that turns a tap into an order. */
   static LONG_PRESS_MS = 450;
 
-  constructor(private el: HTMLElement, private cam: RtsCamera, private h: ControlHandlers) {
+  constructor(private el: HTMLElement, private cam: ViewCamera, private h: ControlHandlers) {
     const on = <K extends keyof HTMLElementEventMap>(t: EventTarget, type: K | string, fn: (e: never) => void, opts?: AddEventListenerOptions): void => {
       t.addEventListener(type, fn as EventListener, opts);
       this.disposers.push(() => t.removeEventListener(type, fn as EventListener));

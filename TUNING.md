@@ -63,9 +63,9 @@ Source of truth is [src/data/tuning.json](src/data/tuning.json). `npm run check`
 | `map.seaWidths.1` | 10 | Medium sea, used for about 30 % of non-partner pairs on maps with 6+ continents in `mixed` mode. |
 | `map.seaWidths.2` | 30 | Open ocean between continent clusters (`mixed`) and between all pairs (`far`). The 192-wide Medium map can't fit 30 everywhere, so measured farthest gaps there are 15+. |
 | `map.globeSeamOcean` | 14 | Globe world (F-195): tiles of forced ocean on each side of the east–west seam, so only ships cross it and no continent is cut in two. |
+| `map.globePolarOceanPct` | 12 | Globe maps: the top and bottom 12 % of rows stay ocean (under the ice caps). In the 3D globe view these rows pinch together at the poles, so no land or towns should be there. |
 | `map.straitReach` | 16 | Next to a narrow strait the continent's edge falloff fades out over this many tiles, so both coasts actually reach the strait instead of leaving a wide gap. |
 | `map.partnerDistPct` | 145 | Partner continent centres are placed at 145/200 of their summed radii, so their falloffs overlap and only the forced strait separates them. |
-| `map.globeCurveStrength` | 0.06 | Render only: how strongly the globe view bends down towards the horizon. Strong enough to read as a globe when zoomed out, weak enough that picking stays accurate. |
 
 ## Day/night
 

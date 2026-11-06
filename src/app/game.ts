@@ -28,7 +28,9 @@ import { qualityParams } from './settings';
 import { BUILDING_NAMES, RES_LABELS, UNIT_NAMES } from '../ui/names';
 import { actionsFor, eventKey, keyFor } from './keymap';
 import { EffectsLayer } from '../render/effects';
-import { CURVE, curveFor, curveScene } from '../render/curve';
+import { GLOBE, fromGlobe, globeRadius, globeScene, toGlobe } from '../render/globe';
+import { GlobeCamera, type ViewCamera } from '../render/globeCamera';
+import { SpaceLayer } from '../render/space';
 
 THREE.ColorManagement.enabled = false;
 
@@ -69,7 +71,11 @@ export class Game {
   private terrain!: Terrain;
   units!: UnitLayer;
   private nature!: NatureLayer;
-  cam!: RtsCamera;
+  cam!: ViewCamera;
+  /** Globe map drawn as a 3D planet (F-195); false = flat view (flat maps, or the setting is off). */
+  globeView = false;
+  private space: SpaceLayer | null = null;
+  private sunDir = new THREE.Vector3(0.5, 1, 0.75).normalize();
   private controls!: Controls;
   minimap!: Minimap;
   map!: MapPayload;
@@ -202,8 +208,16 @@ export class Game {
     this.effects = new EffectsLayer(map);
     this.scene.add(this.terrain.group, this.nature.group, this.units.group, this.effects.group);
     const r = this.host.getBoundingClientRect();
-    this.cam = new RtsCamera(map.w, map.h, r.width / Math.max(1, r.height), map.wrap);
-    this.applyCurve();
+    this.globeView = map.wrap && store.state.settings.globeView;
+    GLOBE.on.value = this.globeView ? 1 : 0;
+    GLOBE.size.value.set(map.w, map.h, globeRadius(map.w));
+    if (this.globeView) {
+      this.cam = new GlobeCamera(map.w, map.h, r.width / Math.max(1, r.height));
+      this.space = new SpaceLayer(globeRadius(map.w), this.renderer.getPixelRatio());
+      this.scene.add(this.space.group);
+      this.renderer.setClearColor(0x02040a);
+    } else this.cam = new RtsCamera(map.w, map.h, r.width / Math.max(1, r.height), map.wrap);
+    globeScene(this.scene);
     this.jumpToStart();
     this.minimap = new Minimap(map, (x, z) => this.cam.setTarget(x, z));
     this.host.appendChild(this.minimap.root);
@@ -321,17 +335,29 @@ export class Game {
     this.effects.render(now);
     this.updateGhost();
     const night = s ? nightness(s.dayPhase, s.dayLength, TUNING.dayNight.nightTicks) : 0;
-    this.terrain.setLighting(night, now / 1000);
-    this.sun.intensity = 0.75 - 0.5 * night;
-    this.amb.intensity = 0.8 - 0.42 * night;
-    if (this.map.wrap && ++this.curveFrames % 30 === 1) curveScene(this.scene);
+    if (this.globeView && s) {
+      // the sun circles the planet once a day: your home is in darkness exactly when the game says night
+      const W = this.map.w, homeX = this.startTile % W, mid = s.dayLength - TUNING.dayNight.nightTicks / 2;
+      const sunX = homeX + W / 2 + ((s.dayPhase - mid) / s.dayLength) * W;
+      toGlobe(sunX, 0, this.map.h * 0.42, this.sunDir).normalize();
+      this.sun.position.copy(this.sunDir).multiplyScalar(1000);
+      (this.terrain.material.uniforms.uSunDir.value as THREE.Vector3).copy(this.sunDir);
+      this.space?.setSun(this.sunDir);
+      this.terrain.setLighting(0.15, now / 1000); // the night side keeps enough light to play
+      this.sun.intensity = 0.95; this.amb.intensity = 0.55;
+    } else {
+      this.terrain.setLighting(night, now / 1000);
+      this.sun.intensity = 0.75 - 0.5 * night;
+      this.amb.intensity = 0.8 - 0.42 * night;
+    }
+    if (++this.curveFrames % 30 === 1) globeScene(this.scene); // new materials follow the globe
     const corners = this.viewCorners();
     this.renderer.render(this.scene, this.cam.camera);
-    if (this.map.wrap) {
-      // globe: draw the copies of the world east and west of the seam by moving the camera one map
+    if (this.map.wrap && !this.globeView) {
+      // globe in the flat view: draw the copies of the world east and west of the seam by moving the camera one map
       // width over (same depth buffer, so the copies overlap correctly); only when the view crosses it
       const xs = corners.map((c) => (c ? c.x : NaN));
-      const open = xs.some((x) => Number.isNaN(x)), m = CURVE.value > 0 ? this.cam.distance : 2; // the bend shows more ground
+      const open = xs.some((x) => Number.isNaN(x)), m = 2;
       const offs: number[] = [];
       if (open || Math.min(...xs) < m) offs.push(this.map.w);
       if (open || Math.max(...xs) > this.map.w - m) offs.push(-this.map.w);
@@ -354,10 +380,9 @@ export class Game {
 
   private curveFrames = 0;
   /** Curved globe look on (display setting) for globe maps only. */
-  /** Test hooks: current curve strength and the share of tiles the fog shows as visible. */
-  curveValue(): number { return CURVE.value; }
+  /** Test hooks: is the 3D globe view on, and the share of tiles the fog shows as visible. */
+  globeOn(): number { return GLOBE.on.value; }
   fogVisibleShare(): number { const f = this.terrain.fogData(); let n = 0; for (let i = 0; i < f.length; i++) if (f[i] === 255) n++; return n / f.length; }
-  applyCurve(): void { CURVE.value = this.map?.wrap && store.state.settings.globeCurve ? curveFor(this.map.w, TUNING.map.globeCurveStrength) : 0; }
 
   private perfNow(): { fps: number; p95Ms: number; drawCalls: number; triangles: number } {
     const recent = this.frameTimes.slice(-120);
@@ -403,28 +428,45 @@ export class Game {
   pickTile(clientX: number, clientY: number): { x: number; z: number } | null {
     const [nx, ny] = this.ndc(clientX, clientY);
     const ray = this.cam.ray(nx, ny);
+    const W = this.map.w, H = this.map.h;
+    if (this.globeView) {
+      // march from where the ray meets the highest terrain shell down to the surface
+      const R = GLOBE.size.value.z, top = new THREE.Sphere(new THREE.Vector3(), R + 3), p = new THREE.Vector3();
+      if (!ray.intersectSphere(top, p)) return null;
+      const step = ray.direction.clone().multiplyScalar(0.08);
+      for (let k = 0; k < 4000; k++) {
+        const m = fromGlobe(p);
+        const tx = Math.min(W - 1, Math.max(0, Math.floor(m.x))), tz = Math.min(H - 1, Math.max(0, Math.floor(m.z)));
+        if (m.h <= tileTopY(this.map, tz * W + tx)) return { x: m.x, z: m.z };
+        p.add(step);
+        if (p.length() < R - 2) return null;
+      }
+      return null;
+    }
     const p = ray.origin.clone(), step = ray.direction.clone().multiplyScalar(0.15);
-    const W = this.map.w, wrap = this.map.wrap, c = CURVE.value, view = this.cam.camera.matrixWorldInverse, world = this.cam.camera.matrixWorld;
-    const g = new THREE.Vector3();
     for (let k = 0; k < 8000; k++) {
       p.add(step);
-      g.copy(p);
-      if (c > 0) { g.applyMatrix4(view); g.y += c * (g.x * g.x + g.z * g.z); g.applyMatrix4(world); } // undo the globe bend
-      let gx = g.x;
-      if (wrap) gx = ((gx % W) + W) % W;
-      if (gx < 0 || g.z < 0 || gx >= W || g.z >= this.map.h) { if (g.y < -50) return null; continue; }
-      const i = Math.floor(g.z) * W + Math.floor(gx);
-      if (g.y <= tileTopY(this.map, i)) return { x: gx, z: g.z };
+      let gx = p.x;
+      if (this.map.wrap) gx = ((gx % W) + W) % W;
+      if (gx < 0 || p.z < 0 || gx >= W || p.z >= H) { if (p.y < -50) return null; continue; }
+      const i = Math.floor(p.z) * W + Math.floor(gx);
+      if (p.y <= tileTopY(this.map, i)) return { x: gx, z: p.z };
     }
     return null;
   }
 
   screenOf(v: { x: number; y: number; z: number }, lift = 0.4): { x: number; y: number } {
     const r = this.renderer.domElement.getBoundingClientRect();
-    // globe: project the copy of the entity nearest the camera; curved view: apply the same bend
-    const W = this.map.w, x = this.map.wrap ? v.x + W * Math.round((this.cam.targetX - v.x) / W) : v.x;
-    const p = new THREE.Vector3(x, v.y + lift, v.z);
-    if (CURVE.value > 0) { p.applyMatrix4(this.cam.camera.matrixWorldInverse); p.y -= CURVE.value * (p.x * p.x + p.z * p.z); p.applyMatrix4(this.cam.camera.matrixWorld); }
+    let p: THREE.Vector3;
+    if (this.globeView) {
+      p = toGlobe(v.x, v.y + lift, v.z);
+      // on the far side of the planet: off screen
+      if (p.clone().normalize().dot(this.cam.camera.position.clone().sub(p)) < 0) return { x: -1e5, y: -1e5 };
+    } else {
+      // flat globe view: project the copy of the entity nearest the camera
+      const W = this.map.w, x = this.map.wrap ? v.x + W * Math.round((this.cam.targetX - v.x) / W) : v.x;
+      p = new THREE.Vector3(x, v.y + lift, v.z);
+    }
     p.project(this.cam.camera);
     return { x: ((p.x + 1) / 2) * r.width + r.left, y: ((1 - p.y) / 2) * r.height + r.top };
   }

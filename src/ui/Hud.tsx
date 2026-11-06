@@ -332,7 +332,7 @@ export function SettingsModal() {
         </label>
         <label class="row"><input type="checkbox" checked={settings.muted} onChange={(e) => set({ muted: (e.target as HTMLInputElement).checked })} data-testid="mute" /> Mute</label>
         <button onClick={() => store.set({ keysOpen: true, settingsOpen: false })} data-testid="keys-btn">Key bindings…</button>
-        <label class="row"><input type="checkbox" checked={settings.globeCurve} onChange={(e) => { set({ globeCurve: (e.target as HTMLInputElement).checked }); (window as { __game?: { game?: { applyCurve(): void } } }).__game?.game?.applyCurve(); }} data-testid="globe-curve" /> Curved globe view (globe maps)</label>
+        <label class="row"><input type="checkbox" checked={settings.globeView} onChange={(e) => set({ globeView: (e.target as HTMLInputElement).checked })} data-testid="globe-view" /> 3D globe view for globe maps (from the next game)</label>
         {inGame && (
           <details class="more" data-testid="settings-test-options">
             <summary>Test options (cheats){opts ? ' · on' : ''}</summary>
