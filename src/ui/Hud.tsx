@@ -12,6 +12,7 @@ import { playerLabel, playerSwatchCss } from '../render/palette';
 import { BUILDING_HELP, BUILDING_NAMES, RES_COLORS, RES_LABELS, UNIT_HELP, UNIT_NAMES } from './names';
 import { DEFAULT_KEYS, keyFor, keyLabel, resetKeys, setKey } from '../app/keymap';
 import { ForgePanel, TechButton, TechPanel, UnitRaceBar, buildingAllowed, unitAllowed } from './RacePanels';
+import { CovertBar, DiploButton, DiploPanel } from './DiploPanel';
 import { raceById } from '../sim/races';
 
 const SPEED_LABEL: Record<SpeedName, string> = { slow: '0.5×', normal: '1×', fast: '2×', veryFast: '4×', x8: '8×', x16: '16×' };
@@ -38,6 +39,7 @@ export function Hud({ game, onQuit, onSave }: { game: Game; onQuit: () => void; 
       <Feed />
       <SelectionPanel game={game} />
       <TechPanel game={game} />
+      <DiploPanel game={game} />
       <StatsPanel />
       <SettingsModal />
       <BoxRect />
@@ -88,6 +90,7 @@ function TopBar({ game, onQuit, onSave }: { game: Game; onQuit: () => void; onSa
       {modified && <span class="res warn" title="Test options were used in this run" data-testid="modified-badge">Modified run</span>}
       {bonusOn && <span class="res warn" title="Impossible bots receive extra income" data-testid="bonus-badge">Impossible bonus +{TUNING.bots.impossibleIncomeBonusPct} %</span>}
       <TechButton />
+      <DiploButton />
       <button onClick={() => store.set({ showBots: !store.state.showBots })} data-testid="bots-btn" title="Bot goals (F4)">Bots</button>
       <button onClick={() => store.set({ showStats: !store.state.showStats })} data-testid="stats-btn" title="Continent stats (Tab)">Stats</button>
       <button onClick={onSave} data-testid="save" title="Download a save file">Save</button>
@@ -171,6 +174,7 @@ function SelectionPanel({ game }: { game: Game }) {
           )}
           <MilitaryBar game={game} />
           <UnitRaceBar game={game} />
+          {((sel.units.spy ?? 0) > 0 || (sel.units.saboteur ?? 0) > 0) && <CovertBar />}
           {placing && <div class="sel-sub">{placing === 'patrol' ? 'Click the far end of the patrol route' : placing === 'ignite' ? 'Click a forest or building tile to set it on fire' : DEFENCE_LIST.includes(placing as BuildingTypeName) || placing === 'dig' ? 'Click the start, then the end of the line (Shift to keep drawing). Right-click or Esc cancels.' : `Placing ${BUILDING_NAMES[placing as BuildingTypeName]}: left-click to place (Shift for several), right-click or Esc to cancel`}</div>}
         </div>
       )}

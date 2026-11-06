@@ -42,6 +42,9 @@ export class BotView {
   readonly enemyBuildings: BuildingInfo[] = [];
   /** Visible wild animals and carcasses. */
   readonly animals: UnitInfo[] = [];
+  /** Phase 6: visible entities of players we are not at war with (peace, ceasefire, trade pact). */
+  readonly neutralUnits: UnitInfo[] = [];
+  readonly neutralBuildings: BuildingInfo[] = [];
   // ---- Phase 5: own people, research and gear (public knowledge for the player itself)
   readonly race: string;
   readonly researched: readonly string[];
@@ -67,11 +70,11 @@ export class BotView {
       if (isUnitKind(k)) {
         const u: UnitInfo = { id, kind: k, owner: o, tile: sim.tileOf(id), task: mine ? e.task[id] : 0, hp: e.hp[id], maxHp: e.maxHp[id], moving: !!e.moving[id], carrier: e.carrier[id], carry: mine ? e.carryAmt[id] : 0, carryRes: mine && e.carryAmt[id] > 0 ? e.carryType[id] : -1, target: mine ? e.taskEnt[id] : -1 };
         if (mine) { u.burrowed = !!e.burrowed[id]; u.weapon = e.weaponTier[id]; u.armor = e.armorTier[id]; }
-        (mine ? this.myUnits : ally ? this.alliedUnits : this.enemyUnits).push(u);
+        (mine ? this.myUnits : ally ? this.alliedUnits : sim.hostile(o, player) ? this.enemyUnits : this.neutralUnits).push(u);
       } else if (isBuildingKind(k)) {
         const bt = buildingTypeOfKind(k);
         const b: BuildingInfo = { id, kind: k, btype: bt, owner: o, anchor: e.anchor[id], size: buildingDef(bt).size, complete: !!e.complete[id], level: e.level[id], hp: e.hp[id], maxHp: e.maxHp[id], queue: e.queues[id].length, upgrading: !!e.upTo[id], garrison: mine ? sim.mil.garrisonCount(id) : 0 };
-        if (mine) this.myBuildings.push(b); else if (!ally) this.enemyBuildings.push(b);
+        if (mine) this.myBuildings.push(b); else if (!ally) (sim.hostile(o, player) ? this.enemyBuildings : this.neutralBuildings).push(b);
       } else if (k === Kind.ANIMAL || k === Kind.CARCASS) {
         this.animals.push({ id, kind: k, owner: o, tile: sim.tileOf(id), task: 0, hp: 0, maxHp: 0, moving: !!e.moving[id], carrier: -1, carry: e.food[id], carryRes: -1, target: -1 });
       }
@@ -86,6 +89,18 @@ export class BotView {
   resource(t: number): number { return this.mem.res[t]; }
   /** Current owner of an explored tile (255 = nobody), or −1 if unexplored. */
   owner(t: number): number { return this.explored(t) ? this.sim.tileOwner[t] : -1; }
+  // ---- Phase 6 diplomacy (public: relations, reputation; private: own feelings, offers and chat addressed to us)
+  relation(q: number): number { return this.sim.dip.rel(this.player, q); }
+  atWar(q: number): boolean { return this.sim.hostile(this.player, q); }
+  reputation(q: number): number { return this.sim.dip.st.reputation[q]; }
+  feel(q: number): number { return this.sim.dip.feel(this.player, q); }
+  teamOf(q: number): number { return this.sim.teamOf(q); }
+  offersToMe(): import('../sim/diplomacy').Offer[] { return this.sim.dip.st.offers.filter((o) => o.to === this.player); }
+  myOffers(): import('../sim/diplomacy').Offer[] { return this.sim.dip.st.offers.filter((o) => o.from === this.player); }
+  chatSince(tick: number): import('../sim/diplomacy').ChatMsg[] { return this.sim.dip.st.chat.filter((m) => m.tick >= tick && m.from !== this.player && (m.to === this.player || m.to === -1)); }
+  /** Census of another player (same numbers as the public stats panel). */
+  strengthOf(q: number): number { return computeStats(this.sim, q).army; }
+  dealValue(o: import('../sim/diplomacy').Offer): { gain: number; cost: number } { return this.sim.dip.dealValue(o); }
   isAlly(p: number): boolean { return p < this.sim.players && this.sim.allied(p, this.player); }
   get players(): number { return this.sim.players; }
   eliminated(p: number): boolean { return this.sim.ps[p].eliminated; }

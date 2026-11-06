@@ -45,6 +45,8 @@ export interface Snapshot {
   stats: PlayerStats | null;
   /** Phase 5: the viewer's people, research and gear store. */
   me: { race: string; researched: string[]; researching: string; researchPermille: number; gear: number[] } | null;
+  /** Phase 6: the viewer's diplomacy (relations, reputations, offers and chat that concern the viewer). */
+  dip: { rel: number[]; reputation: number[]; ceasefireUntil: number[]; offers: import('../sim/diplomacy').Offer[]; chat: import('../sim/diplomacy').ChatMsg[]; races: string[] } | null;
   /** A test option was used in this run (F-198), and the viewer's active test options. */
   modified: boolean;
   opts: number;

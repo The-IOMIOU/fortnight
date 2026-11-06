@@ -36,7 +36,7 @@ export class Military {
   udef(id: number): UnitDef { return unitDef(unitTypeOfKind(this.s.ents.kind[id])); }
   isEnemy(a: number, b: number): boolean {
     const e = this.s.ents, oa = e.owner[a], ob = e.owner[b], P = this.s.players;
-    return oa < P && ob < P && !this.s.allied(oa, ob) && !this.s.ps[ob].eliminated && !this.s.ps[oa].eliminated;
+    return oa < P && ob < P && this.s.hostile(oa, ob) && !this.s.ps[ob].eliminated && !this.s.ps[oa].eliminated;
   }
   private targetable(id: number): boolean {
     const e = this.s.ents;
@@ -208,7 +208,7 @@ export class Military {
       if (isBuildingKind(k)) {
         if (!e.complete[id]) continue;
         const d = buildingDef(buildingTypeOfKind(k));
-        if (d.range <= 0 || (d.attack <= 0 && this.garrisonCount(id) === 0)) continue;
+        if (d.range <= 0 || (d.attack <= 0 && this.garrisonCount(id) === 0) || s.tick < e.disabledUntil[id]) continue;
         tgt = this.acquire(id, Math.floor(d.range / 10));
         if (tgt >= 0 && this.inRange(id, tgt) && e.cooldown[id] === 0) { this.hit(id, tgt); e.cooldown[id] = d.cooldown; }
         continue;
@@ -358,6 +358,17 @@ export class Military {
     e.posX[c] = tileCenter(x); e.posY[c] = tileCenter((t - x) / s.map.w);
     s.stop(c);
     s.fogForce[e.owner[c]] = 1;
+  }
+
+  /** Hand a town or outpost to another player (diplomacy deal): its land goes with it. */
+  transferBuilding(b: number, to: number): void {
+    const s = this.s, e = s.ents, from = e.owner[b];
+    for (let id = 0; id < e.count; id++) if (e.alive[id] && e.carrier[id] === b) this.eject(id, b);
+    e.owner[b] = to;
+    this.recomputeTerritory(from);
+    s.claimAround(b);
+    s.fogForce[to] = 1;
+    s.emit(from, 'townGiven', to, b); s.emit(to, 'townReceived', from, b);
   }
 
   recomputeTerritory(p: number): void {

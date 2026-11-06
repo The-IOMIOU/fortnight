@@ -143,3 +143,12 @@ details.more > * + * { margin-top: 0.5rem; }
 .tech-row.done { opacity: 0.6; }
 .tech-panel h3 { margin: 0.6rem 0 0.2rem; font-size: 0.95rem; }
 .race-summary { font-size: 0.85rem; line-height: 1.35; margin: -0.2rem 0 0.6rem; opacity: 0.9; }
+
+/* Phase 6: diplomacy panel and chat */
+.modal .panel.dip-panel { width: min(760px, calc(100vw - 2rem)); max-height: 88vh; overflow-y: auto; }
+.dip-table { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
+.dip-table th, .dip-table td { text-align: left; padding: 0.2rem 0.3rem; border-bottom: 1px solid #ffffff14; }
+.dip-actions { display: flex; flex-wrap: wrap; gap: 0.2rem; }
+.dip-actions button { padding: 0.1rem 0.35rem; font-size: 0.78rem; }
+.chat-log { max-height: 180px; overflow-y: auto; font-size: 0.85rem; background: #0003; padding: 0.3rem; border-radius: 4px; }
+.chat-line { padding: 0.1rem 0; }

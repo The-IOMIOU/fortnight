@@ -17,7 +17,8 @@ A browser real-time 2.5D strategy game on a world of continents (TypeScript, Thr
 | 4 Bots (utility AI, personalities, difficulty) | done, approved (3 targets unmet, see below) |
 | 4b Modes, Earth-like continents, globe, settings, test options | done (committed "Phase 4b: …"), waiting for owner review; Short-mode length target unmet, Firefox and FPS not re-measured (see below) |
 | 5 Tech, equipment, first 6–8 races | done (committed "Phase 5: …"), waiting for owner review; race builder UI and some render work left (see below) |
-| 6–9 | not started |
+| 6 Diplomacy, trade, chat, covert actions | done (committed "Phase 6: …") |
+| 7–9 | in progress, see below |
 
 Last updated: 2026-11-06.
 
@@ -66,6 +67,13 @@ Last updated: 2026-11-06.
 - Render: fungus is not drawn on the terrain yet, burrowed units are drawn like normal units for their owner (enemies don't see them), gliders fly at ground height.
 - Firefox and headed (FPS) tests can't run on the second machine (see Phase 4b result).
 - Balance is untested beyond the scripted checks: numbers are first guesses documented in TUNING.md.
+
+### Phase 6 (built 2026-11-06; PLAN amendment 12 lists the decisions)
+- **Sim:** `src/sim/diplomacy.ts` (`Diplomacy` on `sim.dip`: relation matrix, ceasefire timers, reputation, relationship "feel", offers, chat, spy reveals, well poison, economic-victory counter; covert acts `doCovert`). `Sim.allied` now includes treaty alliances; new `Sim.hostile` (at war) decides auto-combat and fungus poison. Commands `offer, respond, declareWar, chat, covert`; `Task.COVERT`; entity fields `disabledUntil, poisonUntil`; research "toxins"; `victory.economic`. Diplomacy state is saved (v5 save, optional fields) and hashed once `sim.p5` is set.
+- **Bots:** `src/ai/diplomacy.ts` (`diplomacyPlan`, `judge`, `covertPlan`), dialogue `src/data/dialogue.json`. `BotView` puts non-hostile players into `neutralUnits/neutralBuildings` (never targeted) and exposes relations, reputation, own feelings, offers and chat for the bot.
+- **UI:** `src/ui/DiploPanel.tsx` (top-bar "Diplomacy": relations, reputation, treaty buttons, give/ask, incoming offers, chat with recipient choice, mute), covert-act buttons for selected spies/saboteurs (pick, then right-click the target), menu victory options Technology and Economy. Scouts-only right-click on an animal now sends them (Wildbond taming).
+- **Tests:** `tests/diplomacy.test.ts` (11), `tests/e2e/diplomacy.spec.ts`. Unit suite 121/121. Short-mode bot suite with diplomacy: 7/10 finished, median 38.2 min (before 6/10, 37.1): bots still end matches.
+- **Not done:** human-to-human chat and offers between browsers (needs Phase 7 networking; the command path is the same). Block (as opposed to mute) only matters with humans, so also Phase 7.
 
 ### Key facts and gotchas
 - Stack: TypeScript 7 strict, Vite 8 (worker inlined), Three.js 0.186, Preact, Vitest 5, Playwright 1.64. The sim is integer-only and deterministic (`tools/check-sim-purity.mjs` bans Math.random/Date/trig/`**` in `src/sim`). Sim runs in a Web Worker. 10 Hz tick.

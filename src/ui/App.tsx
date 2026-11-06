@@ -156,7 +156,7 @@ export function App() {
 interface MenuPrefs {
   mode: ModeId; size: MapSize; speed: SpeedName; rivals: number; difficulty: Difficulty; pers: string; allies: number; conquest: boolean; domination: boolean; domPct: number; bonus: boolean;
   globe: boolean; continents: number; sea: SeaWidth; wildlife: number; dayLen: number; popLimit: number; perBot: boolean; botRows: { difficulty: Difficulty; personality: string }[]; testOpts: number;
-  race: string; botRace: string;
+  race: string; botRace: string; vTech: boolean; vEcon: boolean;
 }
 const MENU_KEY = 'fortnight.menu.v1';
 function loadMenuPrefs(): Partial<MenuPrefs> { try { return JSON.parse(localStorage.getItem(MENU_KEY) ?? '{}') as Partial<MenuPrefs>; } catch { return {}; } }
@@ -178,6 +178,8 @@ function Menu({ initial, onStart }: { initial: Partial<NewGameOptions>; onStart:
   const [allies, setAllies] = useState(saved.allies ?? 0);
   const [conquest, setConquest] = useState(saved.conquest ?? true);
   const [domination, setDomination] = useState(saved.domination ?? true);
+  const [vTech, setVTech] = useState(saved.vTech ?? false);
+  const [vEcon, setVEcon] = useState(saved.vEcon ?? false);
   const [domPct, setDomPct] = useState(saved.domPct ?? TUNING.economy.dominationPct);
   const [bonus, setBonus] = useState(saved.bonus ?? false);
   const [globe, setGlobe] = useState(saved.globe ?? true);
@@ -223,11 +225,11 @@ function Menu({ initial, onStart }: { initial: Partial<NewGameOptions>; onStart:
   const chosen = RACES.find((r) => r.id === race) ?? RACES[0];
   const start = (): void => {
     store.set({ error: '' });
-    saveMenuPrefs({ mode, size, speed, rivals, difficulty, pers, allies, conquest, domination, domPct, bonus, globe, continents, sea, wildlife, dayLen, popLimit, perBot, botRows: rows, testOpts, race, botRace });
+    saveMenuPrefs({ mode, size, speed, rivals, difficulty, pers, allies, conquest, domination, domPct, bonus, globe, continents, sea, wildlife, dayLen, popLimit, perBot, botRows: rows, testOpts, race, botRace, vTech, vEcon });
     const m = makeMatch(seed.trim(), size, rivals, difficulty, pers, Math.min(allies, Math.max(0, rivals - 1)));
     if (perBot && m.bots) m.bots = m.bots.map((b, k) => ({ ...b, difficulty: rows[k].difficulty, personality: rows[k].personality === 'random' ? b.personality : rows[k].personality }));
     onStart({ kind: 'new', opts: {
-      seed: seed.trim(), size, speed, ...m, victory: { conquest, domination, dominationPct: domPct }, impossibleBonus: bonus && (m.bots ?? []).some((b) => b.difficulty === 'impossible'),
+      seed: seed.trim(), size, speed, ...m, victory: { conquest, domination, dominationPct: domPct, tech: vTech, economic: vEcon }, impossibleBonus: bonus && (m.bots ?? []).some((b) => b.difficulty === 'impossible'),
       world: { globe, sea, continents }, wildlifePct: wildlife, dayLengthTicks: dayLen, popLimit, testOptions: testOpts, mode,
       races: matchRaces(seed.trim(), race, botRace, m.players),
     } });
@@ -339,8 +341,10 @@ function Menu({ initial, onStart }: { initial: Partial<NewGameOptions>; onStart:
             <label class="row"><input type="checkbox" checked={conquest} onChange={(e) => setConquest((e.target as HTMLInputElement).checked)} data-testid="v-conquest" /> Conquest</label>
             <label class="row"><input type="checkbox" checked={domination} onChange={(e) => setDomination((e.target as HTMLInputElement).checked)} data-testid="v-domination" /> Domination at
               <input type="number" min="50" max="95" value={domPct} style={{ width: '4rem' }} onInput={(e) => setDomPct(Math.max(50, Math.min(95, +(e.target as HTMLInputElement).value || 70)))} data-testid="v-dompct" /> %</label>
+            <label class="row"><input type="checkbox" checked={vTech} onChange={(e) => setVTech((e.target as HTMLInputElement).checked)} data-testid="v-tech" /> Technology</label>
+            <label class="row"><input type="checkbox" checked={vEcon} onChange={(e) => setVEcon((e.target as HTMLInputElement).checked)} data-testid="v-economic" /> Economy</label>
           </div>
-          <p class="later">Conquest: be the last team with a capital. Domination: your team holds the chosen share of all land for {TUNING.economy.dominationHoldTicks / 600} minutes.</p>
+          <p class="later">Conquest: be the last team with a capital. Domination: your team holds the chosen share of all land for {TUNING.economy.dominationHoldTicks / 600} minutes. Technology: your people's capstone plus {TUNING.tech.victoryCapstonePlusPct} % of the shared tech. Economy: {TUNING.diplomacy.econSharePct} % of all adamite income for {TUNING.diplomacy.econHoldTicks / 600} minutes.</p>
           <label class="row"><input type="checkbox" checked={perBot} onChange={(e) => setPerBot((e.target as HTMLInputElement).checked)} data-testid="per-bot" /> Set each bot separately</label>
           {perBot && (
             <div class="botrows" data-testid="bot-rows">

@@ -107,7 +107,7 @@ function snapshot(): void {
     ents, fog, owner, tiles, pending, stats: viewer >= 0 ? computeStats(sim, viewer) : spectating ? computeStats(sim, 0) : null, events: ev, buildings: buildingInfo(sim),
     bots: bots ? bots.debug().map((d) => ({ player: d.player, personality: d.personality, difficulty: d.difficulty, goal: d.goal, scores: d.scores, naval: d.naval })) : [], winnerTeam: sim.winnerTeam,
     shots: shotsArr, fires: E < 0 ? sim.burningList.slice() : sim.burningList.filter((t) => sim!.fog[E].data[t] === FOG_VISIBLE), spectating,
-    modified: sim.modified, opts: viewer >= 0 ? sim.ps[viewer].opts : 0, me: viewer >= 0 ? meOf(sim, viewer) : null,
+    modified: sim.modified, opts: viewer >= 0 ? sim.ps[viewer].opts : 0, me: viewer >= 0 ? meOf(sim, viewer) : null, dip: viewer >= 0 ? dipOf(sim, viewer) : null,
     winner: sim.winner, simMsPerTick: stepMsAvg, ticksPerSec: sched.paused ? 0 : tps,
     droppedTicks: sched.droppedTicks, paused: sched.paused, speed: speedName,
   }, transfer);
@@ -116,6 +116,14 @@ function snapshot(): void {
 function meOf(s: Sim, p: number): Snapshot['me'] {
   const ps = s.ps[p], n = ps.researching ? s.rules.node(p, ps.researching) : null;
   return { race: ps.race, researched: ps.researched.slice(), researching: ps.researching, researchPermille: n ? Math.floor((ps.researchProgress * 1000) / n.ticks) : 0, gear: ps.gear.slice() };
+}
+
+function dipOf(s: Sim, p: number): Snapshot['dip'] {
+  const d = s.dip.st, P = s.players;
+  return {
+    rel: Array.from({ length: P }, (_, q) => s.dip.rel(p, q)), reputation: d.reputation.slice(), ceasefireUntil: Array.from({ length: P }, (_, q) => d.ceasefireUntil[p * P + q]),
+    offers: d.offers.filter((o) => o.from === p || o.to === p), chat: d.chat.filter((m) => m.from === p || m.to === p || m.to === -1).slice(-60), races: s.ps.map((x) => x.race),
+  };
 }
 
 function loop(): void {

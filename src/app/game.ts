@@ -211,7 +211,7 @@ export class Game {
     const perf = store.state.perf;
     store.set({
       tick: s.tick, isNight: s.isNight, dayPhase: s.dayPhase, dayLength: s.dayLength, speed: s.speed, paused: s.paused,
-      pendingOrders: s.pending.length, stats: s.stats, winner: s.winner, winnerTeam: s.winnerTeam, bots: s.bots, modified: s.modified, opts: s.opts, me: s.me,
+      pendingOrders: s.pending.length, stats: s.stats, winner: s.winner, winnerTeam: s.winnerTeam, bots: s.bots, modified: s.modified, opts: s.opts, me: s.me, dip: s.dip,
       perf: { ...perf, simMs: s.simMsPerTick, tps: s.ticksPerSec, dropped: s.droppedTicks, entities: s.ents.length / 9 },
     });
   }
@@ -237,9 +237,24 @@ export class Game {
       case 'cantResearch': text = "Can't research that now"; kind = 'warn'; break;
       case 'crafted': text = 'Gear crafted'; kind = 'good'; break;
       case 'tamed': text = 'An animal was tamed'; kind = 'good'; sfx.trained(); break;
+      case 'offer': text = `P${(a ?? 0) + 1} sent you an offer (Diplomacy)`; sfx.discovery(); break;
+      case 'offerAccepted': text = `Deal with P${(a ?? 0) + 1} done`; kind = 'good'; break;
+      case 'offerDeclined': text = `P${(a ?? 0) + 1} declined your offer`; kind = 'warn'; break;
+      case 'relation': text = `P${(a ?? 0) + 1}: now ${['at war', 'at peace', 'in a ceasefire', 'allied', 'in a trade pact'][b ?? 0]}`; kind = b === 0 ? 'warn' : 'good'; break;
+      case 'treatyBroken': text = `Treaty with P${(a ?? 0) + 1} broken`; kind = 'warn'; sfx.warning(); break;
+      case 'stole': text = `Your spy stole ${b} ${RES_LABELS[a ?? 0].toLowerCase()}`; kind = 'good'; break;
+      case 'robbed': text = `A thief stole ${b} ${RES_LABELS[a ?? 0].toLowerCase()}!`; kind = 'warn'; break;
+      case 'spyCaught': text = `An enemy agent of P${(a ?? 0) + 1} was caught`; kind = 'good'; break;
+      case 'spyLost': text = 'Your agent was caught and executed'; kind = 'warn'; break;
+      case 'intel': text = `Spy report: P${(a ?? 0) + 1} holds ${b} resources`; break;
+      case 'sabotaged': text = 'Sabotage succeeded'; kind = 'good'; break;
+      case 'wasSabotaged': text = `${bn(a)} was sabotaged!`; kind = 'warn'; sfx.warning(); break;
+      case 'poisoned': text = 'Poison delivered'; kind = 'good'; break;
+      case 'wasPoisoned': text = 'Poison! Something of yours was poisoned'; kind = 'warn'; sfx.warning(); break;
+      case 'chat': return;
       case 'noDropoff': text = `No drop-off for ${RES_LABELS[a ?? 0].toLowerCase()}: build a camp or storehouse`; kind = 'warn'; break;
       case 'unreachable': text = "Can't reach that place"; kind = 'warn'; break;
-      case 'victory': { const how = a === 1 ? 'conquest' : 'domination'; text = player === this.viewer ? `Victory by ${how}!` : `P${player + 1} has won by ${how}`; kind = player === this.viewer ? 'good' : 'warn'; sfx.victory(); break; }
+      case 'victory': { const how = a === 1 ? 'conquest' : a === 2 ? 'technology' : a === 3 ? 'economy' : 'domination'; text = player === this.viewer ? `Victory by ${how}!` : `P${player + 1} has won by ${how}`; kind = player === this.viewer ? 'good' : 'warn'; sfx.victory(); break; }
       case 'unitLost': text = `${UNIT_NAMES[UNIT_TYPES[(a ?? 1) - 1]] ?? 'Unit'} lost`; kind = 'warn'; break;
       case 'buildingLost': text = `${bn(a)} destroyed`; kind = 'warn'; sfx.warning(); break;
       case 'capitalLost': text = 'Your capital has fallen!'; kind = 'warn'; sfx.warning(); break;
@@ -457,6 +472,11 @@ export class Game {
     }
     const workers = ids.filter((id) => this.units.get(id)?.kind === Kind.WORKER);
     const others = ids.filter((id) => !workers.includes(id));
+    // a covert act chosen in the panel: spies / saboteurs go for the clicked target (F-140–F-142)
+    const act = store.state.covertAct;
+    if (act && v && v.owner !== this.viewer && v.owner < 254) {
+      this.cmd({ type: 'covert', ids, act: act as never, target: v.id }); store.set({ covertAct: null }); sfx.order(); return;
+    }
     // enemy under the cursor → attack with everyone who can fight
     if (v && v.owner !== this.viewer && v.owner < 254 && (isUnitKind(v.kind) || isBuildingKind(v.kind))) {
       this.cmd({ type: 'attack', ids, target: v.id }); sfx.order(); return;
@@ -465,8 +485,8 @@ export class Game {
     if (v && v.owner === this.viewer && (v.kind === Kind.TRANSPORT || isBuildingKind(v.kind))) {
       this.cmd({ type: 'interact', ids, target: v.id }); sfx.order(); return;
     }
-    if (v && workers.length && (v.kind === Kind.ANIMAL || v.kind === Kind.CARCASS)) {
-      this.cmd({ type: 'interact', ids: workers, target: v.id });
+    if (v && (workers.length || ids.some((id) => this.units.get(id)?.kind === Kind.SCOUT)) && (v.kind === Kind.ANIMAL || v.kind === Kind.CARCASS)) {
+      this.cmd({ type: 'interact', ids: workers.length ? workers : ids, target: v.id }); // scouts of tamers tame (Phase 5)
       if (others.length) this.moveTo(others, v.x, v.z);
       sfx.order(); return;
     }
@@ -640,6 +660,11 @@ export class Game {
   cancelResearch(): void { this.cmd({ type: 'cancelResearch' }); sfx.click(); }
   craft(building: number, item: number): void { this.cmd({ type: 'craft', building, item }); sfx.click(); }
   equip(item: number): void { const ids = this.ownSelectedUnits(); if (ids.length) { this.cmd({ type: 'equip', ids, item }); sfx.click(); } }
+  // ---- Phase 6 ----
+  offer(to: number, give: import('../sim/diplomacy').Deal, get: import('../sim/diplomacy').Deal, treaty: import('../sim/diplomacy').Treaty | null): void { this.cmd({ type: 'offer', to, give, get, treaty }); sfx.click(); }
+  respond(offer: number, accept: boolean): void { this.cmd({ type: 'respond', offer, accept }); sfx.click(); }
+  declareWar(to: number): void { this.cmd({ type: 'declareWar', to }); sfx.warning(); }
+  chat(to: number, text: string): void { if (text.trim()) this.cmd({ type: 'chat', to, text: text.trim() }); }
   burrow(on: boolean): void { const ids = this.ownSelectedUnits(); if (ids.length) { this.cmd({ type: 'burrow', ids, on }); sfx.order(); } }
   ungarrison(building: number): void { this.cmd({ type: 'ungarrison', building }); sfx.click(); }
   demolish(building: number): void { this.cmd({ type: 'demolish', building }); sfx.click(); }

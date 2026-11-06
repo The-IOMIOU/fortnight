@@ -57,6 +57,15 @@ Status: **approved 2026-11-05** ("okay do phase 1") with these owner amendments:
    - **Gear** is crafted into a per-player store and handed to units within 6 tiles of a forge, barracks or town (not teleported to the front).
    - **Unit gold costs are now charged.** Before Phase 5 the sim never took gold for riders, spies, saboteurs or warships although the HUD showed and required it.
 
+12. **Phase 6 decisions (2026-11-06, owner: "do everything" for phases 6–9; taken without asking, to confirm).**
+   - **Everyone starts at war** (as in Phases 1–5), so a match without diplomacy plays exactly as before. Peace, ceasefire (5 min, then war again), trade pact (+10 % gold per partner, max 3) and alliance (shared vision, own gates open) come from accepted offers. Teams chosen in the menu stay permanent alliances.
+   - **A diplomatic alliance doesn't share victory.** Only menu teams win together. Otherwise two allied bots could never end a match.
+   - **Breaking a treaty** (declaring war, or an agent caught in peace time) costs public reputation (20, or 35 for betraying an ally), and the victim's and everyone else's relationship. Reputation recovers by 1 per minute.
+   - **Offers** may mix resources, gear, shared tech, towns/outposts (their land goes with them) and one treaty. One open offer per direction; a counter replaces the original.
+   - **Covert acts:** spies steal, spy on and poison; saboteurs sabotage and poison. Poison needs the new "Toxins" research (Mycelids don't). Every act has a detection chance.
+   - **Bots** answer offers by a value model + relationship + personality, keep threats, lie (Schemer), betray weak allies (warlike personalities, late), ask allies for help, and declare war when bored with nobody left to fight, so matches still end. Dialogue is templated per personality (`src/data/dialogue.json`).
+   - **Economic victory** (§7-C): ≥ 50 % of all adamite income for 5 minutes. Off by default, like the tech victory.
+
 Items in §7 that weren't commented on are taken as accepted. Proposals P-001…P-005 stay open until answered.
 
 Companion files: [FEATURES.md](FEATURES.md) (feature ledger), [CONTINENT_STRATEGY_GAME.md](CONTINENT_STRATEGY_GAME.md) (master spec).

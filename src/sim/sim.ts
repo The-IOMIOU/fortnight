@@ -16,6 +16,7 @@ import { FlowFields } from './path/flowfield';
 import { Military, formationSlots } from './military';
 import { RaceRules, AB, GLIDERS, GEAR_IDS, TECH_IDS, isRaceBuilding, type GearId } from './abilities';
 import { raceById } from './races';
+import { Diplomacy, newDiploState, doCovert, covertAllowed, covertInReach, poisonTick, COVERT_ACTS, CV, type CovertAct } from './diplomacy';
 import {
   BUILDABLE, BUILDING_TYPES, DROPOFF, FARM_YIELD, Kind, MOVE_COST, NATURE_OWNER, NUM_RES, Res, RES_NONE, TICKS_PER_MIN, TOWN_CENTERS,
   TRAINS, Task, UNIT_TYPES, WALKABLE_BUILDING, WATER_COST, DEFENSIVE, buildingDef, buildingKind, buildingTypeOfKind, isBuildingKind, isUnitKind,
@@ -32,7 +33,7 @@ export interface SimSettings {
   /** Extra income % per player (the optional Impossible-bot bonus; 0 = none). */
   incomeBonusPct?: number[];
   /** Which victories are enabled (default: both) and the domination share in %. */
-  victory?: { domination?: boolean; conquest?: boolean; dominationPct?: number; tech?: boolean };
+  victory?: { domination?: boolean; conquest?: boolean; dominationPct?: number; tech?: boolean; economic?: boolean };
   // ---- Phase 4b (F-193–F-197) ----
   /** World generation: globe (east–west wrap), continent count, sea width. Omitted = original flat map. */
   world?: MapOpts;
@@ -146,6 +147,9 @@ export class Sim {
   /** Fungus owner + 1 per tile (Mycelids), null when nobody spreads fungus. */
   fungus: Uint8Array | null = null;
   rngFungus!: Rng;
+  /** Phase 6: diplomacy, chat, covert-action state. */
+  dip!: Diplomacy;
+  rngCovert!: Rng;
   /** Movement class used by the current path search: 0 land, 2 tunnel, 3 glide. */
   private pathMode = 0;
 
@@ -189,6 +193,8 @@ export class Sim {
     this.rules = new RaceRules(this);
     for (let p = 0; p < this.players; p++) this.rules.refresh(p);
     this.rngFungus = Rng.stream(settings.seed, 'fungus');
+    this.rngCovert = Rng.stream(settings.seed, 'covert');
+    this.dip = new Diplomacy(this, newDiploState(this.players));
     if (this.ps.some((ps) => ps.race !== 'baseline')) this.p5 = true;
     if (this.ps.some((_, p) => this.rules.has(p, 'fungalSpread'))) this.fungus = new Uint8Array(w * h);
     if (opts.skipSetup) return;
@@ -838,6 +844,22 @@ export class Sim {
         this.p5 = true;
         break;
       }
+      case 'offer': this.p5 = true; this.dip.offer(p, c.to, c.give ?? {}, c.get ?? {}, c.treaty ?? null, c.counterOf ?? 0); return;
+      case 'respond': this.p5 = true; this.dip.respond(p, c.offer, c.accept); return;
+      case 'declareWar': this.p5 = true; this.dip.declareWar(p, c.to); return;
+      case 'chat': this.p5 = true; this.dip.chat(p, c.to, c.text); return;
+      case 'covert': {
+        const act = c.act as CovertAct;
+        if (!COVERT_ACTS.includes(act) || c.target < 0 || c.target >= e.count || !e.alive[c.target] || e.owner[c.target] >= this.players || this.allied(p, e.owner[c.target])) return;
+        if (act === 'poison' && !this.ps[p].researched.includes('toxins') && !this.rules.has(p, 'fungalSpread')) { this.emit(p, 'cantResearch'); return; }
+        for (const id of this.ownUnits(p, c.ids, (k) => covertAllowed(k, act))) {
+          if (this.tick < e.restUntil[id]) continue; // agents need time between missions
+          this.stop(id); e.task[id] = Task.COVERT; e.phase[id] = COVERT_ACTS.indexOf(act); e.taskEnt[id] = c.target;
+          this.goTo(id, isBuildingKind(e.kind[c.target]) ? this.footprintRect(c.target, 1) : this.tileRectAround(this.tileOf(c.target)));
+        }
+        this.p5 = true;
+        return;
+      }
       case 'tame': {
         if (!this.rules.has(p, 'tameAnimals') || c.target < 0 || c.target >= e.count || !e.alive[c.target] || e.kind[c.target] !== Kind.ANIMAL) return;
         this.startTame(p, this.ownUnits(p, c.ids, (k) => k === Kind.SCOUT || k === Kind.WORKER), c.target);
@@ -871,6 +893,18 @@ export class Sim {
       return;
     }
     if (!e.moving[id] && !e.waitPath[id]) this.goTo(id, this.tileRectAround(at));
+  }
+
+  private covertTick(id: number): void {
+    const e = this.ents, t = e.taskEnt[id];
+    if (t < 0 || !e.alive[t]) { this.stop(id); return; }
+    if (covertInReach(this, id, t)) {
+      doCovert(this, id, COVERT_ACTS[e.phase[id]], t);
+      e.restUntil[id] = this.tick + CV.cooldownTicks;
+      if (e.alive[id] && e.hp[id] > 0) this.stop(id);
+      return;
+    }
+    if (!e.moving[id] && !e.waitPath[id]) this.goTo(id, isBuildingKind(e.kind[t]) ? this.footprintRect(t, 1) : this.tileRectAround(this.tileOf(t)));
   }
 
   /** Give crafted gear to own units near a forge, barracks or town (F-058). Each unit uses one item. */
@@ -942,6 +976,8 @@ export class Sim {
     this.mil.moatTick();
     this.production();
     this.rules.tick();
+    this.dip.tick();
+    poisonTick(this);
     this.mil.cleanupDead();
     this.mil.victoryTick();
     this.recount();
@@ -949,6 +985,7 @@ export class Sim {
     this.updateFog();
     this.checkVictory();
     this.checkTechVictory();
+    this.dip.econTick();
     this.tick++;
   }
 
@@ -968,11 +1005,13 @@ export class Sim {
   mult(p: number): number { return this.ps[p].starving ? ECO.starvingRatePct : 100; }
 
   teamOf(p: number): number { return this.settings.teams?.[p] ?? p; }
-  allied(p: number, q: number): boolean { return p === q || (p < this.players && q < this.players && this.teamOf(p) === this.teamOf(q)); }
+  allied(p: number, q: number): boolean { return p === q || (p < this.players && q < this.players && (this.teamOf(p) === this.teamOf(q) || (!!this.dip && this.dip.treatyAllied(p, q)))); }
+  /** Units fight on their own only between players at war (Phase 6 diplomacy; everyone starts at war). */
+  hostile(p: number, q: number): boolean { return p < this.players && q < this.players && !this.allied(p, q) && this.dip.atWar(p, q); }
   victoryEnabled(kind: 'domination' | 'conquest'): boolean { return this.settings.victory?.[kind] ?? true; }
 
   private addIncome(p: number, r: number, amt: number): void {
-    const bonus = this.settings.incomeBonusPct?.[p] ?? 0;
+    const bonus = (this.settings.incomeBonusPct?.[p] ?? 0) + (r === Res.GOLD && this.p5 ? this.dip.tradeBonusPct(p) : 0);
     if (bonus > 0) {
       const ps = this.ps[p];
       ps.bonusAcc[r] += amt * bonus;
@@ -992,6 +1031,7 @@ export class Sim {
       const task = e.task[id];
       if (task === Task.IDLE) continue;
       if (task === Task.TAME) { if (!e.waitPath[id]) this.tameTick(id); continue; }
+      if (task === Task.COVERT) { if (!e.waitPath[id]) this.covertTick(id); continue; }
       if (task >= Task.ATTACK) { this.mil.taskTick(id); continue; }
       if (e.waitPath[id]) continue;
       if (!e.moving[id] && !this.arrived(id)) {
@@ -1145,6 +1185,7 @@ export class Sim {
     const rate = bt === 'farm' ? ECO.farmFoodPerWorkerPerMin : ECO.fishFoodPerWorkerPerMin;
     let pct = e.yieldPct[b];
     if (bt === 'farm') for (let l = 2; l <= e.level[b]; l++) pct = Math.floor((pct * (100 + (upgradeDef('farm', l)?.yieldPct ?? 0))) / 100);
+    if (this.tick < e.poisonUntil[b] || this.tick < e.disabledUntil[b]) pct = 0; // poisoned crops / sabotage (F-142)
     if (bt === 'farm' && this.fungus) pct = Math.floor((pct * this.rules.farmPct(p, e.anchor[b], buildingDef(bt).size)) / 100);
     if (bt === 'iceLodge' && this.rules.has(p, 'frostAdapted')) pct = Math.floor((pct * AB.frostAdapted.iceFishPct) / 100);
     if (this.p5) pct = Math.floor((pct * this.rules.workPct(p, this.tileOf(id), 'work', e.weaponTier[id] > 0)) / 100);
@@ -1185,6 +1226,7 @@ export class Sim {
     const e = this.ents;
     for (let b = 0; b < e.count; b++) {
       if (!e.alive[b] || !isBuildingKind(e.kind[b]) || !e.complete[b]) continue;
+      if (this.tick < e.disabledUntil[b]) continue; // sabotaged (F-141)
       const p = e.owner[b];
       if (e.upTo[b]) {
         const u = upgradeDef(buildingTypeOfKind(e.kind[b]), e.upTo[b])!;
@@ -1248,7 +1290,7 @@ export class Sim {
   private upkeep(): void {
     for (let p = 0; p < this.players; p++) {
       const ps = this.ps[p];
-      ps.upkeepAcc += ps.pop * ECO.foodPerPopPerMin;
+      ps.upkeepAcc += this.dip.st.wellPoisonUntil[p] > this.tick ? Math.floor((ps.pop * ECO.foodPerPopPerMin * CV.wellUpkeepPct) / 100) : ps.pop * ECO.foodPerPopPerMin;
       while (ps.upkeepAcc >= TICKS_PER_MIN) {
         ps.upkeepAcc -= TICKS_PER_MIN;
         if (ps.stock[Res.FOOD] > 0) ps.stock[Res.FOOD]--;
@@ -1301,6 +1343,7 @@ export class Sim {
       const t = (e.posY[id] >> FP_SHIFT) * w + (e.posX[id] >> FP_SHIFT);
       if (t !== this.lastTile[id]) { this.lastTile[id] = t; changed[e.owner[id]] = 1; }
     }
+    if (this.tick % 10 === 0) for (const r of this.dip.st.reveals) changed[r[0]] = 1;
     for (let p = 0; p < this.players; p++) {
       if (!changed[p]) continue;
       changed[p] = 0;
@@ -1312,6 +1355,7 @@ export class Sim {
       }
       // own territory is always visible
       for (const t of this.ownedList[p]) f.stampTile(t);
+      for (const r of this.dip.st.reveals) if (r[0] === p) f.stampCircle(r[1] % w, Math.floor(r[1] / w), r[2]); // spy reveals (F-141)
       f.dirty = true;
       if (f.newlyExplored.length) {
         const ps = this.ps[p];
@@ -1423,6 +1467,10 @@ export class Sim {
         hs.u32(ps.researchProgress); for (const g of ps.gear) hs.u32(g);
       }
       if (this.fungus) hs.bytes(this.fungus);
+      const d = this.dip.st;
+      for (const v of d.rel) hs.u32(v); for (const v of d.ceasefireUntil) hs.u32(v); for (const v of d.feel) hs.u32(v + 1000); for (const v of d.reputation) hs.u32(v);
+      hs.u32(d.offers.length); hs.u32(d.nextOffer); hs.u32(d.chat.length); hs.u32(d.reveals.length); for (const v of d.wellPoisonUntil) hs.u32(v); for (const v of d.econTicks) hs.u32(v);
+      for (const s of this.rngCovert.getState()) hs.u32(s);
       for (const s of this.rngFungus.getState()) hs.u32(s);
     }
     return hs.digest();

@@ -179,7 +179,7 @@
     "boredomStartMin": 8,
     "boredomFullMin": 25,
     "threatRadius": 12,
-    "matchLimitMin": 90
+    "matchLimitMin": 90, "allianceFeel": 15, "allianceReputation": 50, "counterMargin": 120
   },
   "upgrades": {
     "capital2": { "wood": 150, "stone": 100, "gold": 0,   "ticks": 400, "housing": 10, "territory": 2 },
@@ -222,7 +222,8 @@
       "toolmaking": { "wood": 80, "stone": 40, "gold": 20, "carbon": 0, "adamite": 0, "ticks": 450, "requires": ["smithing"], "buildings": [], "gear": ["tools"] },
       "alloys": { "wood": 0, "stone": 60, "gold": 60, "carbon": 40, "adamite": 20, "ticks": 900, "requires": ["smithing"], "buildings": [], "gear": ["alloy", "alloyWeapons", "alloyArmor"] },
       "firearms": { "wood": 0, "stone": 0, "gold": 150, "carbon": 80, "adamite": 40, "ticks": 1500, "requires": ["alloys"], "buildings": [], "gear": ["firearms"] },
-      "piers": { "wood": 150, "stone": 0, "gold": 20, "carbon": 0, "adamite": 0, "ticks": 450, "requires": [], "buildings": ["pier"], "gear": [] }
+    "toxins": { "wood": 0, "stone": 0, "gold": 80, "carbon": 30, "adamite": 0, "ticks": 600, "requires": [], "buildings": [], "gear": [] },
+    "piers": { "wood": 150, "stone": 0, "gold": 20, "carbon": 0, "adamite": 0, "ticks": 450, "requires": [], "buildings": ["pier"], "gear": [] }
     },
     "victoryCapstonePlusPct": 60
   },
@@ -239,5 +240,18 @@
       "alloyArmor": { "food": 0, "wood": 0, "stone": 0, "gold": 15, "carbon": 0, "adamite": 0, "alloy": 2, "ticks": 110, "slot": 2, "tier": 2 },
       "firearms": { "food": 0, "wood": 0, "stone": 0, "gold": 30, "carbon": 2, "adamite": 0, "alloy": 2, "ticks": 140, "slot": 1, "tier": 3 }
     }
+  },
+  "diplomacy": {
+    "reputationStart": 70, "breakTreatyPenalty": 20, "betrayAlliancePenalty": 35, "victimFeelPenalty": 50, "othersFeelPenalty": 10,
+    "ceasefireTicks": 3000, "offerTicks": 600, "dealFeel": 5, "feelPerValue": 20, "recoverEveryTicks": 600,
+    "tradePactGoldPct": 10, "tradePactMaxPartners": 3, "chatMaxLength": 200, "chatKeep": 200,
+    "resValue": [1, 1, 2, 3, 3, 6], "gearValue": 40, "techValue": 250, "townValue": 400,
+    "econSharePct": 50, "econHoldTicks": 3000, "econMinIncome": 30
+  },
+  "covert": {
+    "detectPct": [25, 15, 30, 35], "guardDetectPct": 20, "caughtFeel": 25,
+    "stealAmount": 60, "revealRadius": 10, "revealTicks": 600, "sabotageTicks": 450,
+    "unitPoisonTicks": 300, "unitPoisonEveryTicks": 20, "unitPoisonDamage": 3, "cropPoisonTicks": 900, "wellPoisonTicks": 900, "wellUpkeepPct": 200,
+    "cooldownTicks": 300
   }
 }

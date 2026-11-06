@@ -9,6 +9,7 @@ import { wdelta } from '../sim/core/topo';
 import { TUNING } from '../sim/core/tuning';
 import { Biome, isWaterBiome } from '../sim/world/mapgen';
 import { canExpandNow, racePlan, researchSaving } from './race';
+import { covertPlan, diplomacyPlan, newDiploMemory, type DiploMemory } from './diplomacy';
 import { BUILDING_TYPES, Kind, Res, RES_NONE, Task, UNIT_TYPES, buildingDef, isMilitaryType, unitDef, type BuildingTypeName, type UnitTypeName } from '../sim/defs';
 
 const MILITARY = new Set<number>(UNIT_TYPES.filter((u) => isMilitaryType(u) && u !== 'warship').map((u) => UNIT_TYPES.indexOf(u) + 1));
@@ -19,6 +20,8 @@ const U = (u: UnitTypeName): number => UNIT_TYPES.indexOf(u);
 export type NavalState = 'none' | 'dock' | 'ships' | 'explore' | 'board' | 'sail' | 'landed';
 
 export interface BotState {
+  /** Phase 6: negotiation memory (older saves lack it). */
+  diplo?: DiploMemory;
   player: number;
   personality: string;
   difficulty: Difficulty;
@@ -63,7 +66,7 @@ export class Bot {
 
   constructor(state: BotState, mem: MapMemory) {
     this.s = state;
-    state.landedIds ??= []; state.landTries ??= 0; state.badLandings ??= []; state.siteTries ??= []; state.foundedIds ??= []; // saves from before these fields
+    state.landedIds ??= []; state.landTries ??= 0; state.badLandings ??= []; state.siteTries ??= []; state.foundedIds ??= []; state.diplo ??= newDiploMemory(); // saves from before these fields
     this.mem = mem;
     this.rng = new Rng(0);
     this.rng.setState(state.rng);
@@ -175,6 +178,9 @@ export class Bot {
     if (v.peaceful && (goal === 'attack' || goal === 'raid')) { goal = 'economy'; s.naval = 'none'; } // test option: bots never start fights
     s.goal = goal; s.scores = scores;
 
+    // ---- 0. Phase 6: diplomacy and chat (answers every think, proposals at most once a minute)
+    diplomacyPlan({ v, pers: s.personality, minutes, myArmy: st.army, intruders: intruders.length, roll: (n) => this.rng.int(n), cmd: (c) => this.cmd(c) }, s.diplo!);
+    if (!v.peaceful && this.chance()) covertPlan({ v, pers: s.personality, stock, roll: (n) => this.rng.int(n), cmd: (c) => this.cmd(c) });
     // ---- 1. defend: soldiers attack intruders first
     if (intruders.length) {
       const free = army.filter((u) => u.task !== Task.ATTACK || u.hp < u.maxHp);

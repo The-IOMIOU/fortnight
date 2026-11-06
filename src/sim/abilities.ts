@@ -307,7 +307,7 @@ export class RaceRules {
         const o = e.owner[id];
         if (o >= s.players) continue;
         const q = f[s.tileOf(id)] - 1;
-        if (q < 0 || q === o || s.allied(q, o) || (s.ps[o].opts & 16)) continue;
+        if (q < 0 || q === o || !s.hostile(q, o) || (s.ps[o].opts & 16)) continue;
         e.hp[id] -= F.poisonDamage; e.lastHit[id] = s.tick;
       }
     }

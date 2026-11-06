@@ -26,8 +26,10 @@ const FIELDS: [string, Ctor][] = [
   ['patrolA', Int32Array], ['patrolB', Int32Array], ['rally', Int32Array], ['flowGoal', Int32Array], ['resumeTask', Uint8Array],
   // Phase 5 (hashed only when Phase 5 rules are in play, so older matches keep their hashes)
   ['burrowed', Uint8Array], ['ambushUntil', Int32Array], ['restUntil', Int32Array],
+  // Phase 6 (same rule): sabotaged buildings, poisoned units and farms
+  ['disabledUntil', Int32Array], ['poisonUntil', Int32Array],
 ];
-const P5_FIELDS = new Set(['burrowed', 'ambushUntil', 'restUntil']);
+const P5_FIELDS = new Set(['burrowed', 'ambushUntil', 'restUntil', 'disabledUntil', 'poisonUntil']);
 
 export class Entities {
   capacity: number;
@@ -46,6 +48,7 @@ export class Entities {
   weaponTier!: Uint8Array; armorTier!: Uint8Array; carrier!: Int32Array;
   patrolA!: Int32Array; patrolB!: Int32Array; rally!: Int32Array; flowGoal!: Int32Array; resumeTask!: Uint8Array;
   burrowed!: Uint8Array; ambushUntil!: Int32Array; restUntil!: Int32Array;
+  disabledUntil!: Int32Array; poisonUntil!: Int32Array;
   /** Path (tile list) per entity; null when none. */
   paths: (number[] | null)[] = [];
   /** Training queue (unit type indices) per building. */

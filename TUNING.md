@@ -1329,3 +1329,69 @@ Crafted at a forge from stock into a per-player gear store, then handed to units
 | `gear.items.firearms.ticks` | 140 | Crafting time in ticks. |
 | `gear.items.firearms.slot` | 1 | Slot (see above). |
 | `gear.items.firearms.tier` | 3 | Tier given to the unit. |
+
+## Diplomacy (F-150–F-153, F-134)
+
+Everyone starts at war (as before Phase 6), so matches without diplomacy play exactly as they did. Reputation is public; "feel" (−100…100) is one player's private relationship to another and drives bot decisions.
+
+| Constant | Value | Why |
+|---|---|---|
+| `diplomacy.reputationStart` | 70 | Reputation everyone starts with (0–100). High enough that a first deal is believed. |
+| `diplomacy.breakTreatyPenalty` | 20 | Reputation lost for breaking peace, a ceasefire or a trade pact. |
+| `diplomacy.betrayAlliancePenalty` | 35 | Reputation lost for attacking an ally: the worst betrayal. |
+| `diplomacy.victimFeelPenalty` | 50 | How much the betrayed player's relationship drops. |
+| `diplomacy.othersFeelPenalty` | 10 | Everyone else trusts the breaker a little less. |
+| `diplomacy.ceasefireTicks` | 3000 | A ceasefire lasts 5 minutes, then the war resumes on its own. |
+| `diplomacy.offerTicks` | 600 | An unanswered offer expires after 1 minute. |
+| `diplomacy.dealFeel` | 5 | Relationship gained by both sides for every accepted deal. |
+| `diplomacy.feelPerValue` | 20 | A generous deal adds 1 relationship per this much value (food-equivalents) in the receiver's favour. |
+| `diplomacy.recoverEveryTicks` | 600 | Every minute reputation recovers by 1 (up to the start value) and relationships drift 1 towards 0: grudges fade slowly. |
+| `diplomacy.tradePactGoldPct` | 10 | Extra gold income per trade-pact partner. |
+| `diplomacy.tradePactMaxPartners` | 3 | At most 3 partners count (+30 % gold). |
+| `diplomacy.chatMaxLength` | 200 | Longest chat message (characters). |
+| `diplomacy.chatKeep` | 200 | Chat lines kept in the match (older ones drop off). |
+| `diplomacy.resValue.0` | 1 | Value of one food in deals (food = 1; rarer resources are worth more). |
+| `diplomacy.resValue.1` | 1 | Value of one wood in deals (food = 1; rarer resources are worth more). |
+| `diplomacy.resValue.2` | 2 | Value of one stone in deals (food = 1; rarer resources are worth more). |
+| `diplomacy.resValue.3` | 3 | Value of one gold in deals (food = 1; rarer resources are worth more). |
+| `diplomacy.resValue.4` | 3 | Value of one carbon in deals (food = 1; rarer resources are worth more). |
+| `diplomacy.resValue.5` | 6 | Value of one adamite in deals (food = 1; rarer resources are worth more). |
+| `diplomacy.gearValue` | 40 | Value of one gear item in deals. |
+| `diplomacy.techValue` | 250 | Value of a shared tech node in deals. |
+| `diplomacy.townValue` | 400 | Value of a town or outpost (with its land) in deals. |
+| `diplomacy.econSharePct` | 50 | Economic victory (PLAN §7-C): share of all adamite income in the last minute. |
+| `diplomacy.econHoldTicks` | 3000 | How long the economic share must be held (5 min). |
+| `diplomacy.econMinIncome` | 30 | No economic victory while almost nobody mines adamite (total per minute below this). |
+
+## Covert actions (F-140–F-142)
+
+Spies steal, spy on and poison; saboteurs sabotage and poison. Agents must stand within 2 tiles of the target. Each act has a detection chance; a caught agent is executed, and if it happens in peace time the treaty is broken.
+
+| Constant | Value | Why |
+|---|---|---|
+| `covert.detectPct.0` | 25 | Detection chance for stealing: bolder acts are riskier. |
+| `covert.detectPct.1` | 15 | Detection chance for spying: bolder acts are riskier. |
+| `covert.detectPct.2` | 30 | Detection chance for sabotage: bolder acts are riskier. |
+| `covert.detectPct.3` | 35 | Detection chance for poison: bolder acts are riskier. |
+| `covert.guardDetectPct` | 20 | Extra detection chance next to an enemy tower or town centre (within 6 tiles). |
+| `covert.caughtFeel` | 25 | Relationship lost by the victim when they catch an agent. |
+| `covert.stealAmount` | 60 | Resources taken per successful theft (the victim's richest of gold, food, wood, stone). |
+| `covert.revealRadius` | 10 | Spying reveals this many tiles around the target … |
+| `covert.revealTicks` | 600 | … for 1 minute (plus a stock report). |
+| `covert.sabotageTicks` | 450 | A sabotaged building produces, trains, crafts and shoots nothing for 45 s. |
+| `covert.unitPoisonTicks` | 300 | A poisoned unit suffers for 30 s … |
+| `covert.unitPoisonEveryTicks` | 20 | … losing HP every 2 s … |
+| `covert.unitPoisonDamage` | 3 | … this much each time (a spearman loses about 45 HP). |
+| `covert.cropPoisonTicks` | 900 | A poisoned farm yields nothing for 90 s. |
+| `covert.wellPoisonTicks` | 900 | A poisoned town well lasts 90 s … |
+| `covert.wellUpkeepPct` | 200 | … during which the victim's food upkeep is doubled. |
+| `covert.cooldownTicks` | 300 | An agent rests 30 s between missions. |
+| `bots.allianceFeel` | 15 | Bots only offer or accept an alliance from this relationship up (about three good deals). |
+| `bots.allianceReputation` | 50 | Bots don't ally with players whose reputation is below this (known treaty breakers). |
+| `bots.counterMargin` | 120 | An offer this close to acceptable (in value points) gets a counter-offer instead of a plain no. |
+| `tech.nodes.toxins.wood` | 0 | Cost in wood. |
+| `tech.nodes.toxins.stone` | 0 | Cost in stone. |
+| `tech.nodes.toxins.gold` | 80 | Toxins (Phase 6): allows poisoning (Mycelids can without it). Cost in gold. |
+| `tech.nodes.toxins.carbon` | 30 | Cost in carbon. |
+| `tech.nodes.toxins.adamite` | 0 | Cost in adamite. |
+| `tech.nodes.toxins.ticks` | 600 | Research time in ticks. |

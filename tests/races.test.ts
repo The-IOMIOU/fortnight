@@ -450,12 +450,12 @@ describe('F-044 piers and F-133 tech victory', () => {
     const make = (tech: boolean): Sim => new Sim({ seed: 'techwin', size: 'small', players: 2, races: ['rimeborn', 'baseline'], victory: tech ? { tech: true } : undefined });
     for (const on of [false, true]) {
       const s = make(on);
-      unlock(s, 0, 'iceLodges', 'deepWinter', 'mammothHerds', 'smithing', 'toolmaking', 'alloys');
+      unlock(s, 0, 'iceLodges', 'deepWinter', 'mammothHerds', 'smithing', 'toolmaking', 'alloys', 'piers'); // 4 of 6 shared
       s.step();
       expect(s.winner).toBe(on ? 0 : -1);
     }
     const s = make(true);
-    unlock(s, 0, 'iceLodges', 'deepWinter', 'mammothHerds', 'smithing', 'toolmaking'); // 40 % of the shared tree
+    unlock(s, 0, 'iceLodges', 'deepWinter', 'mammothHerds', 'smithing', 'toolmaking', 'alloys'); // 3 of 6 = 50 %
     s.step();
     expect(s.winner).toBe(-1);
   });

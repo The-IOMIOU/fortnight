@@ -35,6 +35,9 @@ export interface SaveData {
   p5?: boolean;
   fungus?: string;
   rngFungus?: [number, number, number, number];
+  /** Phase 6: diplomacy state and covert RNG. */
+  dip?: import('./diplomacy').DiploState;
+  rngCovert?: [number, number, number, number];
   /** Data kept by the host outside the sim (bot memories). */
   extra?: unknown;
 }
@@ -72,6 +75,7 @@ export function saveSim(sim: Sim): SaveData {
     pathQueue: sim.pathQueue.slice(), rngAnimals: sim.rngAnimals.getState(),
     rngFire: sim.rngFire.getState(), burning: toB64(sim.burning), burningList: sim.burningList.slice(), trenchList: sim.trenchList.slice(), winnerTeam: sim.winnerTeam, modified: sim.modified,
     p5: sim.p5, fungus: sim.fungus ? toB64(sim.fungus) : undefined, rngFungus: sim.rngFungus.getState(),
+    dip: JSON.parse(JSON.stringify(sim.dip.st)), rngCovert: sim.rngCovert.getState(),
   };
 }
 
@@ -103,6 +107,8 @@ export function loadSim(d: SaveData): Sim {
   sim.p5 = !!d.p5;
   if (d.fungus && sim.fungus) sim.fungus.set(fromB64(d.fungus));
   if (d.rngFungus) sim.rngFungus.setState(d.rngFungus);
+  if (d.dip) sim.dip.st = JSON.parse(JSON.stringify(d.dip));
+  if (d.rngCovert) sim.rngCovert.setState(d.rngCovert);
   for (let p = 0; p < sim.players; p++) sim.rules.refresh(p);
   sim.ownerDirty = true;
   sim.fogForce.fill(1);

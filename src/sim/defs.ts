@@ -36,10 +36,10 @@ export const NATURE_OWNER = 254;
 export const Task = {
   IDLE: 0, MOVE: 1, GATHER: 2, RETURN: 3, BUILD: 4, WORK: 5, HUNT: 6, SETTLE: 7,
   ATTACK: 8, HOLD: 9, RETREAT: 10, PATROL: 11, GARRISON: 12, BOARD: 13, DIG: 14, IGNITE: 15, UNLOAD: 16, ROUT: 17,
-  TAME: 18,
+  TAME: 18, COVERT: 19,
 } as const;
 export const TASK_NAMES = ['idle', 'moving', 'gathering', 'returning', 'building', 'working', 'hunting', 'settling',
-  'attacking', 'holding', 'retreating', 'patrolling', 'garrisoning', 'boarding', 'digging', 'setting fire', 'unloading', 'routing', 'taming'];
+  'attacking', 'holding', 'retreating', 'patrolling', 'garrisoning', 'boarding', 'digging', 'setting fire', 'unloading', 'routing', 'taming', 'on a secret mission'];
 
 export interface UnitDef {
   food: number; wood: number; gold: number; trainTicks: number; pop: number; speed: number; vision: number;

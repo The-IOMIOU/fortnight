@@ -46,6 +46,15 @@ export interface BurrowCommand extends Base { type: 'burrow'; ids: number[]; on:
 /** Wildbond: tame a wild animal with scouts or workers. */
 export interface TameCommand extends Base { type: 'tame'; ids: number[]; target: number }
 
+// ---- Phase 6 ----
+export interface OfferCommand extends Base { type: 'offer'; to: number; give: import('./diplomacy').Deal; get: import('./diplomacy').Deal; treaty: import('./diplomacy').Treaty | null; counterOf?: number }
+export interface RespondCommand extends Base { type: 'respond'; offer: number; accept: boolean }
+export interface DeclareWarCommand extends Base { type: 'declareWar'; to: number }
+/** Chat to one player (to ≥ 0) or everyone (to = −1). */
+export interface ChatCommand extends Base { type: 'chat'; to: number; text: string }
+/** Spies / saboteurs: steal, reveal, sabotage or poison (F-140–F-142). */
+export interface CovertCommand extends Base { type: 'covert'; ids: number[]; act: import('./diplomacy').CovertAct; target: number }
+
 /** Turn a test option (F-197) on or off for the issuing player. Never touches resources. */
 export interface TestOptionCommand extends Base { type: 'testOption'; flag: number; on: boolean }
 
@@ -53,7 +62,8 @@ export type Command =
   | MoveCommand | GatherCommand | InteractCommand | PlaceCommand | PlaceLineCommand | TrainCommand | CancelTrainCommand | UpgradeCommand
   | AttackCommand | StopCommand | HoldCommand | RetreatCommand | PatrolCommand | RallyCommand | DemolishCommand | UngarrisonCommand
   | DigCommand | IgniteCommand | UnloadCommand | TestOptionCommand
-  | ResearchCommand | CancelResearchCommand | CraftCommand | EquipCommand | BurrowCommand | TameCommand;
+  | ResearchCommand | CancelResearchCommand | CraftCommand | EquipCommand | BurrowCommand | TameCommand
+  | OfferCommand | RespondCommand | DeclareWarCommand | ChatCommand | CovertCommand;
 
 /** A command as sent by a client, before the sim stamps tick/player/seq. */
 export type CommandBody = Command extends infer C ? (C extends Command ? Omit<C, 'tick' | 'player' | 'seq'> : never) : never;
