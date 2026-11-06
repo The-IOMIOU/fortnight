@@ -364,6 +364,11 @@ export function buildingModel(bt: BuildingTypeName, s: number): Model {
         trim: roof,
       };
     }
+    // ---- Phase 8 buildings: variants of earlier shapes
+    case 'caravanserai': { const m = buildingModel('storehouse', s); return { body: merge([m.body.clone(), paint(box(1.6, 0.05, 0.6, 0, 0.9, 0.5), 0xd9b56a)]), trim: m.trim.clone() }; }
+    case 'library': { const m = buildingModel('barracks', s); return { body: merge([m.body.clone(), paint(cyl(0.25, 0.3, 10, 0.5, 1.2, -0.4), 0xe6dcc3), paint(new THREE.SphereGeometry(0.27, 10, 6, 0, Math.PI * 2, 0, Math.PI / 2).translate(0.5, 1.5, -0.4), 0x9fd0ff)]), trim: m.trim.clone() }; }
+    case 'grove': return { body: merge([paint(box(1.8, 0.04, 1.8), SOIL), ...[[-0.5, -0.5], [0.5, -0.4], [-0.4, 0.5], [0.5, 0.5]].map(([x, z]) => paint(cyl(0.07, 0.6, 6, x, 0, z), BARK)), ...[[-0.5, -0.5], [0.5, -0.4], [-0.4, 0.5], [0.5, 0.5]].map(([x, z]) => paint(ball(0.32, x, 0.8, z), LEAF2)), paint(cyl(0.3, 0.12, 10), STONE)]), trim: plain(box(0.06, 0.4, 0.06, 0, 0.12, 0)) };
+    case 'reefDock': { const m = buildingModel('dock', s); return { body: merge([m.body.clone(), paint(cone(0.2, 0.5, 6, -0.6, 0, 0.6), 0xd9826a), paint(cone(0.15, 0.4, 6, 0.6, 0, 0.6), 0xe2a07c)]), trim: m.trim.clone() }; }
     case 'iceLodge': return {
       body: merge([paint(new THREE.SphereGeometry(0.8, 12, 6, 0, Math.PI * 2, 0, Math.PI / 2), 0xe4eef2), paint(box(0.4, 0.4, 0.5, 0, 0, 0.75), 0xd2e0e6), paint(box(0.24, 0.3, 0.02, 0, 0, 1.01), 0x3a4a55), paint(box(0.3, 0.08, 0.3, 0.6, 0, -0.55), 0x9fc6d6)]),
       trim: plain(box(0.04, 0.5, 0.25, -0.5, 0.6, 0)),
@@ -504,6 +509,15 @@ export function unitModel(kind: UnitModelName): Model {
     case 'mireHorror': return { body: merge([paint(ball(0.4, 0, 0.4, 0, 9, 6).scale(1, 1.1, 0.9), 0x4a5a34), paint(cyl(0.1, 0.4, 6, -0.25, 0, 0), 0x3b4a2a), paint(cyl(0.1, 0.4, 6, 0.25, 0, 0), 0x3b4a2a), paint(ball(0.05, -0.1, 0.65, 0.33), 0xe8e070), paint(ball(0.05, 0.1, 0.65, 0.33), 0xe8e070)]), trim: plain(box(0.5, 0.06, 0.06, 0, 0.85, 0)) };
     case 'frostWarden': return { body: person(0xc9d8e0, [paint(box(0.2, 0.12, 0.14, 0, 0.3, 0), 0xe8eef0), paint(cyl(0.013, 0.8, 4, 0.15, 0.0, 0.05), DARKWOOD), paint(box(0.08, 0.12, 0.02, 0.15, 0.72, 0.05), 0x9fc6d6)]), trim: plain(cone(0.1, 0.16, 8, 0, 0.55, 0)) };
     case 'mammoth': return beastModel(0x6b4a33, 0x8a6648, 2.6, true, true);
+    // ---- Phase 8 units ----
+    case 'duneRider': { const r = unitModel('rider'); return { body: r.body.clone(), trim: merge([r.trim.clone(), plain(box(0.3, 0.04, 0.2, 0, 0.62, 0))]) }; }
+    case 'sandWyrm': return reptileModel(0xc8a565, 0xe3cc94, 2.8);
+    case 'arcanist': return { body: person(0x3e4f8a, [paint(cyl(0.012, 0.75, 4, 0.15, 0.0, 0.05), DARKWOOD), paint(ball(0.04, 0.15, 0.78, 0.05), 0x9fd0ff)]), trim: plain(cone(0.09, 0.22, 8, 0, 0.55, 0)) };
+    case 'colossus': return { body: merge([paint(box(0.22, 0.5, 0.22, -0.18, 0, 0), 0xb08d57), paint(box(0.22, 0.5, 0.22, 0.18, 0, 0), 0xb08d57), paint(box(0.7, 0.6, 0.45, 0, 0.5, 0), 0xc9a76a), paint(box(0.3, 0.25, 0.3, 0, 1.1, 0), 0xb08d57), paint(ball(0.05, -0.06, 1.25, 0.16), 0x9fd0ff), paint(ball(0.05, 0.06, 1.25, 0.16), 0x9fd0ff)]), trim: plain(box(0.75, 0.08, 0.5, 0, 0.95, 0)) };
+    case 'grovewarden': return { body: person(0x3f6b3a, [paint(new THREE.TorusGeometry(0.17, 0.012, 4, 10, Math.PI).rotateZ(Math.PI / 2).translate(0.15, 0.32, 0.03), DARKWOOD), paint(box(0.24, 0.05, 0.14, 0, 0.42, 0), LEAF2)]), trim: plain(cone(0.1, 0.14, 6, 0, 0.55, 0)) };
+    case 'treant': return { body: merge([paint(cyl(0.18, 1.0, 7, 0, 0, 0, 0.14), BARK), paint(cyl(0.06, 0.5, 5, -0.25, 0.5, 0).rotateZ(0.6), BARK), paint(cyl(0.06, 0.5, 5, 0.25, 0.5, 0).rotateZ(-0.6), BARK), paint(ball(0.35, 0, 1.15, 0), LEAF), paint(ball(0.25, 0.2, 1.0, 0.1), LEAF2)]), trim: plain(box(0.3, 0.06, 0.06, 0, 0.7, 0.15)) };
+    case 'reefguard': return { body: person(0x2f6f8a, [paint(box(0.04, 0.3, 0.24, -0.15, 0.15, 0.04), 0xd9826a), paint(cyl(0.012, 0.8, 4, 0.15, 0.0, 0.05), DARKWOOD)]), trim: plain(cone(0.09, 0.14, 6, 0, 0.55, 0)) };
+    case 'kraken': return { body: merge([paint(ball(0.35, 0, 0.25, 0, 9, 6).scale(1, 0.8, 1), 0x7a3f6b), ...[0, 1, 2, 3, 4, 5].map((k) => paint(cyl(0.05, 0.6, 5).rotateZ(Math.PI / 2.4).rotateY((k / 6) * Math.PI * 2).translate(0, 0.1, 0), 0x8e4d7d)), paint(ball(0.05, 0.12, 0.42, 0.3), 0xf3e070), paint(ball(0.05, -0.12, 0.42, 0.3), 0xf3e070)]).scale(1.6, 1.6, 1.6), trim: plain(box(0.3, 0.05, 0.05, 0, 0.9, 0)) };
     case 'animal': {
       const legs: G[] = [];
       for (const [x, z] of [[-0.12, -0.05], [-0.12, 0.05], [0.12, -0.05], [0.12, 0.05]]) legs.push(paint(box(0.035, 0.18, 0.035, x, 0, z), FUR));

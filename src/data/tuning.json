@@ -6,10 +6,10 @@
   },
   "map": {
     "sizes": {
-      "small":  { "tiles": 128, "maxPlayers": 4,  "rivers": 5,  "lakes": 2,  "continents": 3 },
-      "medium": { "tiles": 192, "maxPlayers": 9,  "rivers": 8,  "lakes": 4,  "continents": 4 },
-      "large":  { "tiles": 288, "maxPlayers": 16, "rivers": 12, "lakes": 7,  "continents": 5 },
-      "huge":   { "tiles": 384, "maxPlayers": 32, "rivers": 16, "lakes": 10, "continents": 7 }
+      "small":  { "tiles": 128, "maxPlayers": 4,  "rivers": 5,  "lakes": 2,  "continents": 3, "unitCap": 200, "effectsPct": 100 },
+      "medium": { "tiles": 192, "maxPlayers": 9,  "rivers": 8,  "lakes": 4,  "continents": 4, "unitCap": 200, "effectsPct": 100 },
+      "large":  { "tiles": 288, "maxPlayers": 16, "rivers": 12, "lakes": 7,  "continents": 5, "unitCap": 150, "effectsPct": 60 },
+      "huge":   { "tiles": 384, "maxPlayers": 32, "rivers": 16, "lakes": 10, "continents": 7, "unitCap": 100, "effectsPct": 35 }
     },
     "channelWidth": 7,
     "seaWidths": [3, 10, 30],
@@ -105,7 +105,15 @@
     "bogStalker": { "food": 50, "wood": 20, "gold": 0, "trainTicks": 150, "pop": 1, "speed": 300, "vision": 7, "hp": 90, "attack": 12, "range": 12, "cooldown": 10, "armor": 1, "vsUnits": 100, "vsBuildings": 40, "water": 0, "stealth": 0, "capacity": 0 },
     "mireHorror": { "food": 260, "wood": 0, "gold": 90, "trainTicks": 550, "pop": 5, "speed": 230, "vision": 7, "hp": 750, "attack": 32, "range": 14, "cooldown": 16, "armor": 3, "vsUnits": 100, "vsBuildings": 150, "water": 0, "stealth": 0, "capacity": 0 },
     "frostWarden": { "food": 60, "wood": 20, "gold": 0, "trainTicks": 170, "pop": 1, "speed": 260, "vision": 6, "hp": 130, "attack": 12, "range": 12, "cooldown": 10, "armor": 3, "vsUnits": 100, "vsBuildings": 40, "water": 0, "stealth": 0, "capacity": 0 },
-    "mammoth": { "food": 300, "wood": 0, "gold": 80, "trainTicks": 600, "pop": 6, "speed": 230, "vision": 7, "hp": 950, "attack": 36, "range": 15, "cooldown": 18, "armor": 4, "vsUnits": 110, "vsBuildings": 220, "water": 0, "stealth": 0, "capacity": 0 }
+    "mammoth": { "food": 300, "wood": 0, "gold": 80, "trainTicks": 600, "pop": 6, "speed": 230, "vision": 7, "hp": 950, "attack": 36, "range": 15, "cooldown": 18, "armor": 4, "vsUnits": 110, "vsBuildings": 220, "water": 0, "stealth": 0, "capacity": 0 },
+    "duneRider": { "food": 70, "wood": 0, "gold": 30, "trainTicks": 180, "pop": 2, "speed": 450, "vision": 8, "hp": 120, "attack": 12, "range": 13, "cooldown": 11, "armor": 1, "vsUnits": 110, "vsBuildings": 60, "water": 0, "stealth": 0, "capacity": 0 },
+    "sandWyrm": { "food": 280, "wood": 0, "gold": 120, "trainTicks": 600, "pop": 6, "speed": 280, "vision": 8, "hp": 800, "attack": 36, "range": 15, "cooldown": 16, "armor": 4, "vsUnits": 110, "vsBuildings": 200, "water": 0, "stealth": 0, "capacity": 0 },
+    "arcanist": { "food": 50, "wood": 40, "gold": 30, "trainTicks": 170, "pop": 1, "speed": 260, "vision": 9, "hp": 70, "attack": 11, "range": 60, "cooldown": 15, "armor": 0, "vsUnits": 110, "vsBuildings": 40, "water": 0, "stealth": 0, "capacity": 0 },
+    "colossus": { "food": 0, "wood": 180, "gold": 200, "trainTicks": 600, "pop": 6, "speed": 180, "vision": 7, "hp": 1100, "attack": 40, "range": 15, "cooldown": 20, "armor": 7, "vsUnits": 100, "vsBuildings": 220, "water": 0, "stealth": 0, "capacity": 0 },
+    "grovewarden": { "food": 45, "wood": 50, "gold": 0, "trainTicks": 160, "pop": 1, "speed": 270, "vision": 8, "hp": 75, "attack": 9, "range": 65, "cooldown": 15, "armor": 0, "vsUnits": 100, "vsBuildings": 20, "water": 0, "stealth": 0, "capacity": 0 },
+    "treant": { "food": 250, "wood": 200, "gold": 0, "trainTicks": 600, "pop": 6, "speed": 170, "vision": 7, "hp": 1000, "attack": 34, "range": 14, "cooldown": 18, "armor": 5, "vsUnits": 100, "vsBuildings": 250, "water": 0, "stealth": 0, "capacity": 0 },
+    "reefguard": { "food": 55, "wood": 25, "gold": 0, "trainTicks": 160, "pop": 1, "speed": 265, "vision": 6, "hp": 115, "attack": 11, "range": 12, "cooldown": 10, "armor": 2, "vsUnits": 100, "vsBuildings": 40, "water": 0, "stealth": 0, "capacity": 0 },
+    "kraken": { "food": 250, "wood": 50, "gold": 120, "trainTicks": 600, "pop": 6, "speed": 300, "vision": 9, "hp": 900, "attack": 32, "range": 45, "cooldown": 16, "armor": 4, "vsUnits": 110, "vsBuildings": 150, "water": 1, "stealth": 0, "capacity": 0 }
   },
   "buildingTypes": {
     "capital":    { "size": 3, "wood": 0,   "stone": 0,  "buildPoints": 0,   "housing": 10, "territory": 7, "vision": 9, "hp": 2200, "attack": 6, "range": 70, "cooldown": 15, "garrison": 10 },
@@ -132,7 +140,11 @@
     "aerie": { "size": 2, "wood": 140, "stone": 20, "buildPoints": 350, "housing": 0, "territory": 0, "vision": 7, "hp": 700, "attack": 0, "range": 0, "cooldown": 0, "garrison": 0 },
     "greatForge": { "size": 2, "wood": 100, "stone": 140, "buildPoints": 450, "housing": 0, "territory": 0, "vision": 4, "hp": 1200, "attack": 0, "range": 0, "cooldown": 0, "garrison": 0 },
     "stiltHall": { "size": 2, "wood": 140, "stone": 0, "buildPoints": 300, "housing": 0, "territory": 0, "vision": 4, "hp": 800, "attack": 0, "range": 0, "cooldown": 0, "garrison": 0 },
-    "iceLodge": { "size": 2, "wood": 120, "stone": 20, "buildPoints": 300, "housing": 0, "territory": 0, "vision": 5, "hp": 800, "attack": 0, "range": 0, "cooldown": 0, "garrison": 0, "maxWorkers": 3 }
+    "iceLodge": { "size": 2, "wood": 120, "stone": 20, "buildPoints": 300, "housing": 0, "territory": 0, "vision": 5, "hp": 800, "attack": 0, "range": 0, "cooldown": 0, "garrison": 0, "maxWorkers": 3 },
+    "caravanserai": { "size": 2, "wood": 120, "stone": 40, "buildPoints": 320, "housing": 0, "territory": 0, "vision": 6, "hp": 900, "attack": 0, "range": 0, "cooldown": 0, "garrison": 0 },
+    "library": { "size": 2, "wood": 100, "stone": 80, "buildPoints": 350, "housing": 0, "territory": 0, "vision": 6, "hp": 800, "attack": 0, "range": 0, "cooldown": 0, "garrison": 0 },
+    "grove": { "size": 2, "wood": 160, "stone": 0, "buildPoints": 300, "housing": 0, "territory": 0, "vision": 4, "hp": 900, "attack": 0, "range": 0, "cooldown": 0, "garrison": 0 },
+    "reefDock": { "size": 2, "wood": 140, "stone": 20, "buildPoints": 350, "housing": 0, "territory": 0, "vision": 6, "hp": 800, "attack": 0, "range": 0, "cooldown": 0, "garrison": 0 }
   },
   "combat": {
     "heightBonusPct": 25,
@@ -212,7 +224,15 @@
       "swampStalkers": { "points": 5, "swampCostPct": 40, "swampStealth": 1 },
       "openGroundWeak": { "points": -5, "damagePct": 70 },
       "frostAdapted": { "points": 6, "coldDamagePct": 125, "coldGatherPct": 130, "iceFishPct": 150 },
-      "heatWeak": { "points": -6, "hotOutputPct": 60, "hotDamagePct": 80 }
+      "heatWeak": { "points": -6, "hotOutputPct": 60, "hotDamagePct": 80 },
+      "thieves": { "points": 6, "stealPct": 200, "detectMinusPct": 10, "ambushPct": 130, "ambushQuietTicks": 100 },
+      "poorFarmers": { "points": -6, "farmYieldPct": 60 },
+      "quickStudy": { "points": 6, "researchTimePct": 60, "detectMinusPct": 10 },
+      "fragileArmy": { "points": -6, "militaryHpPct": 75 },
+      "forestKin": { "points": 6, "forestDamageTakenPct": 70, "woodGatherPct": 130 },
+      "flammable": { "points": -6, "fireDamagePct": 250 },
+      "reefBuilders": { "points": 6, "pierCostPct": 50 },
+      "weakLandArmy": { "points": -6, "landDamagePct": 75 }
     }
   },
   "tech": {

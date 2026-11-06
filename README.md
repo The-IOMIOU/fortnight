@@ -3,6 +3,15 @@ defend your fort at night
 
 A browser real-time 2.5D strategy game on a world of continents (TypeScript, Three.js, deterministic simulation in a Web Worker). Build: `npm install`, `npm run dev`; tests: `npx vitest run`.
 
+## Play
+
+- **Run locally:** `npm install`, then `npm run dev` and open the printed address. Single-player works fully offline.
+- **Build a static site:** `npm run build` → `dist/` (one HTML file plus assets; the simulation worker is inlined). Any static host works (GitHub Pages, Netlify, a USB stick with `npx vite preview`).
+- **First game:** New Game → *Tutorial* walks through selecting, building, gathering, training and research (skippable). Or pick a mode (Short / Long / Continental / Custom), a people and rivals, and press Start.
+- **Controls:** left-click / drag to select, right-click to order, middle-drag or WASD to pan, wheel to zoom, Space pause, +/− speed, Tab stats. Touch: tap selects, drag pans, pinch zooms, long press orders. All hotkeys can be rebound in Settings.
+- **Online with friends:** New Game → Online → "Host this game online" (choose seats, co-op or free-for-all). In the game, *Online* → *Create invite*, send the link; your friend opens it and sends back the answer code; paste it and press Connect. No server is involved; strict networks may need a relay (not set up yet).
+- **Tests:** `npx vitest run` (unit), `npm run check` (repo rules), `npm run build` then `npx playwright test --project=chromium` (browser), `--project=multiplayer` (two browsers over WebRTC), `--project=firefox`, `--project=perf` (headed, FPS). Long bot suites: `npm run test:bots` + `node tools/bot-report.mjs`. Balance harness: `npm run harness -- --matches 500`.
+
 ## Progress and handoff (keep this section up to date)
 
 **Any Claude continuing this project: read this section first**, then `CONTINENT_STRATEGY_GAME.md` (master spec), `PLAN.md` (owner amendments at the top) and `FEATURES.md` (feature ledger). When you stop or finish a step, rewrite this section: what you did, what is left, and anything unverified. Then commit and push.
@@ -19,7 +28,8 @@ A browser real-time 2.5D strategy game on a world of continents (TypeScript, Thr
 | 5 Tech, equipment, first 6–8 races | done (committed "Phase 5: …"), waiting for owner review; race builder UI and some render work left (see below) |
 | 6 Diplomacy, trade, chat, covert actions | done (committed "Phase 6: …") |
 | 7 Multiplayer | done (committed "Phase 7: …"); signaling server / TURN need owner accounts |
-| 8–9 | in progress, see below |
+| 8 Scale, harness, peoples 9–12 | done (committed "Phases 8–9: …"); harness flags 9 peoples for balancing |
+| 9 Polish, tutorial, release prep | done; open items listed below |
 
 Last updated: 2026-11-06.
 
@@ -80,6 +90,14 @@ Last updated: 2026-11-06.
 - **Core:** `src/net/lockstep.ts` (`HostLockstep`, `ClientLockstep`, wire messages, votes, seats, replays `recordReplay/playReplay`). `Sim.lastApplied` = commands of the last tick. Tests: `tests/multiplayer.test.ts` (9, includes a 20-min 4-human + 4-bot run, about 1.5 min).
 - **Browser:** `src/net/peer.ts` (WebRTC, invite/answer codes gzip+base64url, chunked JSON over the data channel), `src/net/session.ts` (links ↔ worker), worker messages `hostNet / joinNet / netIn / netGone / netVote / netOut`, UI `src/ui/NetPanels.tsx` (invites and seats, vote banner, host-left screen, desync notice, guest answer code), menu "Online" (seats, co-op / free-for-all, vote pause, join box), link `?join=<code>`. Test: `tests/e2e/multiplayer.spec.ts` (project `multiplayer`: two contexts, real WebRTC; run with `npx playwright test --project=multiplayer`).
 - **Not done:** the signaling server and TURN relay (owner accounts needed), a test across two real networks, a test for "block", replay download in the UI.
+
+### Phases 8 and 9 (built 2026-11-06; PLAN amendment 14)
+- **Peoples 9–12:** `src/data/races/{duneraiders,scholars,treewardens,reefbuilders}.json`; modules thieves / poorFarmers, quickStudy / fragileArmy, forestKin / flammable, reefBuilders / weakLandArmy (`RaceRules.targetPct` for ambush and forest cover, `researchTicks`, fire damage in `Military.fireDmg`). 8 units, 4 buildings.
+- **Balance harness:** `npm run harness -- --matches N --minutes M` (`tools/harness.mjs` → `vitest.harness.config.ts`, 9 shards in `tests/harness`, results in `harness-results/`, report `tools/harness-report.mjs`). Last run (216 matches): HIGH Rimeborn, Anvilborn, Wildbond, Scholars, Treewardens; LOW Windriders, Mycelids, Deepkin, Dune raiders. **Balancing them is the next job.** Keep Playwright away from the harness's folder: Playwright wipes `test-results/` on start (that's why the harness writes elsewhere).
+- **Scale:** `map.sizes.*.unitCap` / `effectsPct`; `tests/bots/f190-huge.test.ts` (32 players on Huge, 30 min: 3.1 ms/tick, 98 MB).
+- Tests after Phases 8–9: unit 139/139, Chromium + multiplayer browser suites 31/31.
+- **Phase 9:** tutorial (`src/ui/Tutorial.tsx`, menu "Tutorial"), touch controls (`src/input/controls.ts`), README "Play" section. Tests: `tests/e2e/polish.spec.ts`, `tests/scale.test.ts`.
+- **Open after Phase 9:** balance pass on the flagged peoples; FPS and Firefox runs on a machine where headed browsers start; signaling server / TURN (owner accounts); race-builder UI; render polish (fungus tint, burrowed units, glider height); heroes only if wanted; GitHub Pages deploy and CI (P-004) only if wanted.
 
 ### Key facts and gotchas
 - Stack: TypeScript 7 strict, Vite 8 (worker inlined), Three.js 0.186, Preact, Vitest 5, Playwright 1.64. The sim is integer-only and deterministic (`tools/check-sim-purity.mjs` bans Math.random/Date/trig/`**` in `src/sim`). Sim runs in a Web Worker. 10 Hz tick.

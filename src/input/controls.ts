@@ -1,6 +1,7 @@
 // Mouse + keyboard camera controls and click events.
 // Middle- or right-drag pans, wheel zooms, WASD/arrows pan, screen edges scroll.
 // A right click without dragging is an order; a left click selects.
+// Touch (F-177): tap selects, one-finger drag pans, long press orders, two-finger pinch zooms.
 import type { RtsCamera } from '../render/camera';
 
 export interface ControlHandlers {
@@ -22,6 +23,11 @@ export class Controls {
   private drag: { button: number; x: number; y: number; sx: number; sy: number; moved: boolean } | null = null;
   edgeScroll = true;
   private disposers: (() => void)[] = [];
+  private touches = new Map<number, { x: number; y: number; sx: number; sy: number; t: number }>();
+  private pinch = 0;
+  private touchMoved = false;
+  /** Long press time (ms) that turns a tap into an order. */
+  static LONG_PRESS_MS = 450;
 
   constructor(private el: HTMLElement, private cam: RtsCamera, private h: ControlHandlers) {
     const on = <K extends keyof HTMLElementEventMap>(t: EventTarget, type: K | string, fn: (e: never) => void, opts?: AddEventListenerOptions): void => {
@@ -30,11 +36,13 @@ export class Controls {
     };
     on(el, 'contextmenu', (e: MouseEvent) => e.preventDefault());
     on(el, 'pointerdown', (e: PointerEvent) => {
+      if (e.pointerType === 'touch') { this.touchDown(e); return; }
       this.drag = { button: e.button, x: e.clientX, y: e.clientY, sx: e.clientX, sy: e.clientY, moved: false };
       el.setPointerCapture(e.pointerId);
       if (e.button === 1) e.preventDefault();
     });
     on(el, 'pointermove', (e: PointerEvent) => {
+      if (e.pointerType === 'touch') { this.touchMove(e); return; }
       this.mouse.x = e.clientX; this.mouse.y = e.clientY; this.mouse.inside = true;
       this.h.onHover(e.clientX, e.clientY);
       const d = this.drag;
@@ -49,6 +57,7 @@ export class Controls {
       d.x = e.clientX; d.y = e.clientY;
     });
     on(el, 'pointerup', (e: PointerEvent) => {
+      if (e.pointerType === 'touch') { this.touchUp(e); return; }
       const d = this.drag;
       this.drag = null;
       if (!d) return;
@@ -68,6 +77,42 @@ export class Controls {
     });
     on(window, 'keyup', (e: KeyboardEvent) => this.keys.delete(e.key.toLowerCase()));
     on(window, 'blur', () => { this.keys.clear(); this.mouse.inside = false; });
+  }
+
+  // ---- touch
+  private touchDown(e: PointerEvent): void {
+    try { this.el.setPointerCapture(e.pointerId); } catch { /* pointer already gone */ }
+    this.touches.set(e.pointerId, { x: e.clientX, y: e.clientY, sx: e.clientX, sy: e.clientY, t: performance.now() });
+    this.edgeScroll = false;
+    if (this.touches.size === 1) this.touchMoved = false;
+    if (this.touches.size === 2) { const [a, b] = [...this.touches.values()]; this.pinch = Math.hypot(a.x - b.x, a.y - b.y); this.touchMoved = true; }
+  }
+  private touchMove(e: PointerEvent): void {
+    const t = this.touches.get(e.pointerId);
+    if (!t) return;
+    const dx = e.clientX - t.x, dy = e.clientY - t.y;
+    t.x = e.clientX; t.y = e.clientY;
+    if (this.touches.size >= 2) {
+      const [a, b] = [...this.touches.values()], d = Math.hypot(a.x - b.x, a.y - b.y);
+      if (this.pinch > 0 && Math.abs(d / this.pinch - 1) > 0.15) { this.cam.zoom(d > this.pinch ? -1 : 1); this.pinch = d; }
+      const k = (this.cam.distance * 0.8) / this.el.clientHeight;
+      this.cam.panWorld(-dx * k, -dy * k);
+      return;
+    }
+    if (!this.touchMoved && Math.hypot(e.clientX - t.sx, e.clientY - t.sy) < DRAG_THRESHOLD * 2) return;
+    this.touchMoved = true;
+    const k = (this.cam.distance * 1.6) / this.el.clientHeight;
+    this.cam.panWorld(-dx * k, -dy * k);
+  }
+  private touchUp(e: PointerEvent): void {
+    const t = this.touches.get(e.pointerId);
+    this.touches.delete(e.pointerId);
+    if (!t || this.touches.size > 0) return;
+    if (!this.touchMoved) {
+      if (performance.now() - t.t >= Controls.LONG_PRESS_MS) this.h.onRightClick(e.clientX, e.clientY, false);
+      else this.h.onLeftClick(e.clientX, e.clientY, false);
+    }
+    this.pinch = 0;
   }
 
   private rect(ax: number, ay: number, bx: number, by: number): { x0: number; y0: number; x1: number; y1: number } {

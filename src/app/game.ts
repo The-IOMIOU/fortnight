@@ -57,6 +57,8 @@ export interface NewGameOptions {
   // ---- Phase 7 ----
   /** Host an online game: player slots kept for human guests (no bot there) and the pause rule. */
   online?: { seats: number[]; pauseMode: 'host' | 'vote' };
+  /** Phase 9: start with the tutorial overlay. */
+  tutorial?: boolean;
 }
 export type StartOptions = { kind: 'new'; opts: NewGameOptions } | { kind: 'load'; save: SaveData; online?: NewGameOptions['online']; viewer?: number } | { kind: 'join'; code: string; name: string };
 
@@ -133,7 +135,7 @@ export class Game {
       this.send({ type: 'init', settings, viewer: this.viewer, speed: o.speed, paused: false, bots: o.bots ?? [] });
       if (o.online) { this.setupNet('host'); this.send({ type: 'hostNet', humans: [0, ...o.online.seats], pauseMode: o.online.pauseMode }); }
       store.set({ myTeam: o.teams?.[0] ?? 0, impossibleBonusOn: !!o.impossibleBonus && !!o.bots?.some((b) => b.difficulty === 'impossible') });
-      store.set({ screen: 'loading', seed: o.seed, size: o.size, speed: o.speed, paused: false, winner: -1, feed: [], stats: null, error: '' });
+      store.set({ screen: 'loading', seed: o.seed, size: o.size, speed: o.speed, paused: false, winner: -1, feed: [], stats: null, error: '', tutorial: o.tutorial ? 0 : -1 });
     } else if (start.kind === 'join') {
       this.viewer = -1;
       const n = this.setupNet('guest');

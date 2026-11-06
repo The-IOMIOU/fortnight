@@ -73,6 +73,13 @@ Status: **approved 2026-11-05** ("okay do phase 1") with these owner amendments:
    - **Pause:** host-controlled by default; optional vote mode (majority). **Test options:** every human must vote yes within 20 s; the option then turns on for all humans at the same tick.
    - **Host left:** guests keep the whole state, can download it or "Host from here"; the others rejoin with new invites. Bot memories restart from the moment the guest joined (bots still work).
 
+14. **Phases 8–9 decisions (2026-11-06, to confirm).**
+   - **Peoples 9–12** (Dune raiders, Scholars, Treewardens, Reefbuilders) complete the 12 starter seeds. The web version stops at 12 (amendment 2); more peoples and the race builder are for the later app.
+   - **Balance harness:** 1v1 Small, Hard bots, random peoples and personalities from each people's bot hints, a time limit (default 40 min); unfinished matches are decided on points (land + army) and reported separately. Bounds 35–65 % with a 95 % Wilson interval; fewer than 10 games are not flagged.
+   - **Unit caps:** population per player 200 (Small/Medium), 150 (Large), 100 (Huge), also with the "no housing cap" test option (it lifts housing, not the performance cap). Effects drawn: 60 % on Large, 35 % on Huge.
+   - **Tutorial:** 7 short steps on an empty Small map, each checked from the game state, skippable. **Touch:** tap, drag, pinch, long press.
+   - **Heroes (F-073)** stay unbuilt: optional, needs the owner's go-ahead.
+
 Items in §7 that weren't commented on are taken as accepted. Proposals P-001…P-005 stay open until answered.
 
 Companion files: [FEATURES.md](FEATURES.md) (feature ledger), [CONTINENT_STRATEGY_GAME.md](CONTINENT_STRATEGY_GAME.md) (master spec).

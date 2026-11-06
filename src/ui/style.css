@@ -158,3 +158,10 @@ details.more > * + * { margin-top: 0.5rem; }
 .vote-banner.warn { border-color: #e8705f; }
 .join-wait { display: grid; gap: 0.5rem; max-width: min(560px, calc(100vw - 2rem)); margin: auto; }
 .join-wait textarea { width: 100%; font-family: monospace; font-size: 0.75rem; }
+
+/* Phase 9: touch — the browser must not scroll or zoom the page while playing */
+.game-canvas { touch-action: none; }
+
+/* Phase 9: tutorial */
+.tutorial { position: absolute; right: 1rem; top: 3.4rem; width: min(340px, calc(100vw - 2rem)); background: #1d2533f0; border: 1px solid #ffffff22; border-radius: 8px; padding: 0.6rem 0.8rem; z-index: 8; font-size: 0.9rem; }
+.tutorial p { margin: 0.4rem 0; line-height: 1.35; }

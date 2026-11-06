@@ -115,6 +115,7 @@ export class RaceRules {
     if (d.water && this.has(p, 'poorSailors')) hp = Math.floor((hp * AB.poorSailors.navalHpPct) / 100);
     if (u === 'scout' && this.has(p, 'gliders')) speed = Math.floor((speed * AB.gliders.scoutSpeedPct) / 100);
     if (this.has(p, 'heavyFooted') && isMilitaryType(u)) speed = Math.floor((speed * AB.heavyFooted.militarySpeedPct) / 100);
+    if (this.has(p, 'fragileArmy') && isMilitaryType(u)) hp = Math.floor((hp * AB.fragileArmy.militaryHpPct) / 100);
     return { hp: Math.max(1, hp), speed: Math.max(1, speed), vision };
   }
 
@@ -156,6 +157,16 @@ export class RaceRules {
     if (this.has(p, 'frostAdapted') && COLD.has(b)) pct = Math.floor((pct * AB.frostAdapted.coldDamagePct) / 100);
     if (this.has(p, 'heatWeak') && HOT.has(b)) pct = Math.floor((pct * AB.heatWeak.hotDamagePct) / 100);
     if (s.tick < e.ambushUntil[a]) pct = Math.floor((pct * AB.tunneling.ambushPct) / 100);
+    if (this.has(p, 'weakLandArmy') && !unitDef(unitTypeOfKind(e.kind[a])).water) pct = Math.floor((pct * AB.weakLandArmy.landDamagePct) / 100);
+    return pct;
+  }
+
+  /** Damage percent from the pair attacker → target (Phase 8): ambush on quiet targets, forest cover. */
+  targetPct(a: number, t: number): number {
+    const s = this.s, e = s.ents, p = e.owner[a], q = e.owner[t];
+    let pct = 100;
+    if (p < s.players && isUnitKind(e.kind[a]) && isUnitKind(e.kind[t]) && this.has(p, 'thieves') && s.tick - e.lastHit[t] > AB.thieves.ambushQuietTicks) pct = Math.floor((pct * AB.thieves.ambushPct) / 100);
+    if (q < s.players && isUnitKind(e.kind[t]) && this.has(q, 'forestKin') && s.map.biome[s.tileOf(t)] === Biome.FOREST) pct = Math.floor((pct * AB.forestKin.forestDamageTakenPct) / 100);
     return pct;
   }
 
@@ -197,7 +208,7 @@ export class RaceRules {
       const n = this.node(p, ps.researching);
       if (!n) { ps.researching = ''; continue; }
       if (!this.hasResearchSite(p)) continue; // lost the capital: research pauses
-      if (++ps.researchProgress >= n.ticks) {
+      if (++ps.researchProgress >= this.researchTicks(p, n.ticks)) {
         ps.researched.push(ps.researching);
         const done = ps.researching;
         ps.researching = ''; ps.researchProgress = 0;
@@ -224,6 +235,9 @@ export class RaceRules {
     // tunnels: the unit stays underground only on tunnel-able ground
     for (let id = 0; id < e.count; id++) if (e.alive[id] && e.burrowed[id] && isWaterBiome(s.map.biome[s.tileOf(id)]) && s.map.biome[s.tileOf(id)] !== Biome.RIVER) this.surface(id);
   }
+
+  /** Research time for player p (Scholars study faster). */
+  researchTicks(p: number, ticks: number): number { return this.has(p, 'quickStudy') ? Math.max(1, Math.floor((ticks * AB.quickStudy.researchTimePct) / 100)) : ticks; }
 
   private hasResearchSite(p: number): boolean {
     const e = this.s.ents;
@@ -343,7 +357,7 @@ export class RaceRules {
 }
 
 /** Unique buildings and the race that owns each. */
-const RACE_BUILDINGS = new Map<string, true>(['tidepool', 'beastPen', 'tunnelHall', 'sporeTower', 'aerie', 'greatForge', 'stiltHall', 'iceLodge'].map((b) => [b, true]));
+const RACE_BUILDINGS = new Map<string, true>(['tidepool', 'beastPen', 'tunnelHall', 'sporeTower', 'aerie', 'greatForge', 'stiltHall', 'iceLodge', 'caravanserai', 'library', 'grove', 'reefDock'].map((b) => [b, true]));
 export const isRaceBuilding = (bt: string): boolean => RACE_BUILDINGS.has(bt);
 
 

@@ -164,6 +164,8 @@ export class Military {
     let dmg = base * 100;                                         // ×100 fixed point
     const rp = this.s.rules.damagePct(a);                         // race: stats, terrain abilities, ambush (Phase 5)
     if (rp !== 100) dmg = Math.floor((dmg * rp) / 100);
+    const tp = this.s.rules.targetPct(a, t);                      // ambush, forest cover (Phase 8)
+    if (tp !== 100) dmg = Math.floor((dmg * tp) / 100);
     dmg = Math.floor((dmg * (tBuilding ? vsB : vsU)) / 100);
     dmg = Math.floor((dmg * (100 + e.weaponTier[a] * C.weaponTierPct)) / 100);
     const ha = this.tileH(a), ht = this.tileH(t);
@@ -358,6 +360,12 @@ export class Military {
     e.posX[c] = tileCenter(x); e.posY[c] = tileCenter((t - x) / s.map.w);
     s.stop(c);
     s.fogForce[e.owner[c]] = 1;
+  }
+
+  /** Fire damage, more for flammable peoples (Treewardens). */
+  private fireDmg(id: number, base: number): number {
+    const p = this.s.ents.owner[id];
+    return p < this.s.players && this.s.rules.has(p, 'flammable') ? Math.floor((base * TUNING.races.abilities.flammable.fireDamagePct) / 100) : base;
   }
 
   /** Hand a town or outpost to another player (diplomacy deal): its land goes with it. */
@@ -685,9 +693,9 @@ export class Military {
     const out: number[] = [];
     for (const t of list) {
       if (second) {
-        for (const id of unitsByTile!.get(t) ?? []) { if (!this.invulnerable(id)) e.hp[id] -= F.unitDamagePerSecond; e.lastHit[id] = s.tick; }
+        for (const id of unitsByTile!.get(t) ?? []) { if (!this.invulnerable(id)) e.hp[id] -= this.fireDmg(id, F.unitDamagePerSecond); e.lastHit[id] = s.tick; }
         const o = s.occ[t];
-        if (o) { if (!this.invulnerable(o - 1)) e.hp[o - 1] -= F.buildingDamagePerSecond; e.lastHit[o - 1] = s.tick; }
+        if (o) { if (!this.invulnerable(o - 1)) e.hp[o - 1] -= this.fireDmg(o - 1, F.buildingDamagePerSecond); e.lastHit[o - 1] = s.tick; }
       }
       if (spread) {
         const x = t % w, y = (t - x) / w;

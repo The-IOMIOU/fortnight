@@ -13,6 +13,10 @@ import windriders from '../data/races/windriders.json' with { type: 'json' };
 import anvilborn from '../data/races/anvilborn.json' with { type: 'json' };
 import fenfolk from '../data/races/fenfolk.json' with { type: 'json' };
 import rimeborn from '../data/races/rimeborn.json' with { type: 'json' };
+import duneraiders from '../data/races/duneraiders.json' with { type: 'json' };
+import scholars from '../data/races/scholars.json' with { type: 'json' };
+import treewardens from '../data/races/treewardens.json' with { type: 'json' };
+import reefbuilders from '../data/races/reefbuilders.json' with { type: 'json' };
 
 export const STAT_KEYS = ['gather_speed', 'build_speed', 'unit_health', 'unit_damage', 'vision', 'movement'] as const;
 export type StatKey = (typeof STAT_KEYS)[number];
@@ -189,7 +193,7 @@ export function loadRaces(raw: unknown[]): { races: RaceDef[]; errors: RaceError
   return { races, errors };
 }
 
-const loaded = loadRaces([baseline, deepkin, wildbond, delvers, mycelids, windriders, anvilborn, fenfolk, rimeborn]);
+const loaded = loadRaces([baseline, deepkin, wildbond, delvers, mycelids, windriders, anvilborn, fenfolk, rimeborn, duneraiders, scholars, treewardens, reefbuilders]);
 if (loaded.errors.length) throw new Error('Invalid race data:\n' + loaded.errors.map((e) => `  race ${e.race}: ${e.field}: ${e.message}`).join('\n'));
 
 /** All shipped races (validated at startup: an invalid file stops the game with a clear message). */

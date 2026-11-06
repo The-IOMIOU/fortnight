@@ -1409,3 +1409,230 @@ Host-ordered lockstep (PLAN §4): the host runs the sim and all bots and sends e
 | `multiplayer.maxCatchUpPerCall` | 40 | A guest that fell behind plays at most 40 turns per worker loop, so its screen keeps updating while it catches up. |
 | `multiplayer.iceServers.0` | stun:stun.l.google.com:19302 | Free public STUN server (no SLA) to find a public address. |
 | `multiplayer.iceServers.1` | stun:stun.cloudflare.com:3478 | Second free STUN server in case the first is down. No TURN relay is configured yet (needs the owner's account). |
+
+## Scale (Phase 8, F-191)
+
+Per map size: the most population one player may have (the menu population limit can only lower it; the "no housing cap" test option does not lift it, for performance), and how many arrows and flames are drawn at once.
+
+| Constant | Value | Why |
+|---|---|---|
+| `map.sizes.small.unitCap` | 200 | Few players: a generous cap that normal games never reach. |
+| `map.sizes.small.effectsPct` | 100 | Full effects. |
+| `map.sizes.medium.unitCap` | 200 | Few players: a generous cap that normal games never reach. |
+| `map.sizes.medium.effectsPct` | 100 | Full effects. |
+| `map.sizes.large.unitCap` | 150 | 16 players × 150. |
+| `map.sizes.large.effectsPct` | 60 | Reduced effects on big maps: share of the arrow and flame budget drawn. |
+| `map.sizes.huge.unitCap` | 100 | 32 players × 100 keeps the Huge sim within its budget (F-190). |
+| `map.sizes.huge.effectsPct` | 35 | Reduced effects on big maps: share of the arrow and flame budget drawn. |
+
+## Race units, peoples 9–12 (Phase 8, F-108–F-111)
+
+Same scale as the first eight peoples' units.
+
+| Constant | Value | Why |
+|---|---|---|
+| `unitTypes.duneRider.food` | 70 | Dune raiders tier 1: the fastest land unit, for raids. Cost in food. |
+| `unitTypes.duneRider.wood` | 0 | Cost in wood. |
+| `unitTypes.duneRider.gold` | 30 | Cost in gold. |
+| `unitTypes.duneRider.trainTicks` | 180 | Training time in ticks. |
+| `unitTypes.duneRider.pop` | 2 | Housing used. |
+| `unitTypes.duneRider.speed` | 450 | Fixed-point sub-units per tick on plains (1024 = 1 tile). |
+| `unitTypes.duneRider.vision` | 8 | Vision radius in tiles. |
+| `unitTypes.duneRider.hp` | 120 | Hit points. |
+| `unitTypes.duneRider.attack` | 12 | Damage per hit before modifiers. |
+| `unitTypes.duneRider.range` | 13 | Reach ×10 tiles (12 = melee). |
+| `unitTypes.duneRider.cooldown` | 11 | Ticks between hits. |
+| `unitTypes.duneRider.armor` | 1 | Flat damage reduction per hit. |
+| `unitTypes.duneRider.vsUnits` | 110 | Damage % against units. |
+| `unitTypes.duneRider.vsBuildings` | 60 | Damage % against buildings. |
+| `unitTypes.duneRider.water` | 0 | 1 = sails (kraken), 0 = land. |
+| `unitTypes.duneRider.stealth` | 0 | 0. |
+| `unitTypes.duneRider.capacity` | 0 | 0. |
+| `unitTypes.sandWyrm.food` | 280 | Dune raiders capstone. Cost in food. |
+| `unitTypes.sandWyrm.wood` | 0 | Cost in wood. |
+| `unitTypes.sandWyrm.gold` | 120 | Cost in gold. |
+| `unitTypes.sandWyrm.trainTicks` | 600 | Training time in ticks. |
+| `unitTypes.sandWyrm.pop` | 6 | Housing used. |
+| `unitTypes.sandWyrm.speed` | 280 | Fixed-point sub-units per tick on plains (1024 = 1 tile). |
+| `unitTypes.sandWyrm.vision` | 8 | Vision radius in tiles. |
+| `unitTypes.sandWyrm.hp` | 800 | Hit points. |
+| `unitTypes.sandWyrm.attack` | 36 | Damage per hit before modifiers. |
+| `unitTypes.sandWyrm.range` | 15 | Reach ×10 tiles (12 = melee). |
+| `unitTypes.sandWyrm.cooldown` | 16 | Ticks between hits. |
+| `unitTypes.sandWyrm.armor` | 4 | Flat damage reduction per hit. |
+| `unitTypes.sandWyrm.vsUnits` | 110 | Damage % against units. |
+| `unitTypes.sandWyrm.vsBuildings` | 200 | Damage % against buildings. |
+| `unitTypes.sandWyrm.water` | 0 | 1 = sails (kraken), 0 = land. |
+| `unitTypes.sandWyrm.stealth` | 0 | 0. |
+| `unitTypes.sandWyrm.capacity` | 0 | 0. |
+| `unitTypes.arcanist.food` | 50 | Scholars tier 1: ranged (6 tiles), fragile. Cost in food. |
+| `unitTypes.arcanist.wood` | 40 | Cost in wood. |
+| `unitTypes.arcanist.gold` | 30 | Cost in gold. |
+| `unitTypes.arcanist.trainTicks` | 170 | Training time in ticks. |
+| `unitTypes.arcanist.pop` | 1 | Housing used. |
+| `unitTypes.arcanist.speed` | 260 | Fixed-point sub-units per tick on plains (1024 = 1 tile). |
+| `unitTypes.arcanist.vision` | 9 | Vision radius in tiles. |
+| `unitTypes.arcanist.hp` | 70 | Hit points. |
+| `unitTypes.arcanist.attack` | 11 | Damage per hit before modifiers. |
+| `unitTypes.arcanist.range` | 60 | Reach ×10 tiles (12 = melee). |
+| `unitTypes.arcanist.cooldown` | 15 | Ticks between hits. |
+| `unitTypes.arcanist.armor` | 0 | Flat damage reduction per hit. |
+| `unitTypes.arcanist.vsUnits` | 110 | Damage % against units. |
+| `unitTypes.arcanist.vsBuildings` | 40 | Damage % against buildings. |
+| `unitTypes.arcanist.water` | 0 | 1 = sails (kraken), 0 = land. |
+| `unitTypes.arcanist.stealth` | 0 | 0. |
+| `unitTypes.arcanist.capacity` | 0 | 0. |
+| `unitTypes.colossus.food` | 0 | Scholars capstone: costly in gold and adamite. Cost in food. |
+| `unitTypes.colossus.wood` | 180 | Cost in wood. |
+| `unitTypes.colossus.gold` | 200 | Cost in gold. |
+| `unitTypes.colossus.trainTicks` | 600 | Training time in ticks. |
+| `unitTypes.colossus.pop` | 6 | Housing used. |
+| `unitTypes.colossus.speed` | 180 | Fixed-point sub-units per tick on plains (1024 = 1 tile). |
+| `unitTypes.colossus.vision` | 7 | Vision radius in tiles. |
+| `unitTypes.colossus.hp` | 1100 | Hit points. |
+| `unitTypes.colossus.attack` | 40 | Damage per hit before modifiers. |
+| `unitTypes.colossus.range` | 15 | Reach ×10 tiles (12 = melee). |
+| `unitTypes.colossus.cooldown` | 20 | Ticks between hits. |
+| `unitTypes.colossus.armor` | 7 | Flat damage reduction per hit. |
+| `unitTypes.colossus.vsUnits` | 100 | Damage % against units. |
+| `unitTypes.colossus.vsBuildings` | 220 | Damage % against buildings. |
+| `unitTypes.colossus.water` | 0 | 1 = sails (kraken), 0 = land. |
+| `unitTypes.colossus.stealth` | 0 | 0. |
+| `unitTypes.colossus.capacity` | 0 | 0. |
+| `unitTypes.grovewarden.food` | 45 | Treewardens tier 1: forest archer. Cost in food. |
+| `unitTypes.grovewarden.wood` | 50 | Cost in wood. |
+| `unitTypes.grovewarden.gold` | 0 | Cost in gold. |
+| `unitTypes.grovewarden.trainTicks` | 160 | Training time in ticks. |
+| `unitTypes.grovewarden.pop` | 1 | Housing used. |
+| `unitTypes.grovewarden.speed` | 270 | Fixed-point sub-units per tick on plains (1024 = 1 tile). |
+| `unitTypes.grovewarden.vision` | 8 | Vision radius in tiles. |
+| `unitTypes.grovewarden.hp` | 75 | Hit points. |
+| `unitTypes.grovewarden.attack` | 9 | Damage per hit before modifiers. |
+| `unitTypes.grovewarden.range` | 65 | Reach ×10 tiles (12 = melee). |
+| `unitTypes.grovewarden.cooldown` | 15 | Ticks between hits. |
+| `unitTypes.grovewarden.armor` | 0 | Flat damage reduction per hit. |
+| `unitTypes.grovewarden.vsUnits` | 100 | Damage % against units. |
+| `unitTypes.grovewarden.vsBuildings` | 20 | Damage % against buildings. |
+| `unitTypes.grovewarden.water` | 0 | 1 = sails (kraken), 0 = land. |
+| `unitTypes.grovewarden.stealth` | 0 | 0. |
+| `unitTypes.grovewarden.capacity` | 0 | 0. |
+| `unitTypes.treant.food` | 250 | Treewardens capstone: tough, slow, burns easily (flammable). Cost in food. |
+| `unitTypes.treant.wood` | 200 | Cost in wood. |
+| `unitTypes.treant.gold` | 0 | Cost in gold. |
+| `unitTypes.treant.trainTicks` | 600 | Training time in ticks. |
+| `unitTypes.treant.pop` | 6 | Housing used. |
+| `unitTypes.treant.speed` | 170 | Fixed-point sub-units per tick on plains (1024 = 1 tile). |
+| `unitTypes.treant.vision` | 7 | Vision radius in tiles. |
+| `unitTypes.treant.hp` | 1000 | Hit points. |
+| `unitTypes.treant.attack` | 34 | Damage per hit before modifiers. |
+| `unitTypes.treant.range` | 14 | Reach ×10 tiles (12 = melee). |
+| `unitTypes.treant.cooldown` | 18 | Ticks between hits. |
+| `unitTypes.treant.armor` | 5 | Flat damage reduction per hit. |
+| `unitTypes.treant.vsUnits` | 100 | Damage % against units. |
+| `unitTypes.treant.vsBuildings` | 250 | Damage % against buildings. |
+| `unitTypes.treant.water` | 0 | 1 = sails (kraken), 0 = land. |
+| `unitTypes.treant.stealth` | 0 | 0. |
+| `unitTypes.treant.capacity` | 0 | 0. |
+| `unitTypes.reefguard.food` | 55 | Reefbuilders tier 1: coastal infantry. Cost in food. |
+| `unitTypes.reefguard.wood` | 25 | Cost in wood. |
+| `unitTypes.reefguard.gold` | 0 | Cost in gold. |
+| `unitTypes.reefguard.trainTicks` | 160 | Training time in ticks. |
+| `unitTypes.reefguard.pop` | 1 | Housing used. |
+| `unitTypes.reefguard.speed` | 265 | Fixed-point sub-units per tick on plains (1024 = 1 tile). |
+| `unitTypes.reefguard.vision` | 6 | Vision radius in tiles. |
+| `unitTypes.reefguard.hp` | 115 | Hit points. |
+| `unitTypes.reefguard.attack` | 11 | Damage per hit before modifiers. |
+| `unitTypes.reefguard.range` | 12 | Reach ×10 tiles (12 = melee). |
+| `unitTypes.reefguard.cooldown` | 10 | Ticks between hits. |
+| `unitTypes.reefguard.armor` | 2 | Flat damage reduction per hit. |
+| `unitTypes.reefguard.vsUnits` | 100 | Damage % against units. |
+| `unitTypes.reefguard.vsBuildings` | 40 | Damage % against buildings. |
+| `unitTypes.reefguard.water` | 0 | 1 = sails (kraken), 0 = land. |
+| `unitTypes.reefguard.stealth` | 0 | 0. |
+| `unitTypes.reefguard.capacity` | 0 | 0. |
+| `unitTypes.kraken.food` | 250 | Reefbuilders capstone: a sea unit (water = 1) that shoots coasts. Cost in food. |
+| `unitTypes.kraken.wood` | 50 | Cost in wood. |
+| `unitTypes.kraken.gold` | 120 | Cost in gold. |
+| `unitTypes.kraken.trainTicks` | 600 | Training time in ticks. |
+| `unitTypes.kraken.pop` | 6 | Housing used. |
+| `unitTypes.kraken.speed` | 300 | Fixed-point sub-units per tick on plains (1024 = 1 tile). |
+| `unitTypes.kraken.vision` | 9 | Vision radius in tiles. |
+| `unitTypes.kraken.hp` | 900 | Hit points. |
+| `unitTypes.kraken.attack` | 32 | Damage per hit before modifiers. |
+| `unitTypes.kraken.range` | 45 | Reach ×10 tiles (12 = melee). |
+| `unitTypes.kraken.cooldown` | 16 | Ticks between hits. |
+| `unitTypes.kraken.armor` | 4 | Flat damage reduction per hit. |
+| `unitTypes.kraken.vsUnits` | 110 | Damage % against units. |
+| `unitTypes.kraken.vsBuildings` | 150 | Damage % against buildings. |
+| `unitTypes.kraken.water` | 1 | 1 = sails (kraken), 0 = land. |
+| `unitTypes.kraken.stealth` | 0 | 0. |
+| `unitTypes.kraken.capacity` | 0 | 0. |
+| `buildingTypes.caravanserai.size` | 2 | Dune raiders unique building. Footprint in tiles. |
+| `buildingTypes.caravanserai.wood` | 120 | Cost in wood. |
+| `buildingTypes.caravanserai.stone` | 40 | Cost in stone. |
+| `buildingTypes.caravanserai.buildPoints` | 320 | Work needed to build. |
+| `buildingTypes.caravanserai.housing` | 0 | 0. |
+| `buildingTypes.caravanserai.territory` | 0 | 0. |
+| `buildingTypes.caravanserai.vision` | 6 | Vision radius. |
+| `buildingTypes.caravanserai.hp` | 900 | Hit points. |
+| `buildingTypes.caravanserai.attack` | 0 | 0. |
+| `buildingTypes.caravanserai.range` | 0 | 0. |
+| `buildingTypes.caravanserai.cooldown` | 0 | 0. |
+| `buildingTypes.caravanserai.garrison` | 0 | 0. |
+| `buildingTypes.library.size` | 2 | Scholars unique building. Footprint in tiles. |
+| `buildingTypes.library.wood` | 100 | Cost in wood. |
+| `buildingTypes.library.stone` | 80 | Cost in stone. |
+| `buildingTypes.library.buildPoints` | 350 | Work needed to build. |
+| `buildingTypes.library.housing` | 0 | 0. |
+| `buildingTypes.library.territory` | 0 | 0. |
+| `buildingTypes.library.vision` | 6 | Vision radius. |
+| `buildingTypes.library.hp` | 800 | Hit points. |
+| `buildingTypes.library.attack` | 0 | 0. |
+| `buildingTypes.library.range` | 0 | 0. |
+| `buildingTypes.library.cooldown` | 0 | 0. |
+| `buildingTypes.library.garrison` | 0 | 0. |
+| `buildingTypes.grove.size` | 2 | Treewardens unique building. Footprint in tiles. |
+| `buildingTypes.grove.wood` | 160 | Cost in wood. |
+| `buildingTypes.grove.stone` | 0 | Cost in stone. |
+| `buildingTypes.grove.buildPoints` | 300 | Work needed to build. |
+| `buildingTypes.grove.housing` | 0 | 0. |
+| `buildingTypes.grove.territory` | 0 | 0. |
+| `buildingTypes.grove.vision` | 4 | Vision radius. |
+| `buildingTypes.grove.hp` | 900 | Hit points. |
+| `buildingTypes.grove.attack` | 0 | 0. |
+| `buildingTypes.grove.range` | 0 | 0. |
+| `buildingTypes.grove.cooldown` | 0 | 0. |
+| `buildingTypes.grove.garrison` | 0 | 0. |
+| `buildingTypes.reefDock.size` | 2 | Reefbuilders unique building; must touch the sea or a lake. Footprint in tiles. |
+| `buildingTypes.reefDock.wood` | 140 | Cost in wood. |
+| `buildingTypes.reefDock.stone` | 20 | Cost in stone. |
+| `buildingTypes.reefDock.buildPoints` | 350 | Work needed to build. |
+| `buildingTypes.reefDock.housing` | 0 | 0. |
+| `buildingTypes.reefDock.territory` | 0 | 0. |
+| `buildingTypes.reefDock.vision` | 6 | Vision radius. |
+| `buildingTypes.reefDock.hp` | 800 | Hit points. |
+| `buildingTypes.reefDock.attack` | 0 | 0. |
+| `buildingTypes.reefDock.range` | 0 | 0. |
+| `buildingTypes.reefDock.cooldown` | 0 | 0. |
+| `buildingTypes.reefDock.garrison` | 0 | 0. |
+| `races.abilities.thieves.points` | 6 | Raiding economy: steals double, ambushes. |
+| `races.abilities.thieves.stealPct` | 200 | Theft takes 200 % of `covert.stealAmount`. |
+| `races.abilities.thieves.detectMinusPct` | 10 | Spies 10 points less likely to be caught. |
+| `races.abilities.thieves.ambushPct` | 130 | Damage 130 % against units not hit in the last … |
+| `races.abilities.thieves.ambushQuietTicks` | 100 | … 10 s (a foe not yet in a fight). |
+| `races.abilities.poorFarmers.points` | -6 | Food is the base of every economy. |
+| `races.abilities.poorFarmers.farmYieldPct` | 60 | Farms yield 60 %. |
+| `races.abilities.quickStudy.points` | 6 | The tech race is theirs. |
+| `races.abilities.quickStudy.researchTimePct` | 60 | Research takes 60 % of the time. |
+| `races.abilities.quickStudy.detectMinusPct` | 10 | Spies 10 points less likely to be caught. |
+| `races.abilities.fragileArmy.points` | -6 | Every fight costs them more. |
+| `races.abilities.fragileArmy.militaryHpPct` | 75 | Soldiers have 75 % HP (workers and scouts don't). |
+| `races.abilities.forestKin.points` | 6 | Strong only where forests are; forests are common. |
+| `races.abilities.forestKin.forestDamageTakenPct` | 70 | Units in forest take 70 % damage. |
+| `races.abilities.forestKin.woodGatherPct` | 130 | Wood gathering 130 %. |
+| `races.abilities.flammable.points` | -6 | Fire becomes a real threat (Set fire order). |
+| `races.abilities.flammable.fireDamagePct` | 250 | Fire damage 250 % to their units and buildings. |
+| `races.abilities.reefBuilders.points` | 6 | Water bases from the first minute. |
+| `races.abilities.reefBuilders.pierCostPct` | 50 | Piers cost 50 %; the Piers research is free. |
+| `races.abilities.weakLandArmy.points` | -6 | They must win at sea or behind towers. |
+| `races.abilities.weakLandArmy.landDamagePct` | 75 | Land soldiers deal 75 % damage. |

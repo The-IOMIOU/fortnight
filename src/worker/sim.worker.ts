@@ -123,7 +123,7 @@ function snapshot(): void {
 
 function meOf(s: Sim, p: number): Snapshot['me'] {
   const ps = s.ps[p], n = ps.researching ? s.rules.node(p, ps.researching) : null;
-  return { race: ps.race, researched: ps.researched.slice(), researching: ps.researching, researchPermille: n ? Math.floor((ps.researchProgress * 1000) / n.ticks) : 0, gear: ps.gear.slice() };
+  return { race: ps.race, researched: ps.researched.slice(), researching: ps.researching, researchPermille: n ? Math.floor((ps.researchProgress * 1000) / s.rules.researchTicks(p, n.ticks)) : 0, gear: ps.gear.slice() };
 }
 
 function dipOf(s: Sim, p: number): Snapshot['dip'] {

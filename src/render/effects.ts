@@ -3,6 +3,7 @@
 import * as THREE from 'three';
 import type { MapPayload } from '../worker/protocol';
 import { tileTopY } from './terrain';
+import { TUNING, type MapSize } from '../sim/core/tuning';
 
 const MAX_SHOTS = 512, MAX_FLAMES = 2048, FLIGHT_MS = 280;
 
@@ -18,7 +19,12 @@ export class EffectsLayer {
   private q = new THREE.Quaternion();
   private v = new THREE.Vector3();
 
+  /** Reduced effects on big maps (F-191): arrows and flames drawn at once. */
+  private shotBudget = MAX_SHOTS;
+  private flameBudget = MAX_FLAMES;
   constructor(private map: MapPayload) {
+    const pct = TUNING.map.sizes[map.size as MapSize]?.effectsPct ?? 100;
+    this.shotBudget = Math.max(32, Math.floor((MAX_SHOTS * pct) / 100)); this.flameBudget = Math.max(64, Math.floor((MAX_FLAMES * pct) / 100));
     this.arrows = new THREE.InstancedMesh(new THREE.BoxGeometry(0.32, 0.025, 0.025), new THREE.MeshBasicMaterial({ color: 0x3a2a1c }), MAX_SHOTS);
     const flame = new THREE.ConeGeometry(0.22, 0.6, 6).translate(0, 0.3, 0);
     this.flames = new THREE.InstancedMesh(flame, new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.85, depthWrite: false }), MAX_FLAMES);
@@ -27,7 +33,7 @@ export class EffectsLayer {
 
   /** New shots from the latest snapshot (world positions of shooter and target). */
   addShot(from: { x: number; y: number; z: number }, to: { x: number; y: number; z: number }, now: number): void {
-    if (this.shots.length >= MAX_SHOTS) this.shots.shift();
+    if (this.shots.length >= this.shotBudget) this.shots.shift();
     this.shots.push({ x0: from.x, y0: from.y + 0.5, z0: from.z, x1: to.x, y1: to.y + 0.4, z1: to.z, born: now });
   }
 
@@ -54,7 +60,7 @@ export class EffectsLayer {
     const c = new THREE.Color();
     let f = 0;
     for (const t of this.fireTiles) {
-      if (f >= MAX_FLAMES - 1) break;
+      if (f >= this.flameBudget - 1) break;
       const w = this.map.w, x = t % w, z = (t - x) / w, y = tileTopY(this.map, t);
       for (let k = 0; k < 2; k++) {
         const ph = now / 120 + t * 1.7 + k * 2.1;

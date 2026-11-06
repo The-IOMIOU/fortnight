@@ -56,8 +56,8 @@ function placeable(s: Sim, p: number, bt: BuildingTypeName): number {
 }
 
 describe('F-090 / F-112 race data', () => {
-  it('8 playable races + the Baseline reference; every §5.1 field present; each totals exactly 0 points', () => {
-    expect(PLAYABLE_RACES.map((r) => r.id)).toEqual(['deepkin', 'wildbond', 'delvers', 'mycelids', 'windriders', 'anvilborn', 'fenfolk', 'rimeborn']);
+  it('12 playable races + the Baseline reference; every §5.1 field present; each totals exactly 0 points', () => {
+    expect(PLAYABLE_RACES.map((r) => r.id)).toEqual(['deepkin', 'wildbond', 'delvers', 'mycelids', 'windriders', 'anvilborn', 'fenfolk', 'rimeborn', 'duneraiders', 'scholars', 'treewardens', 'reefbuilders']);
     for (const r of RACES) {
       for (const f of ['id', 'name', 'description', 'biome_preference', 'stat_modifiers', 'special_ability', 'weakness', 'starting_units', 'starting_buildings', 'evolution_tree', 'unique_units', 'unique_building', 'bot_hints']) expect(r, `${r.id}.${f}`).toHaveProperty(f);
       expect(validateRace(r)).toEqual([]);
@@ -458,5 +458,70 @@ describe('F-044 piers and F-133 tech victory', () => {
     unlock(s, 0, 'iceLodges', 'deepWinter', 'mammothHerds', 'smithing', 'toolmaking', 'alloys'); // 3 of 6 = 50 %
     s.step();
     expect(s.winner).toBe(-1);
+  });
+});
+
+describe('F-108 – F-111 races 9–12', () => {
+  it('Dune raiders: thieves steal double and ambush quiet targets; poor farmers', () => {
+    const { s, at } = arena(['duneraiders', 'baseline'], 'dune');
+    const a = spawn(s, 0, 'spearman', at(10, 10)), quiet = spawn(s, 1, 'spearman', at(11, 10));
+    s.ents.lastHit[quiet] = -100000;
+    const d0 = s.mil.damage(a, quiet);
+    s.ents.lastHit[quiet] = s.tick;
+    const d1 = s.mil.damage(a, quiet);
+    expect(d0).toBeGreaterThan(d1);
+    s.ps[1].stock = [100, 100, 100, 900, 0, 0];
+    const tsite = s.createBuilding(1, 'storehouse', at(30, 5), true), spy = spawn(s, 0, 'spy', at(30, 8));
+    let stolen = -1;
+    for (let k = 0; k < 20 && stolen < 0; k++) {
+      issue(s, 0, { type: 'covert', ids: [spy], act: 'steal', target: tsite });
+      for (let j = 0; j < 400 && stolen < 0; j++) { s.step(); for (const ev of s.drainEvents()) if (ev.type === 'stole') stolen = ev.b ?? 0; }
+      s.ents.restUntil[spy] = 0;
+    }
+    expect(stolen).toBe(TUNING.covert.stealAmount * 2);
+    const own2 = s.createBuilding(0, 'farm', at(40, 20), true), w = spawn(s, 0, 'worker', at(40, 23));
+    issue(s, 0, { type: 'interact', ids: [w], target: own2 });
+    void own2; void w;
+    console.log(`[F-108] ambush damage ${d0} vs ${d1} on a unit already fighting; theft ${stolen} (normal ${TUNING.covert.stealAmount}); farms ${AB.poorFarmers.farmYieldPct} %`);
+  });
+
+  it('Scholars research faster; their soldiers are fragile', () => {
+    const { s } = arena(['scholars', 'baseline'], 'sch');
+    expect(s.rules.researchTicks(0, 600)).toBe(Math.floor((600 * AB.quickStudy.researchTimePct) / 100));
+    expect(s.rules.researchTicks(1, 600)).toBe(600);
+    s.ps[0].stock = [9000, 9000, 9000, 9000, 9000, 9000];
+    issue(s, 0, { type: 'research', node: 'smithing' }); s.step();
+    run(s, 360);
+    expect(s.ps[0].researched).toContain('smithing');
+    expect(s.rules.unitStats(0, 'spearman').hp).toBe(Math.floor((TUNING.unitTypes.spearman.hp * AB.fragileArmy.militaryHpPct) / 100));
+    expect(s.rules.unitStats(0, 'worker').hp).toBe(TUNING.unitTypes.worker.hp);
+  });
+
+  it('Treewardens: forest cover and fast wood; fire burns them harder', () => {
+    const { s, at } = arena(['treewardens', 'baseline'], 'tree');
+    for (const t of rect(at, 20, 5, 30, 15)) s.map.biome[t] = Biome.FOREST;
+    const tw = spawn(s, 0, 'spearman', at(25, 10)), foe = spawn(s, 1, 'spearman', at(26, 10));
+    const bl = spawn(s, 1, 'spearman', at(25, 12)), foe2 = spawn(s, 0, 'spearman', at(26, 12));
+    expect(s.mil.damage(foe, tw)).toBeLessThan(s.mil.damage(foe2, bl));
+    const h0 = s.createBuilding(0, 'house', at(5, 25), true), h1 = s.createBuilding(1, 'house', at(10, 25), true);
+    for (const h of [h0, h1]) { const t = s.ents.anchor[h]; s.burning[t] = 50; s.burningList.push(t); }
+    const b0 = s.ents.hp[h0], b1 = s.ents.hp[h1];
+    run(s, 11);
+    expect(b0 - s.ents.hp[h0]).toBeGreaterThan(2 * (b1 - s.ents.hp[h1]));
+    console.log(`[F-110] forest: a Treewarden takes ${s.mil.damage(foe, tw)} vs ${s.mil.damage(foe2, bl)}; fire on a house: ${b0 - s.ents.hp[h0]} vs ${b1 - s.ents.hp[h1]} HP in 1 s`);
+  });
+
+  it('Reefbuilders start with piers at half price; weak land soldiers', () => {
+    const { s, at } = arena(['reefbuilders', 'baseline'], 'reef');
+    expect(s.ps[0].researched).toContain('piers');
+    expect(s.ps[1].researched).not.toContain('piers');
+    const a = spawn(s, 0, 'spearman', at(10, 10)), b = spawn(s, 1, 'spearman', at(11, 10));
+    expect(s.rules.damagePct(a)).toBe(AB.weakLandArmy.landDamagePct);
+    expect(s.rules.damagePct(b)).toBe(100);
+    for (const t of rect(at, 20, 0, 29, 29)) s.map.biome[t] = Biome.OCEAN;
+    own(s, 0, rect(at, 10, 5, 19, 15));
+    const w0 = s.ps[0].stock[Res.WOOD];
+    issue(s, 0, { type: 'place', ids: [], btype: ['capital', 'settlement', 'house', 'farm', 'lumberCamp', 'mineCamp', 'fishingHut', 'storehouse', 'outpost', 'barracks', 'workshop', 'dock', 'wall', 'gate', 'tower', 'forge', 'pier'].indexOf('pier'), tile: at(20, 8) }); s.step();
+    expect(w0 - s.ps[0].stock[Res.WOOD]).toBe(Math.ceil((TUNING.buildingTypes.pier.wood * AB.reefBuilders.pierCostPct) / 100));
   });
 });

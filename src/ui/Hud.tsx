@@ -14,6 +14,7 @@ import { DEFAULT_KEYS, keyFor, keyLabel, resetKeys, setKey } from '../app/keymap
 import { ForgePanel, TechButton, TechPanel, UnitRaceBar, buildingAllowed, unitAllowed } from './RacePanels';
 import { CovertBar, DiploButton, DiploPanel } from './DiploPanel';
 import { NetButton, NetNotices, NetPanel, VoteBanner } from './NetPanels';
+import { TutorialPanel } from './Tutorial';
 import { raceById } from '../sim/races';
 
 const SPEED_LABEL: Record<SpeedName, string> = { slow: '0.5×', normal: '1×', fast: '2×', veryFast: '4×', x8: '8×', x16: '16×' };
@@ -43,6 +44,7 @@ export function Hud({ game, onQuit, onSave, onRehost }: { game: Game; onQuit: ()
       <DiploPanel game={game} />
       <NetPanel game={game} />
       <VoteBanner game={game} />
+      <TutorialPanel />
       <NetNotices onSave={onSave} onRehost={() => onRehost?.()} />
       <StatsPanel />
       <SettingsModal />

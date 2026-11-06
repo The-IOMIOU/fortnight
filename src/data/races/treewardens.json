@@ -1,0 +1,100 @@
+{
+  "id": "treewardens",
+  "name": "Treewardens",
+  "description": "Guardians of the old woods. In forests they shrug off blows and fell timber quickly; fire is their terror.",
+  "biome_preference": [
+    "forest"
+  ],
+  "stat_modifiers": {
+    "gather_speed": 100,
+    "build_speed": 100,
+    "unit_health": 100,
+    "unit_damage": 100,
+    "vision": 100,
+    "movement": 100
+  },
+  "special_ability": "forestKin",
+  "weakness": "flammable",
+  "starting_units": {
+    "worker": 3,
+    "scout": 1
+  },
+  "starting_buildings": [
+    "capital"
+  ],
+  "starting_resources": {
+    "food": 200,
+    "wood": 200,
+    "stone": 100,
+    "gold": 0,
+    "carbon": 0,
+    "adamite": 0
+  },
+  "evolution_tree": [
+    {
+      "id": "groves",
+      "name": "Sacred groves",
+      "cost": {
+        "wood": 150,
+        "food": 60
+      },
+      "ticks": 600,
+      "requires": [],
+      "unlocks": {
+        "buildings": [
+          "grove"
+        ],
+        "units": [
+          "grovewarden"
+        ]
+      }
+    },
+    {
+      "id": "deepRoots",
+      "name": "Deep roots",
+      "cost": {
+        "food": 150,
+        "stone": 60
+      },
+      "ticks": 900,
+      "requires": [
+        "groves"
+      ],
+      "unlocks": {
+        "stats": {
+          "unit_health": 10
+        }
+      }
+    },
+    {
+      "id": "awakening",
+      "name": "Awakening of the treants",
+      "cost": {
+        "wood": 300,
+        "gold": 150
+      },
+      "ticks": 1800,
+      "requires": [
+        "deepRoots"
+      ],
+      "unlocks": {
+        "units": [
+          "treant"
+        ]
+      },
+      "capstone": true
+    }
+  ],
+  "unique_units": [
+    "grovewarden",
+    "treant"
+  ],
+  "unique_building": "grove",
+  "bot_hints": {
+    "personalities": [
+      "defender",
+      "pacifist"
+    ],
+    "strategy": "Fight inside forests, keep fires away from home."
+  }
+}

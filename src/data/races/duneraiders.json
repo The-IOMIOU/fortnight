@@ -1,0 +1,102 @@
+{
+  "id": "duneraiders",
+  "name": "Dune raiders",
+  "description": "Desert clans who live by the raid. Their thieves take twice as much and their warriors strike hardest at foes who are not yet fighting. They are poor farmers.",
+  "biome_preference": [
+    "desert",
+    "plains"
+  ],
+  "stat_modifiers": {
+    "gather_speed": 100,
+    "build_speed": 100,
+    "unit_health": 100,
+    "unit_damage": 100,
+    "vision": 95,
+    "movement": 105
+  },
+  "special_ability": "thieves",
+  "weakness": "poorFarmers",
+  "starting_units": {
+    "worker": 3,
+    "scout": 1
+  },
+  "starting_buildings": [
+    "capital"
+  ],
+  "starting_resources": {
+    "food": 200,
+    "wood": 200,
+    "stone": 100,
+    "gold": 0,
+    "carbon": 0,
+    "adamite": 0
+  },
+  "evolution_tree": [
+    {
+      "id": "caravans",
+      "name": "Caravans",
+      "cost": {
+        "wood": 120,
+        "food": 80
+      },
+      "ticks": 600,
+      "requires": [],
+      "unlocks": {
+        "buildings": [
+          "caravanserai"
+        ],
+        "units": [
+          "duneRider"
+        ]
+      }
+    },
+    {
+      "id": "mirage",
+      "name": "Mirage tactics",
+      "cost": {
+        "food": 150,
+        "gold": 60
+      },
+      "ticks": 900,
+      "requires": [
+        "caravans"
+      ],
+      "unlocks": {
+        "stats": {
+          "movement": 10
+        }
+      }
+    },
+    {
+      "id": "wyrmcall",
+      "name": "Call of the sand wyrm",
+      "cost": {
+        "food": 300,
+        "gold": 200,
+        "carbon": 40
+      },
+      "ticks": 1800,
+      "requires": [
+        "mirage"
+      ],
+      "unlocks": {
+        "units": [
+          "sandWyrm"
+        ]
+      },
+      "capstone": true
+    }
+  ],
+  "unique_units": [
+    "duneRider",
+    "sandWyrm"
+  ],
+  "unique_building": "caravanserai",
+  "bot_hints": {
+    "personalities": [
+      "raider",
+      "schemer"
+    ],
+    "strategy": "Steal with spies, raid workers and farms, avoid long sieges."
+  }
+}

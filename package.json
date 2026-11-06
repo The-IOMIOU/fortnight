@@ -12,7 +12,9 @@
     "test": "vitest run",
     "test:e2e": "playwright test",
     "check": "node tools/check-sim-purity.mjs && node tools/check-tuning.mjs && node tools/check-assets.mjs && node tools/check-repo.mjs && node tools/check-ai-fog.mjs",
-    "test:bots": "vitest run --config vitest.bots.config.ts --silent=false"
+    "test:bots": "vitest run --config vitest.bots.config.ts --silent=false",
+    "harness": "node tools/harness.mjs",
+    "harness:report": "node tools/harness-report.mjs"
   },
   "dependencies": {
     "preact": "10.29.8",

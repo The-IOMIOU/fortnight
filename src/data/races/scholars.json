@@ -1,0 +1,102 @@
+{
+  "id": "scholars",
+  "name": "Scholars",
+  "description": "A people of libraries and observatories. They research far faster and their spies are hard to catch, but their soldiers are fragile.",
+  "biome_preference": [
+    "plains",
+    "coast"
+  ],
+  "stat_modifiers": {
+    "gather_speed": 100,
+    "build_speed": 100,
+    "unit_health": 100,
+    "unit_damage": 100,
+    "vision": 105,
+    "movement": 95
+  },
+  "special_ability": "quickStudy",
+  "weakness": "fragileArmy",
+  "starting_units": {
+    "worker": 3,
+    "scout": 1
+  },
+  "starting_buildings": [
+    "capital"
+  ],
+  "starting_resources": {
+    "food": 200,
+    "wood": 200,
+    "stone": 100,
+    "gold": 0,
+    "carbon": 0,
+    "adamite": 0
+  },
+  "evolution_tree": [
+    {
+      "id": "libraries",
+      "name": "Great libraries",
+      "cost": {
+        "wood": 120,
+        "stone": 60
+      },
+      "ticks": 600,
+      "requires": [],
+      "unlocks": {
+        "buildings": [
+          "library"
+        ],
+        "units": [
+          "arcanist"
+        ]
+      }
+    },
+    {
+      "id": "astronomy",
+      "name": "Astronomy",
+      "cost": {
+        "food": 120,
+        "gold": 80
+      },
+      "ticks": 900,
+      "requires": [
+        "libraries"
+      ],
+      "unlocks": {
+        "stats": {
+          "vision": 10
+        }
+      }
+    },
+    {
+      "id": "colossi",
+      "name": "Clockwork colossi",
+      "cost": {
+        "wood": 200,
+        "gold": 220,
+        "adamite": 50
+      },
+      "ticks": 1800,
+      "requires": [
+        "astronomy"
+      ],
+      "unlocks": {
+        "units": [
+          "colossus"
+        ]
+      },
+      "capstone": true
+    }
+  ],
+  "unique_units": [
+    "arcanist",
+    "colossus"
+  ],
+  "unique_building": "library",
+  "bot_hints": {
+    "personalities": [
+      "merchant",
+      "schemer"
+    ],
+    "strategy": "Rush the tech tree, win with gear and the capstone, avoid early fights."
+  }
+}

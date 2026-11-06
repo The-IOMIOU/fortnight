@@ -194,6 +194,7 @@ export class Sim {
     if (this.ps.some((ps) => ps.opts)) this.modified = true;
     this.rules = new RaceRules(this);
     for (let p = 0; p < this.players; p++) this.rules.refresh(p);
+    for (let p = 0; p < this.players; p++) if (this.rules.has(p, 'reefBuilders') && !this.ps[p].researched.includes('piers')) { this.ps[p].researched.push('piers'); this.rules.refresh(p); }
     this.rngFungus = Rng.stream(settings.seed, 'fungus');
     this.rngCovert = Rng.stream(settings.seed, 'covert');
     this.dip = new Diplomacy(this, newDiploState(this.players));
@@ -335,7 +336,7 @@ export class Sim {
     }
     if ((bt === 'fishingHut' || bt === 'tidepool') && !nearWater) return 'must be next to water';
     if (bt === 'iceLodge' && !nearWater && !nearIce) return 'must be next to water or sea ice';
-    if (bt === 'dock') {
+    if (bt === 'dock' || bt === 'reefDock') {
       let sea = false;
       for (let dy = -1; dy <= d.size && !sea; dy++) for (let dx = -1; dx <= d.size; dx++) {
         const x = ax + dx, y = ay + dy;
@@ -769,7 +770,8 @@ export class Sim {
           this.goTo(id, this.tileRectAround(c.tile));
           return;
         }
-        const d = buildingDef(bt), cost = costOf(d.wood, d.stone, 0, 0);
+        const d = buildingDef(bt), half = bt === 'pier' && this.rules.has(p, 'reefBuilders');
+        const cost = half ? costOf(Math.ceil((d.wood * AB.reefBuilders.pierCostPct) / 100), Math.ceil((d.stone * AB.reefBuilders.pierCostPct) / 100), 0, 0) : costOf(d.wood, d.stone, 0, 0);
         const why = this.canPlace(p, bt, c.tile);
         if (why) { this.emit(p, 'cantPlace', c.btype); return; }
         if (!this.canAfford(p, cost)) { this.emit(p, 'cantAfford', c.btype); return; }
@@ -1069,6 +1071,7 @@ export class Sim {
       if (this.res.amount[t] <= 0) { this.afterSourceGone(id); return; }
       available = this.res.amount[t];
       rate = ECO.gatherPerMin[resKey(this.res.type[t])];
+      if (this.res.type[t] === Res.WOOD && this.rules.has(p, 'forestKin')) rate = Math.floor((rate * AB.forestKin.woodGatherPct) / 100);
     }
     if (available <= 0) { this.afterSourceGone(id); return; }
     e.acc[id] += Math.floor((rate * this.mult(p) * this.rules.workPct(p, this.tileOf(id), 'gather', e.weaponTier[id] > 0)) / 100);
@@ -1190,6 +1193,7 @@ export class Sim {
     if (bt === 'farm') for (let l = 2; l <= e.level[b]; l++) pct = Math.floor((pct * (100 + (upgradeDef('farm', l)?.yieldPct ?? 0))) / 100);
     if (this.tick < e.poisonUntil[b] || this.tick < e.disabledUntil[b]) pct = 0; // poisoned crops / sabotage (F-142)
     if (bt === 'farm' && this.fungus) pct = Math.floor((pct * this.rules.farmPct(p, e.anchor[b], buildingDef(bt).size)) / 100);
+    if (bt === 'farm' && this.rules.has(p, 'poorFarmers')) pct = Math.floor((pct * AB.poorFarmers.farmYieldPct) / 100);
     if (bt === 'iceLodge' && this.rules.has(p, 'frostAdapted')) pct = Math.floor((pct * AB.frostAdapted.iceFishPct) / 100);
     if (this.p5) pct = Math.floor((pct * this.rules.workPct(p, this.tileOf(id), 'work', e.weaponTier[id] > 0)) / 100);
     // exact integer accumulator: food per minute × pct × mult, one food per TICKS_PER_MIN × 10000
@@ -1248,7 +1252,9 @@ export class Sim {
         e.trainProgress[b]++;
         continue;
       }
-      const lim = this.settings.popLimit ?? 0;
+      // population cap: the menu limit, and the per-size unit cap (F-191) — whichever is lower
+      const cap = TUNING.map.sizes[this.settings.size].unitCap, set = this.settings.popLimit ?? 0;
+      const lim = set > 0 ? Math.min(set, cap) : cap;
       if ((this.ps[p].pop + d.pop > this.ps[p].housing && !(this.ps[p].opts & TestOpt.NO_HOUSING)) || (lim > 0 && this.ps[p].pop + d.pop > lim)) {
         if (!this.ps[p].housingWarned) { this.ps[p].housingWarned = true; this.emit(p, 'housing'); }
         continue;

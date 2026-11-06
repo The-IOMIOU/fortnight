@@ -11,11 +11,14 @@ export const RES_NONE = 255;
 export const UNIT_TYPES = ['scout', 'worker', 'settler', 'spearman', 'archer', 'rider', 'ram', 'spy', 'saboteur', 'warship', 'transport',
   // Phase 5: race units (unlocked by each race's evolution tree; beasts also come from taming)
   'beast', 'warbeast', 'thunderlizard', 'tideguard', 'leviathan', 'burrower', 'deepDrill', 'sporeling', 'bloomHulk',
-  'glider', 'skyLancer', 'ironguard', 'steamGolem', 'bogStalker', 'mireHorror', 'frostWarden', 'mammoth'] as const;
+  'glider', 'skyLancer', 'ironguard', 'steamGolem', 'bogStalker', 'mireHorror', 'frostWarden', 'mammoth',
+  // Phase 8: races 9–12
+  'duneRider', 'sandWyrm', 'arcanist', 'colossus', 'grovewarden', 'treant', 'reefguard', 'kraken'] as const;
 export type UnitTypeName = (typeof UNIT_TYPES)[number];
 export const BUILDING_TYPES = ['capital', 'settlement', 'house', 'farm', 'lumberCamp', 'mineCamp', 'fishingHut', 'storehouse', 'outpost', 'barracks', 'workshop', 'dock', 'wall', 'gate', 'tower',
   // Phase 5: shared tech buildings, then one unique building per race
-  'forge', 'pier', 'tidepool', 'beastPen', 'tunnelHall', 'sporeTower', 'aerie', 'greatForge', 'stiltHall', 'iceLodge'] as const;
+  'forge', 'pier', 'tidepool', 'beastPen', 'tunnelHall', 'sporeTower', 'aerie', 'greatForge', 'stiltHall', 'iceLodge',
+  'caravanserai', 'library', 'grove', 'reefDock'] as const;
 export type BuildingTypeName = (typeof BUILDING_TYPES)[number];
 
 /** Entity kinds: units 1..63 (1 + unit index), buildings 64.. (64 + building index), nature 128+. */
@@ -66,6 +69,7 @@ export const TRAINS: Partial<Record<BuildingTypeName, UnitTypeName[]>> = {
   tidepool: ['tideguard', 'leviathan'], beastPen: ['warbeast', 'beast', 'thunderlizard'], tunnelHall: ['burrower', 'deepDrill'],
   sporeTower: ['sporeling', 'bloomHulk'], aerie: ['glider', 'skyLancer'], greatForge: ['ironguard', 'steamGolem'],
   stiltHall: ['bogStalker', 'mireHorror'], iceLodge: ['frostWarden', 'mammoth'],
+  caravanserai: ['duneRider', 'sandWyrm'], library: ['arcanist', 'colossus'], grove: ['grovewarden', 'treant'], reefDock: ['reefguard', 'kraken'],
 };
 /** Unit types that move on water (and only on water). */
 export const isNavalUnit = (u: UnitTypeName): boolean => unitDef(u).water === 1;

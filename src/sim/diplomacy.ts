@@ -224,6 +224,8 @@ export function doCovert(s: Sim, id: number, act: CovertAct, target: number): bo
     const bt = buildingTypeOfKind(e.kind[b]);
     if ((bt === 'tower' || TOWN_CENTERS.includes(bt)) && s.mil.dist2(id, b) <= 36 * FP_ONE * FP_ONE) { pct += CV.guardDetectPct; break; }
   }
+  if (s.rules.has(p, 'thieves')) pct -= TUNING.races.abilities.thieves.detectMinusPct;
+  if (s.rules.has(p, 'quickStudy')) pct -= TUNING.races.abilities.quickStudy.detectMinusPct;
   const caught = s.rngCovert.int(100) < pct;
   if (caught) {
     e.hp[id] = 0; // executed
@@ -237,7 +239,7 @@ export function doCovert(s: Sim, id: number, act: CovertAct, target: number): bo
       const vs = s.ps[q].stock, order = [Res.GOLD, Res.FOOD, Res.WOOD, Res.STONE];
       let r = order[0];
       for (const x of order) if (vs[x] > vs[r]) r = x;
-      const n = Math.min(CV.stealAmount, vs[r]);
+      const n = Math.min(s.rules.has(p, 'thieves') ? Math.floor((CV.stealAmount * TUNING.races.abilities.thieves.stealPct) / 100) : CV.stealAmount, vs[r]);
       vs[r] -= n; s.ps[p].stock[r] += n;
       s.emit(p, 'stole', r, n); s.emit(q, 'robbed', r, n);
       break;

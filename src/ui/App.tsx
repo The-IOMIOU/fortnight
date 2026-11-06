@@ -418,7 +418,7 @@ function Menu({ initial, onStart }: { initial: Partial<NewGameOptions>; onStart:
       <section class="panel muted">
         <button disabled title="Phase 7">Join Game</button>
         <button onClick={() => store.set({ settingsOpen: true })}>Settings</button>
-        <button disabled title="Phase 9">Tutorial</button>
+        <button onClick={() => onStart({ kind: 'new', opts: { seed: 'tutorial-1', size: 'small', speed: 'normal', players: 2, bots: [], tutorial: true } })} data-testid="tutorial-btn">Tutorial</button>
       </section>
       <SettingsModal />
     </div>

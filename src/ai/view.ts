@@ -124,7 +124,7 @@ export class BotView {
       const bx = b.anchor % w, by = (b.anchor - bx) / w;
       if (ax < bx + b.size && ax + d.size > bx && ay < by + b.size && ay + d.size > by) return false;
     }
-    if (bt === 'fishingHut' || bt === 'dock' || bt === 'tidepool' || bt === 'iceLodge') {
+    if (bt === 'fishingHut' || bt === 'dock' || bt === 'tidepool' || bt === 'iceLodge' || bt === 'reefDock') {
       let water = false;
       for (let dy = -1; dy <= d.size && !water; dy++) for (let dx = -1; dx <= d.size; dx++) {
         const x = ax + dx, y = ay + dy;

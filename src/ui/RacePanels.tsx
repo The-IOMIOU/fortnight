@@ -25,6 +25,14 @@ export const ABILITY_TEXT: Record<string, string> = {
   openGroundWeak: 'Fight 30 % worse on plains and deserts.',
   frostAdapted: 'Stronger and faster gathering in cold lands; ice fishing bonus.',
   heatWeak: 'Work and fight worse in deserts.',
+  thieves: 'Spies steal twice as much and are caught less; soldiers hit 30 % harder against foes not yet in a fight.',
+  poorFarmers: 'Farms yield 40 % less.',
+  quickStudy: 'Research takes 40 % less time; spies are caught less.',
+  fragileArmy: 'Soldiers have 25 % less health.',
+  forestKin: 'In forests units take 30 % less damage; wood is gathered 30 % faster.',
+  flammable: 'Fire does 2.5× damage to your units and buildings.',
+  reefBuilders: 'Piers from the start, at half price.',
+  weakLandArmy: 'Land soldiers deal 25 % less damage.',
 };
 const STAT_LABEL: Record<string, string> = { gather_speed: 'gathering', build_speed: 'building', unit_health: 'health', unit_damage: 'damage', vision: 'vision', movement: 'speed' };
 
