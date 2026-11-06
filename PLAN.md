@@ -7,6 +7,8 @@ Status: **approved 2026-11-05** ("okay do phase 1") with these owner amendments:
 3. **Race builder rule (new, F-112):** every power-up has a point score and every power-down a negative score. A race is valid only when its total is exactly 0.
 4. **Compute:** the owner's Kaggle account may be used for heavy headless runs (balance harness) if local cores aren't enough. It's only used with the owner's go-ahead at that time; not needed before Phase 8.
 
+5. **Several continents, not one (2026-11-06).** Each map has several massive continents separated by ocean (Small 3, Medium 4, Large 5, Huge 7; tunable). Players are spread across them. Crossing to another continent needs transport ships (derived feature F-083, Phase 3).
+
 Items in §7 that weren't commented on are taken as accepted. Proposals P-001…P-005 stay open until answered.
 
 Companion files: [FEATURES.md](FEATURES.md) (feature ledger), [CONTINENT_STRATEGY_GAME.md](CONTINENT_STRATEGY_GAME.md) (master spec).

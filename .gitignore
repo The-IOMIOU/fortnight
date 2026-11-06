@@ -9,3 +9,6 @@ Thumbs.db
 .env
 .env.*
 .wrangler/
+
+# local tool state
+.claude/settings.local.json

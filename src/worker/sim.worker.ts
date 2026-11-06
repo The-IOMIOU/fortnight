@@ -21,9 +21,14 @@ function post(msg: FromWorker, transfer: Transferable[] = []): void { self.postM
 
 function snapshot(): void {
   if (!sim) return;
-  const f = sim.fog[viewer];
-  const fog = f.dirty ? f.data.slice() : null;
-  f.dirty = false;
+  let fog: Uint8Array | null = null;
+  if (viewer < 0) { // spectator: everything visible
+    if (!ownerSent) fog = new Uint8Array(sim.map.w * sim.map.h).fill(255);
+  } else {
+    const f = sim.fog[viewer];
+    if (f.dirty) fog = f.data.slice();
+    f.dirty = false;
+  }
   const owner = ownerSent ? null : sim.tileOwner.slice();
   ownerSent = true;
   const ents = packVisibleEntities(sim, viewer);
@@ -69,7 +74,7 @@ self.onmessage = (ev: MessageEvent<ToWorker>) => {
       sched.paused = m.paused;
       const map = sim.map;
       post({
-        type: 'map', players: sim.players, viewer, startTile: map.starts[viewer],
+        type: 'map', players: sim.players, viewer, startTile: map.starts[Math.max(0, viewer)],
         map: { seed: map.seed, size: map.size, w: map.w, h: map.h, hash: map.hash, height: map.height.slice(), biome: map.biome.slice(),
           temp: map.temp.slice(), starts: map.starts.slice(), riverCount: map.riverCount, lakeCount: map.lakeCount },
       });
@@ -78,7 +83,7 @@ self.onmessage = (ev: MessageEvent<ToWorker>) => {
       break;
     }
     case 'move': {
-      if (!sim) return;
+      if (!sim || viewer < 0) return;
       // Executes on the next tick. While paused the sim does not advance, so the order waits as "pending".
       sim.enqueue({ type: 'move', tick: sim.tick, player: viewer, seq: seq++, ids: m.ids, x: m.x, y: m.y });
       snapshot();

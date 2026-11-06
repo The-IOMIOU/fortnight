@@ -6,17 +6,20 @@
   },
   "map": {
     "sizes": {
-      "small":  { "tiles": 128, "maxPlayers": 4,  "rivers": 5,  "lakes": 2 },
-      "medium": { "tiles": 192, "maxPlayers": 9,  "rivers": 8,  "lakes": 4 },
-      "large":  { "tiles": 288, "maxPlayers": 16, "rivers": 12, "lakes": 7 },
-      "huge":   { "tiles": 384, "maxPlayers": 32, "rivers": 16, "lakes": 10 }
+      "small":  { "tiles": 128, "maxPlayers": 4,  "rivers": 5,  "lakes": 2,  "continents": 3 },
+      "medium": { "tiles": 192, "maxPlayers": 9,  "rivers": 8,  "lakes": 4,  "continents": 4 },
+      "large":  { "tiles": 288, "maxPlayers": 16, "rivers": 12, "lakes": 7,  "continents": 5 },
+      "huge":   { "tiles": 384, "maxPlayers": 32, "rivers": 16, "lakes": 10, "continents": 7 }
     },
+    "channelWidth": 7,
+    "continentMinShareOfLand": 0.08,
     "landFraction": 0.42,
     "borderOcean": 6,
     "minIslandTiles": 40,
     "islandKeepFractionOfMain": 0.03,
     "heightLevels": 7,
     "mountainPercentile": 0.9,
+    "snowPeakPercentile": 0.985,
     "coldPercentile": 0.12,
     "hotPercentile": 0.85,
     "swampMoisturePercentile": 0.9,

@@ -1,4 +1,4 @@
-import tuningJson from '../../data/tuning.json';
+import tuningJson from '../../data/tuning.json' with { type: 'json' };
 
 export const TUNING = tuningJson;
 export type MapSize = keyof typeof tuningJson.map.sizes;

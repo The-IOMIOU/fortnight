@@ -3,6 +3,7 @@
 
 import { Rng } from '../core/prng';
 import { hashArrays } from '../core/hash';
+import { isqrt } from '../core/fixed';
 import { TUNING, type MapSize } from '../core/tuning';
 import { fbm, valueNoise } from './noise';
 
@@ -30,8 +31,12 @@ export interface GameMap {
   starts: Int32Array;
   riverCount: number;
   lakeCount: number;
-  mainLandTiles: number;
+  /** Land tiles incl. rivers. */
   landTiles: number;
+  /** Continent index per tile (0 = largest), 255 = water or minor island. */
+  continent: Uint8Array;
+  /** Tile count of each continent, largest first. */
+  continentSizes: number[];
   hash: number;
 }
 
@@ -96,12 +101,28 @@ export function generateMap(seed: string, size: MapSize): GameMap {
   const sMoist = rng.nextU32() | 0, sTemp = rng.nextU32() | 0;
   const coldNorth = rng.int(2) === 0;
 
-  // ---- 1. Elevation: warped fractal noise minus an elliptical continent falloff ----
-  const cx = (W >> 1) + rng.range(-Math.floor(W / 12), Math.floor(W / 12));
-  const cy = (H >> 1) + rng.range(-Math.floor(H / 12), Math.floor(H / 12));
-  const rx = Math.floor((W * rng.range(36, 44)) / 100), ry = Math.floor((H * rng.range(36, 44)) / 100);
-  const baseCell = Math.max(8, W >> 3), warpCell = Math.max(8, W >> 2), warpAmp = W >> 4;
+  // ---- 1. Elevation: several continents. Each tile belongs to its nearest continent centre
+  //         (warped Voronoi); elevation = fractal noise minus that continent's elliptical falloff,
+  //         and a forced ocean channel runs along every border between two continents. ----
+  const K = sz.continents;
   const border = cfg.borderOcean;
+  const inset = border + Math.floor(W * 0.14);
+  const ccx: number[] = [], ccy: number[] = [], crx: number[] = [], cry: number[] = [];
+  for (let k = 0; k < K; k++) {
+    let bx = 0, by = 0, bestD = -1;
+    for (let t = 0; t < (k === 0 ? 1 : 40); t++) {
+      const x = rng.range(inset, W - 1 - inset), y = rng.range(inset, H - 1 - inset);
+      let d = Number.MAX_SAFE_INTEGER;
+      for (let j = 0; j < k; j++) d = Math.min(d, (x - ccx[j]) * (x - ccx[j]) + (y - ccy[j]) * (y - ccy[j]));
+      if (d > bestD) { bestD = d; bx = x; by = y; }
+    }
+    ccx.push(bx); ccy.push(by);
+    const base = Math.floor((W * 62) / (100 * isqrt(K * 100) / 10));
+    crx.push(Math.max(8, Math.floor((base * rng.range(85, 115)) / 100)));
+    cry.push(Math.max(8, Math.floor((base * rng.range(85, 115)) / 100)));
+  }
+  const baseCell = Math.max(8, Math.floor(W / (6 + K))), warpCell = Math.max(8, W >> 2), warpAmp = W >> 4;
+  const channel = cfg.channelWidth;
   const elev = new Int32Array(N);
   for (let y = 0; y < H; y++) {
     for (let x = 0; x < W; x++) {
@@ -109,10 +130,21 @@ export function generateMap(seed: string, size: MapSize): GameMap {
       if (x < border || y < border || x >= W - border || y >= H - border) { elev[i] = -1000000; continue; }
       const wx = x + (((valueNoise(sWarpX, x, y, warpCell) - 2048) * warpAmp) >> 11);
       const wy = y + (((valueNoise(sWarpY, x, y, warpCell) - 2048) * warpAmp) >> 11);
+      // nearest and second-nearest continent centre (by warped position)
+      let k1 = 0, d1 = Number.MAX_SAFE_INTEGER, d2nd = Number.MAX_SAFE_INTEGER;
+      for (let k = 0; k < K; k++) {
+        const d = (wx - ccx[k]) * (wx - ccx[k]) + (wy - ccy[k]) * (wy - ccy[k]);
+        if (d < d1) { d2nd = d1; d1 = d; k1 = k; } else if (d < d2nd) d2nd = d;
+      }
       const n = fbm(sElev, wx, wy, baseCell, 5);
-      const dx = wx - cx, dy = wy - cy;
-      const d2 = Math.floor((dx * dx * 4096) / (rx * rx)) + Math.floor((dy * dy * 4096) / (ry * ry));
-      elev[i] = n + (n >> 1) - d2;
+      const dx = wx - ccx[k1], dy = wy - ccy[k1];
+      const fall = Math.floor((dx * dx * 4096) / (crx[k1] * crx[k1])) + Math.floor((dy * dy * 4096) / (cry[k1] * cry[k1]));
+      let e = n + (n >> 1) - fall;
+      if (K > 1) {
+        const gap = isqrt(d2nd) - isqrt(d1); // ≈ 2 × distance to the border between two continents
+        if (gap < channel) e -= (channel - gap) * 3000; // ocean strip ≈ `channel` tiles wide
+      }
+      elev[i] = e;
     }
   }
 
@@ -167,6 +199,7 @@ export function generateMap(seed: string, size: MapSize): GameMap {
     height[i] = Math.min(lv, Math.max(1, distOcean[i]));
   }
   const mountainLevel = L - 1;
+  const snowPeakCut = quantile(landElev, cfg.snowPeakPercentile);
 
   // ---- 5. Extra lakes (guarantee the configured count) ----
   {
@@ -288,7 +321,7 @@ export function generateMap(seed: string, size: MapSize): GameMap {
     if (land[i]) {
       const t = temp[i], m = moist[i], lv = height[i];
       let b: number;
-      if (lv >= mountainLevel) b = t <= cold ? Biome.SNOW : Biome.MOUNTAIN;
+      if (lv >= mountainLevel) b = t <= cold || elev[i] >= snowPeakCut ? Biome.SNOW : Biome.MOUNTAIN; // cold mountains and the highest summits are snow
       else if (t <= cold) b = Biome.TUNDRA;
       else if (distOcean[i] === 1 && lv === 1) b = Biome.COAST;
       else if (t >= hot && m < desertMaxM) b = Biome.DESERT;
@@ -301,32 +334,46 @@ export function generateMap(seed: string, size: MapSize): GameMap {
     }
   }
 
-  // ---- 9. Start positions: farthest-point sampling over good main-continent land ----
-  // Rivers cut land into pieces; the continent is land + rivers.
+  // ---- 9. Continents = land masses (land + rivers) holding ≥ continentMinShareOfLand of all land ----
   const landOrRiver = new Uint8Array(N);
   for (let i = 0; i < N; i++) landOrRiver[i] = land[i] || biome[i] === Biome.RIVER ? 1 : 0;
   const { label: landLabel, sizes: landSizes } = components(W, H, landOrRiver);
-  let mainLabel = 1;
-  for (let l = 1; l < landSizes.length; l++) if (landSizes[l] > landSizes[mainLabel]) mainLabel = l;
-  const cand: number[] = [];
+  const totalLand = landCountOf(landOrRiver);
+  const contLabels: number[] = [];
+  for (let l = 1; l < landSizes.length; l++) if (landSizes[l] >= totalLand * cfg.continentMinShareOfLand) contLabels.push(l);
+  if (contLabels.length === 0) { let m = 1; for (let l = 1; l < landSizes.length; l++) if (landSizes[l] > landSizes[m]) m = l; contLabels.push(m); }
+  contLabels.sort((a, b) => landSizes[b] - landSizes[a] || a - b);
+  const continent = new Uint8Array(N).fill(255);
+  const labelToCont = new Map<number, number>();
+  contLabels.forEach((l, k) => labelToCont.set(l, k));
+  for (let i = 0; i < N; i++) { const c = labelToCont.get(landLabel[i]); if (c !== undefined) continent[i] = c; }
+
+  // ---- 10. Start positions: players spread round-robin over continents (largest first),
+  //          farthest-point sampling inside each continent ----
+  const nc = contLabels.length;
+  const candByCont: number[][] = Array.from({ length: nc }, () => []);
   for (let i = 0; i < N; i++) {
-    const b = biome[i];
-    if (landLabel[i] === mainLabel && (b === Biome.PLAINS || b === Biome.FOREST) && height[i] <= 3 && distOcean[i] >= cfg.startMinCoastDistance) cand.push(i);
+    const c = continent[i], b = biome[i];
+    if (c !== 255 && (b === Biome.PLAINS || b === Biome.FOREST) && height[i] <= 3 && distOcean[i] >= cfg.startMinCoastDistance) candByCont[c].push(i);
   }
-  if (cand.length === 0) for (let i = 0; i < N; i++) if (landLabel[i] === mainLabel) cand.push(i);
+  for (let c = 0; c < nc; c++) if (candByCont[c].length === 0) for (let i = 0; i < N; i++) if (continent[i] === c && land[i]) candByCont[c].push(i);
   const starts = new Int32Array(sz.maxPlayers);
-  const minD = new Float64Array(cand.length).fill(Number.MAX_SAFE_INTEGER);
+  const chosen: number[] = [];
   for (let p = 0; p < sz.maxPlayers; p++) {
-    let pick: number;
-    if (p === 0) pick = rng.int(cand.length);
-    else { pick = 0; for (let c = 1; c < cand.length; c++) if (minD[c] > minD[pick]) pick = c; }
-    const s = cand[pick], sx = s % W, sy = (s - sx) / W;
-    starts[p] = s;
-    for (let c = 0; c < cand.length; c++) {
-      const cx2 = cand[c] % W, cy2 = (cand[c] - cx2) / W;
-      const d = (cx2 - sx) * (cx2 - sx) + (cy2 - sy) * (cy2 - sy);
-      if (d < minD[c]) minD[c] = d;
+    const cand = candByCont[p % nc];
+    let pick = 0;
+    if (chosen.length === 0) pick = rng.int(cand.length);
+    else {
+      let best = -1;
+      for (let c = 0; c < cand.length; c++) {
+        const x = cand[c] % W, y = (cand[c] - x) / W;
+        let md = Number.MAX_SAFE_INTEGER;
+        for (const s of chosen) { const sx = s % W, sy = (s - sx) / W; md = Math.min(md, (x - sx) * (x - sx) + (y - sy) * (y - sy)); }
+        if (md > best) { best = md; pick = c; }
+      }
     }
+    starts[p] = cand[pick];
+    chosen.push(cand[pick]);
   }
 
   // ---- Pack outputs ----
@@ -337,7 +384,7 @@ export function generateMap(seed: string, size: MapSize): GameMap {
   const lakeCount = components(W, H, lakeMask).sizes.length - 1;
   const map: GameMap = {
     seed, size, w: W, h: H, height, biome, temp: temp8, moisture: moist8, starts,
-    riverCount, lakeCount, mainLandTiles: landSizes[mainLabel], landTiles: landCountOf(landOrRiver), hash: 0,
+    riverCount, lakeCount, landTiles: totalLand, continent, continentSizes: contLabels.map((l) => landSizes[l]), hash: 0,
   };
   map.hash = hashMap(map);
   return map;
