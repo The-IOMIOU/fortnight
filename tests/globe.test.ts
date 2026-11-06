@@ -105,7 +105,9 @@ describe('F-193 / F-196 modes and match settings', () => {
       expect(m.sizes).toContain(st.size);
       expect(st.players - 1).toBeLessThanOrEqual(m.maxBots);
       const sim = new Sim({ seed: 'mode-' + m.id, size: st.size, players: st.players, world: st.world });
-      expect(sim.map.w).toBe(TUNING.map.sizes[st.size].tiles);
+      const T = TUNING.map.sizes[st.size].tiles; // globe maps are 2:1 with about the same area
+      expect(Math.abs(sim.map.w * sim.map.h - T * T) / (T * T)).toBeLessThan(0.08);
+      if (st.world.globe) expect(sim.map.w).toBe(2 * sim.map.h);
     }
     expect(modeSettings('short', { seed: 'x' }).world.sea).toBe('close');
   });

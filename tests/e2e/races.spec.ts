@@ -5,7 +5,7 @@ import { state } from './helpers';
 
 test('F-095 choose Anvilborn, research Smithing from the panel, the forge appears in the build menu', async ({ page }) => {
   test.setTimeout(240_000);
-  await page.goto('/');
+  await page.goto('/?menu=new');
   await page.getByTestId('race').selectOption('anvilborn');
   await expect(page.getByTestId('race-summary')).toContainText('Gear costs 40 % less');
   await expect(page.getByTestId('race-points')).toContainText('Point balance: 0');

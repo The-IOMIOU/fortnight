@@ -10,7 +10,7 @@ export default defineConfig({
   use: { baseURL: 'http://localhost:4173', viewport: { width: 1280, height: 800 } },
   webServer: { command: 'npm run preview', port: 4173, reuseExistingServer: true },
   projects: [
-    { name: 'chromium', testMatch: /(determinism|ui|economy|combat|bots|modes|races|diplomacy|polish)\.spec\.ts/, use: { ...devices['Desktop Chrome'], viewport: { width: 1280, height: 800 } } },
+    { name: 'chromium', testMatch: /(determinism|ui|economy|combat|bots|modes|races|diplomacy|polish|home)\.spec\.ts/, use: { ...devices['Desktop Chrome'], viewport: { width: 1280, height: 800 } } },
     // Two pages talking over WebRTC on this machine (host candidates without mDNS names).
     { name: 'multiplayer', testMatch: /multiplayer.spec.ts/, use: { ...devices['Desktop Chrome'], viewport: { width: 1280, height: 800 }, launchOptions: { args: ['--disable-features=WebRtcHideLocalIpsWithMdns'] } } },
     { name: 'firefox', testMatch: /determinism\.spec\.ts/, use: { ...devices['Desktop Firefox'], viewport: { width: 1280, height: 800 } } },

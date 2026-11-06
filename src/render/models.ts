@@ -377,15 +377,40 @@ export function buildingModel(bt: BuildingTypeName, s: number): Model {
   void s;
 }
 
-/** A small humanoid: legs, tunic, arms, head. Height ≈ 0.6. */
-function person(tunic: number, extra: G[] = []): G {
-  return merge([
-    paint(box(0.06, 0.2, 0.07, -0.045, 0, 0), CLOTH2), paint(box(0.06, 0.2, 0.07, 0.045, 0, 0), CLOTH2),
-    paint(box(0.17, 0.22, 0.11, 0, 0.2, 0), tunic),
-    paint(box(0.045, 0.2, 0.05, -0.11, 0.22, 0), tunic), paint(box(0.045, 0.2, 0.05, 0.11, 0.22, 0), tunic),
-    paint(ball(0.07, 0, 0.5, 0, 8, 6), SKIN),
-    ...extra,
-  ]);
+const BOOT = 0x3a2a1c, BELT = 0x4a3424, BRASS = 0xc9a24a;
+/** Shade a colour (k < 1 darker, > 1 lighter) for trousers, sleeves and hair. */
+const shade = (hex: number, k: number): number => {
+  const c = (v: number): number => Math.max(0, Math.min(255, Math.round(v * k)));
+  return (c((hex >> 16) & 255) << 16) | (c((hex >> 8) & 255) << 8) | c(hex & 255);
+};
+
+/**
+ * A person, height ≈ 0.6, facing +z: boots, tapered trouser legs, a belted tunic that flares at the
+ * hips, rounded shoulders, sleeves and hands, neck, a head with hair and a nose. Tools and weapons
+ * (`extra`) are held in the right hand at about x = 0.13.
+ */
+function person(tunic: number, extra: G[] = [], hair = 0x4a3222, skin = SKIN): G {
+  const legs = shade(tunic, 0.62), sleeve = shade(tunic, 0.92);
+  const parts: G[] = [];
+  for (const sx of [-1, 1]) {
+    parts.push(paint(box(0.062, 0.05, 0.095, sx * 0.042, 0, 0.012), BOOT));                    // boot
+    parts.push(paint(cyl(0.029, 0.16, 7, sx * 0.042, 0.045, 0, 0.034), legs));                 // leg, wider at the thigh
+    parts.push(paint(ball(0.034, sx * 0.098, 0.405, 0, 7, 5), sleeve));                        // shoulder
+    parts.push(paint(cyl(0.022, 0.15, 6, 0, 0, 0, 0.027).rotateZ(sx * 0.1).translate(sx * 0.112, 0.262, 0), sleeve)); // arm, from shoulder to hand
+    parts.push(paint(ball(0.024, sx * 0.125, 0.255, 0.012, 6, 5), skin));                     // hand
+  }
+  parts.push(
+    paint(cyl(0.088, 0.09, 9, 0, 0.17, 0, 0.074).scale(1, 1, 0.78), tunic),                    // skirt of the tunic (flares out)
+    paint(cyl(0.074, 0.18, 9, 0, 0.245, 0, 0.088).scale(1, 1, 0.72), tunic),                   // chest, broader at the shoulders
+    paint(cyl(0.077, 0.026, 9, 0, 0.245, 0).scale(1, 1, 0.75), BELT),                          // belt
+    paint(box(0.024, 0.02, 0.01, 0, 0.248, 0.058), BRASS),                                    // buckle
+    paint(cyl(0.024, 0.04, 6, 0, 0.42, 0), skin),                                              // neck
+    paint(ball(0.06, 0, 0, 0, 12, 9).scale(0.95, 1.06, 1).translate(0, 0.505, 0), skin),         // head
+    paint(new THREE.SphereGeometry(0.064, 12, 6, 0, Math.PI * 2, 0, Math.PI / 2.1).scale(0.97, 1.05, 1.02).translate(0, 0.512, -0.006), hair), // hair
+    paint(box(0.012, 0.018, 0.014, 0, 0.497, 0.06), shade(skin, 0.9)),                         // nose
+    ...[-1, 1].map((sx) => paint(ball(0.008, sx * 0.022, 0.515, 0.054, 5, 4), 0x2a1d16)),       // eyes
+  );
+  return merge([...parts, ...extra]);
 }
 
 export type UnitModelName = UnitTypeName | 'animal' | 'carcass';
@@ -400,6 +425,40 @@ function beastModel(fur: number, light: number, k: number, armored = false, tusk
     body: merge([...legs, paint(ball(0.11, 0, 0.26, 0, 8, 6).scale(1.6, 0.95, 0.85), fur), paint(ball(0.08, 0.21, 0.38, 0, 6, 5), light), ...extra]).scale(k, k, k),
     trim: (armored ? plain(box(0.26, 0.05, 0.2, 0, 0.36, 0)) : plain(box(0.1, 0.02, 0.17, -0.02, 0.36, 0))).scale(k, k, k),
   };
+}
+
+/**
+ * Hound facing +x: deep chest, tucked belly, two-part legs with paws, arched neck, head with a
+ * tapered muzzle, nose, eyes and pricked ears, and a raised tail. Owner colour: collar (and a
+ * barding blanket when armoured).
+ */
+function dogModel(fur: number, light: number, k: number, armored = false): Model {
+  const dark = shade(fur, 0.7), parts: G[] = [];
+  const at = (g: G, x: number, y: number, z: number): G => g.translate(x, y, z);
+  for (const [x, z, back] of [[0.1, -0.046, 0], [0.1, 0.046, 0], [-0.12, -0.048, 1], [-0.12, 0.048, 1]] as const) {
+    if (back) parts.push(paint(at(ball(0.05, 0, 0, 0, 8, 6).scale(1, 1.25, 0.75), x, 0.215, z), fur));           // haunch
+    parts.push(paint(at(cyl(0.025, 0.13, 7, 0, 0, 0, 0.033).rotateZ(back ? -0.12 : 0.04), x, 0.07, z), fur));       // upper leg
+    parts.push(paint(at(cyl(0.017, 0.08, 6, 0, 0, 0, 0.021).rotateZ(back ? 0.18 : 0), x + (back ? -0.008 : 0.004), 0.004, z), fur)); // lower leg
+    parts.push(paint(at(ball(0.021, 0, 0, 0, 7, 4).scale(1.35, 0.6, 1), x + 0.012, 0.012, z), light));             // paw
+  }
+  parts.push(
+    paint(at(ball(0.1, 0, 0, 0, 12, 9).scale(1.6, 0.78, 0.72), -0.02, 0.255, 0), fur),        // body, tucked belly
+    paint(at(ball(0.085, 0, 0, 0, 10, 8).scale(1.0, 1.05, 0.85), 0.1, 0.255, 0), fur),        // deep chest
+    paint(at(ball(0.05, 0, 0, 0, 8, 6).scale(0.8, 1.1, 0.8), 0.165, 0.235, 0), light),        // pale bib
+    paint(at(cyl(0.04, 0.1, 8, 0, 0, 0, 0.033).rotateZ(-0.5), 0.15, 0.29, 0), fur),            // neck
+    paint(at(ball(0.06, 0, 0, 0, 12, 9).scale(1.1, 0.95, 0.9), 0.215, 0.4, 0), fur),           // skull
+    paint(at(cyl(0.032, 0.085, 8, 0, 0, 0, 0.021).rotateZ(-Math.PI / 2), 0.255, 0.385, 0), light), // muzzle
+    paint(at(ball(0.016, 0, 0, 0, 7, 5), 0.343, 0.39, 0), 0x151515),                          // nose
+    ...[-1, 1].map((sz) => paint(at(ball(0.009, 0, 0, 0, 5, 4), 0.262, 0.418, sz * 0.032), 0x1a120c)), // eyes
+    ...[-1, 1].map((sz) => paint(at(cone(0.024, 0.065, 4).rotateX(sz * 0.25), 0.2, 0.44, sz * 0.033), dark)), // pricked ears
+    paint(at(cyl(0.014, 0.13, 6, 0, 0, 0, 0.02).rotateZ(1.0), -0.175, 0.29, 0), fur),          // tail, raised
+    paint(at(ball(0.017, 0, 0, 0, 6, 5), -0.284, 0.36, 0), light),                             // tail tip
+  );
+  const collar = new THREE.TorusGeometry(0.038, 0.011, 6, 14).rotateX(Math.PI / 2).rotateZ(-0.5).translate(0.168, 0.318, 0);
+  const trim = armored
+    ? merge([plain(collar), plain(new THREE.BoxGeometry(0.22, 0.022, 0.17).translate(-0.03, 0.338, 0)), ...[-1, 1].map((sz) => plain(new THREE.BoxGeometry(0.2, 0.085, 0.012).translate(-0.03, 0.298, sz * 0.085)))])
+    : plain(collar);
+  return { body: merge(parts).scale(k, k, k), trim: trim.scale(k, k, k) };
 }
 
 /** Long reptile or sea beast (thunder lizard, leviathan). */
@@ -488,8 +547,8 @@ export function unitModel(kind: UnitModelName): Model {
       };
     }
     // ---- Phase 5 units ----
-    case 'beast': return beastModel(FUR, FUR_L, 1.25);
-    case 'warbeast': return beastModel(0x5e4636, 0x9c8167, 1.6, true);
+    case 'beast': return dogModel(0x8a6240, 0xd9bb8f, 1.3);          // hound
+    case 'warbeast': return dogModel(0x4a4a4e, 0xa7a29a, 1.7, true);  // armoured war-hound
     case 'thunderlizard': return reptileModel(0x4d6b3a, 0x8fa66a, 2.6);
     case 'tideguard': return { body: person(0x2f7f9a, [paint(cyl(0.012, 0.8, 4, 0.15, 0.0, 0.05), DARKWOOD), paint(cone(0.05, 0.14, 3, 0.15, 0.8, 0.05), 0xd9826a)]), trim: plain(cone(0.09, 0.16, 6, 0, 0.55, 0)) };
     case 'leviathan': return reptileModel(0x2c5f73, 0x7fb3c4, 2.8, true);

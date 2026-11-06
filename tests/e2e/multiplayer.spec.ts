@@ -8,7 +8,7 @@ test('F-160 host invites a guest by link + answer code; lockstep without desync;
   test.setTimeout(240_000);
   const ctxA = await browser.newContext(), ctxB = await browser.newContext();
   const host = await ctxA.newPage(), guest = await ctxB.newPage();
-  await host.goto('/');
+  await host.goto('/?menu=new');
   await host.getByTestId('seed').fill('mp-browser');
   await host.getByTestId('online').locator('summary').click();
   await host.getByTestId('online-host').check();
@@ -43,5 +43,35 @@ test('F-160 host invites a guest by link + answer code; lockstep without desync;
   await guest.waitForFunction(() => (window as any).__game.state().net?.hostLeft, null, { timeout: 30_000 });
   await expect(guest.getByTestId('host-left')).toBeVisible();
   console.log(`[F-160] guest joined by link + answer code as P${g0.me ? '' : '?'}${(await guest.evaluate(() => (window as any).__game.game.viewer)) + 1}; ${g1.tick - t0} lockstep ticks with no desync (host ${h1.tick - g1.tick} ticks ahead); chat delivered; host connections ${peers}; "host left" shown`);
+  await ctxA.close(); await ctxB.close();
+});
+
+test('Start screen: Multiplayer → Host and Multiplayer → Join game connect two browsers', async ({ browser }) => {
+  test.setTimeout(240_000);
+  const ctxA = await browser.newContext(), ctxB = await browser.newContext();
+  const host = await ctxA.newPage(), guest = await ctxB.newPage();
+  await host.goto('/');
+  await host.getByTestId('home-multiplayer').click();
+  await host.getByTestId('mp-host').click();
+  await expect(host.getByTestId('online-host')).toBeChecked(); // Host opens New Game with online play on
+  await host.getByTestId('seed').fill('mp-home');
+  await host.getByTestId('start').click();
+  await host.waitForFunction(() => (window as any).__game?.state().net?.role === 'host', null, { timeout: 60_000 });
+  await host.getByTestId('net-btn').click();
+  await host.getByTestId('net-invite').click();
+  const link = await host.getByTestId('invite-link-1').inputValue({ timeout: 20_000 });
+  // the guest pastes the link into the Join game screen
+  await guest.goto('/');
+  await guest.getByTestId('home-multiplayer').click();
+  await expect(guest.getByTestId('mp-join')).toBeDisabled();
+  await guest.getByTestId('mp-code').fill(link);
+  await guest.getByTestId('mp-name').fill('Robin');
+  await guest.getByTestId('mp-join').click();
+  const answer = await guest.getByTestId('join-answer').inputValue({ timeout: 20_000 });
+  await host.getByTestId('invite-answer-1').fill(answer);
+  await host.getByTestId('invite-connect-1').click();
+  await guest.waitForFunction(() => (window as any).__game?.state().screen === 'game', null, { timeout: 60_000 });
+  await host.waitForFunction(() => (window as any).__game.state().net.seats.some((s: any) => s.connected && s.name === 'Robin'), null, { timeout: 20_000 });
+  console.log('[home] guest joined from the start screen\'s Join game form (name Robin) and the host saw the seat connect');
   await ctxA.close(); await ctxB.close();
 });

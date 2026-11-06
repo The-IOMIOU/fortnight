@@ -7,7 +7,7 @@ const inGame = (page: import('@playwright/test').Page) =>
   page.waitForFunction(() => (window as any).__game?.state().screen === 'game' && (window as any).__game.state().stats, null, { timeout: 60_000 });
 
 test('F-120 bot count 0..max per size; over-limit is clamped with a message; each count starts', async ({ page }) => {
-  await page.goto('/');
+  await page.goto('/?menu=new');
   await page.getByTestId('mode-custom').click(); // every size
   await page.getByTestId('size').selectOption('medium');
   await page.getByTestId('rivals').fill('8');
@@ -18,7 +18,7 @@ test('F-120 bot count 0..max per size; over-limit is clamped with a message; eac
   console.log(`[F-120] clamp message: "${msg}"`);
   const started: string[] = [];
   for (const n of [0, 1, 3]) {
-    await page.goto('/');
+    await page.goto('/?menu=new');
     await page.getByTestId('mode-custom').click();
     await page.getByTestId('seed').fill(`bots-count-${n}`);
     await page.getByTestId('size').selectOption('small');
@@ -35,7 +35,7 @@ test('F-120 bot count 0..max per size; over-limit is clamped with a message; eac
 });
 
 test('F-121 / F-170 / F-178 difficulty, personality, victory options shape the match and persist; Impossible bonus off by default and shown when on', async ({ page }) => {
-  await page.goto('/');
+  await page.goto('/?menu=new');
   await page.evaluate(() => localStorage.removeItem('fortnight.menu.v1'));
   await page.reload();
   await page.getByTestId('seed').fill('bots-imp');
@@ -61,7 +61,7 @@ test('F-121 / F-170 / F-178 difficulty, personality, victory options shape the m
   await expect(page.getByTestId('settings-bonus')).toBeVisible();
   const badge = await page.getByTestId('bonus-badge').innerText();
   // back to the menu: the choices are remembered
-  await page.goto('/');
+  await page.goto('/?menu=new');
   await expect(page.getByTestId('difficulty')).toHaveValue('impossible');
   await expect(page.getByTestId('personality')).toHaveValue('berserker');
   await page.getByTestId('more-settings').locator('summary').click();

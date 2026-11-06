@@ -6,7 +6,7 @@ const g = (page: Page, fn: string): Promise<any> => page.evaluate(`(async () => 
 
 test('F-181 tutorial: every step completes from real game actions; skip works', async ({ page }) => {
   test.setTimeout(240_000);
-  await page.goto('/');
+  await page.goto('/?menu=new');
   await page.getByTestId('tutorial-btn').click();
   await page.waitForFunction(() => (window as any).__game?.state().screen === 'game', null, { timeout: 60_000 });
   await expect(page.getByTestId('tutorial')).toContainText('Welcome');
@@ -32,7 +32,7 @@ test('F-181 tutorial: every step completes from real game actions; skip works', 
   await expect(page.getByTestId('tutorial')).toHaveCount(0);
   // skip from the start
   await page.evaluate(() => (window as any).__game.state && (window as any).__game.game && 0);
-  await page.goto('/');
+  await page.goto('/?menu=new');
   await page.getByTestId('tutorial-btn').click();
   await page.waitForFunction(() => (window as any).__game?.state().screen === 'game', null, { timeout: 60_000 });
   await page.getByTestId('tutorial-skip').click();

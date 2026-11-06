@@ -4,7 +4,7 @@ import { openGame, state } from './helpers';
 const cam = (page: Page) => page.evaluate(() => { const c = (window as any).__game.game.cam; return { x: c.targetX, z: c.targetZ, d: c.distance }; });
 
 test('F-022 menu defaults to Small; F-015 menu start and share link give the same map', async ({ page, context }) => {
-  await page.goto('/');
+  await page.goto('/?menu=new');
   await expect(page.getByTestId('size')).toHaveValue('small');
   await page.getByTestId('seed').fill('golden-fjord-404');
   await page.getByTestId('mode-custom').click(); // Short mode (the default) only offers Small

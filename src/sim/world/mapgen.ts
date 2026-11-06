@@ -113,7 +113,10 @@ export function generateMap(seed: string, size: MapSize, opts: MapOpts = {}): Ga
   const globe = !!opts.globe;
   // Globe: no land within seamBand tiles of the east–west seam, so only ships ever cross it.
   const seamBand = globe ? cfg.globeSeamOcean : 0;
-  const W = sz.tiles, H = sz.tiles, N = W * H;
+  // Globe worlds are 2:1 (longitude × latitude) with the same area, so tiles stay square on a sphere (F-195).
+  const r8 = (v: number): number => Math.max(8, Math.round(v / 8) * 8);
+  const H = opts.globe ? r8(isqrt((sz.tiles * sz.tiles) >> 1)) : sz.tiles, W = opts.globe ? 2 * H : sz.tiles, N = W * H;
+  const S = sz.tiles; // size scale for radii and noise (= √area)
   const rng = Rng.stream(seed, 'mapgen');
   const sElev = rng.nextU32() | 0, sWarpX = rng.nextU32() | 0, sWarpY = rng.nextU32() | 0;
   const sMoist = rng.nextU32() | 0, sTemp = rng.nextU32() | 0;
@@ -124,7 +127,7 @@ export function generateMap(seed: string, size: MapSize, opts: MapOpts = {}): Ga
   //         and a forced ocean channel runs along every border between two continents. ----
   const K = Math.max(1, Math.min(8, opts.continents ?? sz.continents));
   const border = cfg.borderOcean;
-  const inset = border + Math.floor(W * 0.14);
+  const inset = border + Math.floor(H * (globe ? 0.1 : 0.14));
   const insetX = globe ? seamBand + Math.floor(W * 0.1) : inset;
   const ccx: number[] = [], ccy: number[] = [], crx: number[] = [], cry: number[] = [];
   if (!opts.sea) {
@@ -137,14 +140,14 @@ export function generateMap(seed: string, size: MapSize, opts: MapOpts = {}): Ga
         if (d > bestD) { bestD = d; bx = x; by = y; }
       }
       ccx.push(bx); ccy.push(by);
-      const base = Math.floor((W * 62) / (100 * isqrt(K * 100) / 10));
+      const base = Math.floor((S * 62) / (100 * isqrt(K * 100) / 10));
       crx.push(Math.max(8, Math.floor((base * rng.range(85, 115)) / 100)));
       cry.push(Math.max(8, Math.floor((base * rng.range(85, 115)) / 100)));
     }
   } else {
     // Earth-like layout (F-194): "partner" continents sit right next to the previous one (narrow
     // strait between them); the others are spread as far apart as possible (open ocean).
-    const base = Math.floor((W * 62) / (100 * isqrt(K * 100) / 10));
+    const base = Math.floor((S * 62) / (100 * isqrt(K * 100) / 10));
     for (let k = 0; k < K; k++) {
       const rx = Math.max(8, Math.floor((base * rng.range(85, 115)) / 100)), ry = Math.max(8, Math.floor((base * rng.range(85, 115)) / 100));
       const partner = k > 0 && (opts.sea === 'close' || (opts.sea === 'mixed' && k % 2 === 1));
@@ -166,7 +169,7 @@ export function generateMap(seed: string, size: MapSize, opts: MapOpts = {}): Ga
       ccx.push(bx); ccy.push(by); crx.push(rx); cry.push(ry);
     }
   }
-  const baseCell = Math.max(8, Math.floor(W / (6 + K))), warpCell = Math.max(8, W >> 2), warpAmp = W >> 4;
+  const baseCell = Math.max(8, Math.floor(S / (6 + K))), warpCell = Math.max(8, S >> 2), warpAmp = S >> 4;
   const channel = cfg.channelWidth;
   // Earth-like seas (F-194): each pair of neighbouring continents gets its own strait width.
   const pairCh: number[] = [];
@@ -316,7 +319,7 @@ export function generateMap(seed: string, size: MapSize, opts: MapOpts = {}): Ga
   {
     const visited = new Uint8Array(N);
     const sources: number[] = [];
-    const minSep = Math.floor(W / 7);
+    const minSep = Math.floor(S / 7);
     for (let attempt = 0; attempt < 600 && riverCount < sz.rivers; attempt++) {
       const s = rng.int(N);
       if (!land[s] || height[s] < 4 || biome[s] === Biome.RIVER) continue;

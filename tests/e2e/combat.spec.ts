@@ -25,7 +25,7 @@ function ring(s: Sim, center: number, n: number, minR = 2): number[] {
 async function loadScene(page: Page, s: Sim): Promise<void> {
   s.step(); // one tick so vision/fog reflect the staged units
   const buf = gzipSync(Buffer.from(JSON.stringify(saveSim(s))));
-  await page.goto('/');
+  await page.goto('/?menu=new');
   await page.getByTestId('load-input').setInputFiles({ name: 'scene.fnsave', mimeType: 'application/gzip', buffer: buf });
   await page.waitForFunction(() => (window as any).__game?.state().screen === 'game', null, { timeout: 60_000 });
   await page.evaluate(() => (window as any).__game.ready());
@@ -145,7 +145,7 @@ test('F-040 / F-041 UI: wall line and trench line tools; rally point on a buildi
 });
 
 test('F-174 rebind a key; it survives a reload; the old key stops working', async ({ page }) => {
-  await page.goto('/');
+  await page.goto('/?menu=new');
   await page.evaluate(() => localStorage.removeItem('fortnight.keys.v1'));
   await openGame(page, 'keys-test', 'small');
   await page.getByTestId('settings-btn').click();

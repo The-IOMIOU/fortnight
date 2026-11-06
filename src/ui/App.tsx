@@ -11,6 +11,8 @@ import { RACES, PLAYABLE_RACES } from '../sim/races';
 import { RaceSummary } from './RacePanels';
 import { JoinWaiting } from './NetPanels';
 import { Hud, SettingsModal } from './Hud';
+import { Backdrop, Home, MultiplayerScreen } from './Home';
+import { PixelText } from './pixelFont';
 import { DIFFICULTIES, PERSONALITIES, type Difficulty } from '../ai/utility';
 import { Rng } from '../sim/core/prng';
 import type { BotConfig } from '../ai/manager';
@@ -30,7 +32,7 @@ export function randomSeed(): string {
   return `${WORDS_A[r(WORDS_A.length)]}-${WORDS_B[r(WORDS_B.length)]}-${100 + r(900)}`;
 }
 
-function readUrl(): Partial<NewGameOptions> & { join?: string; play: boolean; botCount?: number; difficulty?: Difficulty; personality?: string; allies?: number } {
+function readUrl(): Partial<NewGameOptions> & { join?: string; menu?: string; play: boolean; botCount?: number; difficulty?: Difficulty; personality?: string; allies?: number } {
   const q = new URLSearchParams(location.search);
   const size = q.get('size') as MapSize | null;
   const rivals = q.get('rivals'), bots = q.get('bots');
@@ -46,6 +48,7 @@ function readUrl(): Partial<NewGameOptions> & { join?: string; play: boolean; bo
     testOptions: q.get('opts') ? +q.get('opts')! : undefined,
     play: q.get('play') === '1',
     join: q.get('join') ?? undefined,
+    menu: q.get('menu') ?? undefined,
     spectator: q.get('reveal') === '1',
   };
 }
@@ -87,6 +90,11 @@ export function App() {
   const gameRef = useRef<Game | null>(null);
   const url = useRef(readUrl());
   const autosave = useRef(0);
+  const [view, setView] = useState<'home' | 'new' | 'multi'>(url.current.menu === 'new' ? 'new' : url.current.menu === 'multiplayer' ? 'multi' : 'home');
+  const [hostOnline, setHostOnline] = useState(false);
+  const [cont, setCont] = useState<{ label: string; blob: Blob } | null>(null);
+  useEffect(() => { void getContinue().then(setCont); }, []);
+  const startTutorial = (): void => start({ kind: 'new', opts: { seed: 'tutorial-1', size: 'small', speed: 'normal', players: 2, bots: [], tutorial: true } });
 
   useEffect(() => { applyUiScale(store.state.settings.uiScale); }, []);
   // closing the tab as host tells the guests right away (F-165); otherwise they'd wait for a network timeout
@@ -121,6 +129,7 @@ export function App() {
     clearInterval(autosave.current);
     gameRef.current?.dispose(); gameRef.current = null;
     store.set({ screen: 'menu', placing: null, selection: { units: {}, building: null, unit: null }, showStats: false, winner: -1 });
+    setView('home'); setHostOnline(false); void getContinue().then(setCont);
   };
 
   /** Save: always to the local "continue" slot; `download` also hands the player a file. */
@@ -161,7 +170,12 @@ export function App() {
   return (
     <div class="app">
       <div class="game-host" ref={hostRef} />
-      {screen === 'menu' && <Menu initial={url.current} onStart={start} />}
+      {screen === 'menu' && <Backdrop view={view === 'home' ? 'home' : 'panel'} />}
+      {screen === 'menu' && view === 'home' && <Home onPlay={() => setView('new')} onMultiplayer={() => setView('multi')} onTutorial={startTutorial}
+        onContinue={cont ? () => { void decodeSave(cont.blob).then((save) => start({ kind: 'load', save })).catch(() => store.set({ error: 'That save could not be read.' })); } : null} continueLabel={cont?.label ?? ''} />}
+      {screen === 'menu' && view === 'multi' && <MultiplayerScreen onBack={() => setView('home')} onHost={() => { setHostOnline(true); setView('new'); }} onJoin={(code, name) => start({ kind: 'join', code, name })} />}
+      {screen === 'menu' && view === 'new' && <Menu initial={url.current} onStart={start} onBack={() => { setHostOnline(false); setView('home'); }} hostOnline={hostOnline} />}
+      {screen === 'menu' && view !== 'new' && <SettingsModal />}
       {screen === 'loading' && (gameRef.current?.net?.role === 'guest' ? <JoinWaiting /> : <div class="loading">Generating continents…</div>)}
       {screen === 'game' && gameRef.current && <Hud game={gameRef.current} onQuit={quit} onSave={() => void doSave(true)} onRehost={() => void rehost()} />}
     </div>
@@ -181,7 +195,7 @@ const WILDLIFE: [number, string][] = [[0, 'None'], [50, 'Few'], [100, 'Normal'],
 const DAY_LENGTHS: [number, string][] = [[1800, 'Short (3 min)'], [TUNING.dayNight.dayLengthTicks, 'Normal (6 min)'], [7200, 'Long (12 min)']];
 const POP_LIMITS: [number, string][] = [[0, 'No limit (housing only)'], [50, '50'], [100, '100'], [200, '200'], [400, '400']];
 
-function Menu({ initial, onStart }: { initial: Partial<NewGameOptions>; onStart: (s: StartOptions) => void }) {
+function Menu({ initial, onStart, onBack, hostOnline = false }: { initial: Partial<NewGameOptions>; onStart: (s: StartOptions) => void; onBack: () => void; hostOnline?: boolean }) {
   const saved = useMemo(loadMenuPrefs, []);
   const [mode, setModeRaw] = useState<ModeId>(saved.mode ?? 'short');
   const [seed, setSeed] = useState(initial.seed ?? randomSeed());
@@ -195,7 +209,7 @@ function Menu({ initial, onStart }: { initial: Partial<NewGameOptions>; onStart:
   const [domination, setDomination] = useState(saved.domination ?? true);
   const [vTech, setVTech] = useState(saved.vTech ?? false);
   const [vEcon, setVEcon] = useState(saved.vEcon ?? false);
-  const [online, setOnline] = useState(false);
+  const [online, setOnline] = useState(hostOnline);
   const [seats, setSeats] = useState(1);
   const [coop, setCoop] = useState(true);
   const [voteP, setVoteP] = useState(false);
@@ -259,10 +273,32 @@ function Menu({ initial, onStart }: { initial: Partial<NewGameOptions>; onStart:
     } });
   };
 
+  const onlineBlock = (
+          <details class="more" data-testid="online" open={hostOnline}>
+            <summary>Online (play with friends)</summary>
+            <label class="row"><input type="checkbox" checked={online} onChange={(e) => setOnline((e.target as HTMLInputElement).checked)} data-testid="online-host" /> Host this game online</label>
+            {online && <>
+              <label>Seats for friends <input type="number" min="1" max={Math.min(TUNING.multiplayer.maxHumans - 1, Math.max(1, rivals))} value={seats} onInput={(e) => setSeats(Math.max(1, +(e.target as HTMLInputElement).value || 1))} data-testid="online-seats" /></label>
+              <small class="later">They take the first rival slots; the other rivals stay bots. At most {TUNING.multiplayer.maxHumans} humans.</small>
+              <label class="row"><input type="radio" checked={coop} onChange={() => setCoop(true)} data-testid="online-coop" /> Co-op: friends on your team against the bots</label>
+              <label class="row"><input type="radio" checked={!coop} onChange={() => setCoop(false)} data-testid="online-ffa" /> Free-for-all</label>
+              <label class="row"><input type="checkbox" checked={voteP} onChange={(e) => setVoteP((e.target as HTMLInputElement).checked)} data-testid="online-votepause" /> Players vote on pausing (else only you pause)</label>
+            </>}
+            {!hostOnline && <>
+            <label>Join a friend's game: paste their invite link or code
+              <input value={joinCode} onInput={(e) => setJoinCode((e.target as HTMLInputElement).value)} data-testid="join-code" />
+            </label>
+            <button type="button" disabled={!joinCode.trim()} onClick={() => { const c = joinCode.trim(); const code = c.includes('join=') ? new URL(c).searchParams.get('join') ?? c : c; onStart({ kind: 'join', code, name: 'Guest' }); }} data-testid="join-btn">Join</button>
+            </>}
+          </details>
+  );
+
   return (
     <div class="menu">
-      <h1>Fortnight</h1>
-      <p class="subtitle">Grow a civilization. Take the world.</p>
+      <div class="menu-head">
+        <button class="home-back" onClick={onBack} data-testid="menu-back" aria-label="Back"><PixelText text="< BACK" px={2} shadow={false} /></button>
+        <PixelText text={hostOnline ? 'HOST A GAME' : 'NEW GAME'} px={5} class="title-px" />
+      </div>
       {error && <p class="error" role="alert" data-testid="menu-error">{error}</p>}
       <section class="panel">
         <h2>New Game</h2>
@@ -273,6 +309,7 @@ function Menu({ initial, onStart }: { initial: Partial<NewGameOptions>; onStart:
             </button>
           ))}
         </div>
+        {hostOnline && onlineBlock}
         <label>People
           <select value={race} onChange={(e) => setRace((e.target as HTMLSelectElement).value)} data-testid="race">
             {RACES.map((r) => <option value={r.id}>{r.name}</option>)}
@@ -392,21 +429,7 @@ function Menu({ initial, onStart }: { initial: Partial<NewGameOptions>; onStart:
           <TestOptionList mask={testOpts} onChange={setTestOpts} modified={false} />
         </details>
         {testOpts !== 0 && <p class="warn" data-testid="menu-modified">Test options are on: this run will be marked as Modified.</p>}
-        <details class="more" data-testid="online">
-          <summary>Online (play with friends)</summary>
-          <label class="row"><input type="checkbox" checked={online} onChange={(e) => setOnline((e.target as HTMLInputElement).checked)} data-testid="online-host" /> Host this game online</label>
-          {online && <>
-            <label>Seats for friends <input type="number" min="1" max={Math.min(TUNING.multiplayer.maxHumans - 1, Math.max(1, rivals))} value={seats} onInput={(e) => setSeats(Math.max(1, +(e.target as HTMLInputElement).value || 1))} data-testid="online-seats" /></label>
-            <small class="later">They take the first rival slots; the other rivals stay bots. At most {TUNING.multiplayer.maxHumans} humans.</small>
-            <label class="row"><input type="radio" checked={coop} onChange={() => setCoop(true)} data-testid="online-coop" /> Co-op: friends on your team against the bots</label>
-            <label class="row"><input type="radio" checked={!coop} onChange={() => setCoop(false)} data-testid="online-ffa" /> Free-for-all</label>
-            <label class="row"><input type="checkbox" checked={voteP} onChange={(e) => setVoteP((e.target as HTMLInputElement).checked)} data-testid="online-votepause" /> Players vote on pausing (else only you pause)</label>
-          </>}
-          <label>Join a friend's game: paste their invite link or code
-            <input value={joinCode} onInput={(e) => setJoinCode((e.target as HTMLInputElement).value)} data-testid="join-code" />
-          </label>
-          <button type="button" disabled={!joinCode.trim()} onClick={() => { const c = joinCode.trim(); const code = c.includes('join=') ? new URL(c).searchParams.get('join') ?? c : c; onStart({ kind: 'join', code, name: 'Guest' }); }} data-testid="join-btn">Join</button>
-        </details>
+        {!hostOnline && onlineBlock}
         <button class="primary" data-testid="start" onClick={start} disabled={!seed.trim() || (!conquest && !domination)}>Start</button>
       </section>
       <section class="panel">
@@ -416,7 +439,6 @@ function Menu({ initial, onStart }: { initial: Partial<NewGameOptions>; onStart:
         <input ref={fileRef} type="file" accept=".fnsave,application/gzip,application/json" hidden data-testid="load-input" onChange={(e) => { const f = (e.target as HTMLInputElement).files?.[0]; if (f) void loadBlob(f); }} />
       </section>
       <section class="panel muted">
-        <button disabled title="Phase 7">Join Game</button>
         <button onClick={() => store.set({ settingsOpen: true })}>Settings</button>
         <button onClick={() => onStart({ kind: 'new', opts: { seed: 'tutorial-1', size: 'small', speed: 'normal', players: 2, bots: [], tutorial: true } })} data-testid="tutorial-btn">Tutorial</button>
       </section>

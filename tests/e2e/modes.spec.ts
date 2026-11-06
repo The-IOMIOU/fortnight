@@ -8,7 +8,7 @@ const inGame = (page: Page) =>
 const g = (page: Page, fn: string): Promise<any> => page.evaluate(`(async () => { const G = window.__game; const game = G.game; ${fn} })()`);
 
 test('F-193 modes preset size, bots and world; F-196 more settings shape the match and are remembered', async ({ page }) => {
-  await page.goto('/');
+  await page.goto('/?menu=new');
   await page.evaluate(() => localStorage.removeItem('fortnight.menu.v1'));
   await page.reload();
   const seen: string[] = [];
@@ -35,7 +35,7 @@ test('F-193 modes preset size, bots and world; F-196 more settings shape the mat
   expect(wrap).toBe(true);
   expect(s.stats.census.length).toBe(3); // you + 2 bots (Short default)
   // remembered
-  await page.goto('/');
+  await page.goto('/?menu=new');
   await expect(page.getByTestId('mode-short')).toHaveAttribute('aria-checked', 'true');
   await page.getByTestId('more-settings').locator('summary').click();
   await expect(page.getByTestId('daylen')).toHaveValue('1800');
@@ -121,7 +121,7 @@ test('F-197 / F-198 test options: confirmation, cancel, modified badge, extra sp
 });
 
 test('F-198 test options from the menu ask first and mark the run', async ({ page }) => {
-  await page.goto('/');
+  await page.goto('/?menu=new');
   await page.evaluate(() => localStorage.removeItem('fortnight.menu.v1'));
   await page.reload();
   await page.getByTestId('seed').fill('menu-opts');
@@ -135,7 +135,7 @@ test('F-198 test options from the menu ask first and mark the run', async ({ pag
   await expect(page.getByTestId('modified-badge')).toBeVisible();
   await page.waitForFunction(() => (window as any).__game.state().opts === 4, null, { timeout: 10_000 });
   // without options: no badge (menu choice reset)
-  await page.goto('/');
+  await page.goto('/?menu=new');
   await page.getByTestId('test-options-menu').locator('summary').click();
   await page.getByTestId('opt-instantbuild').uncheck();
   await expect(page.getByTestId('menu-modified')).toHaveCount(0);

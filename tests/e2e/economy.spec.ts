@@ -169,7 +169,7 @@ test('F-016 save to file, reload in a fresh browser context, identical state; ol
   // Fresh context = like a browser restart.
   const ctx2 = await browser.newContext();
   const p2 = await ctx2.newPage();
-  await p2.goto('/');
+  await p2.goto('/?menu=new');
   await p2.getByTestId('load-input').setInputFiles({ name: dl.suggestedFilename(), mimeType: 'application/gzip', buffer: bytes });
   await p2.waitForFunction(() => (window as any).__game?.state().screen === 'game', null, { timeout: 60_000 });
   await p2.waitForTimeout(500);
@@ -182,7 +182,7 @@ test('F-016 save to file, reload in a fresh browser context, identical state; ol
   const old = gzipSync(Buffer.from(JSON.stringify(json)));
   writeFileSync(path! + '.old', old);
   const p3 = await ctx2.newPage();
-  await p3.goto('/');
+  await p3.goto('/?menu=new');
   await p3.getByTestId('load-input').setInputFiles({ name: 'old.fnsave', mimeType: 'application/gzip', buffer: old });
   await expect(p3.getByTestId('menu-error')).toContainText('different game version');
   console.log('[F-016] old-version save rejected: ' + (await p3.getByTestId('menu-error').textContent()));
@@ -190,7 +190,7 @@ test('F-016 save to file, reload in a fresh browser context, identical state; ol
 });
 
 test('F-006 single-player works fully offline (no requests after load)', async ({ page, context }) => {
-  await page.goto('/');
+  await page.goto('/?menu=new');
   await page.waitForLoadState('networkidle');
   const requests: string[] = [];
   page.on('request', (r) => requests.push(r.url()));
@@ -209,7 +209,7 @@ test('F-006 single-player works fully offline (no requests after load)', async (
 
 test('F-176 UI scale 200 % on 1366×768: nothing overflows', async ({ page }) => {
   await page.setViewportSize({ width: 1366, height: 768 });
-  await page.goto('/');
+  await page.goto('/?menu=new');
   await page.evaluate(() => localStorage.setItem('fortnight.settings.v1', JSON.stringify({ uiScale: 2, quality: 'high', volume: 0.6, muted: false })));
   await openGame(page, 'scale-test', 'small');
   const workers = await ownUnits(page, 2);
@@ -254,7 +254,7 @@ test('F-180 sound plays on events; muted = silent', async ({ page }) => {
 });
 
 test('F-099 / F-170 menu: race and rivals shape the started match', async ({ page }) => {
-  await page.goto('/');
+  await page.goto('/?menu=new');
   await expect(page.getByTestId('race')).toHaveValue('baseline');
   await page.getByTestId('seed').fill('menu-test');
   await page.getByTestId('rivals').fill('2');

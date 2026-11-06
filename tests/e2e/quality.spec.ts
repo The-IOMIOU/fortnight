@@ -4,7 +4,7 @@ import { expect, test } from '@playwright/test';
 import { openGame } from './helpers';
 
 const sweep = async (page: import('@playwright/test').Page, quality: string): Promise<{ avgFps: number; p95Ms: number; tris: number }> => {
-  await page.goto('/');
+  await page.goto('/?menu=new');
   await page.evaluate((q) => localStorage.setItem('fortnight.settings.v1', JSON.stringify({ uiScale: 1, quality: q, volume: 0, muted: true })), quality);
   await openGame(page, 'quality-seed', 'huge', '&reveal=1');
   await page.waitForTimeout(1500);

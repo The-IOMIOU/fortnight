@@ -132,7 +132,7 @@ details.more > * + * { margin-top: 0.5rem; }
 .testopts label.row small { color: var(--muted); font-size: 0.75rem; }
 .modal.confirm { z-index: 60; }
 .warn-btn { background: #6b2b23 !important; border-color: #d0624f !important; }
-.panel .row input[type="checkbox"] { flex: 0 0 auto; width: auto; }
+.panel .row input[type="checkbox"], .panel .row input[type="radio"] { flex: 0 0 auto; width: auto; }
 .modal .panel { max-height: 92vh; overflow-y: auto; }
 
 /* Phase 5: research panel, race summary */
@@ -165,3 +165,69 @@ details.more > * + * { margin-top: 0.5rem; }
 /* Phase 9: tutorial */
 .tutorial { position: absolute; right: 1rem; top: 3.4rem; width: min(340px, calc(100vw - 2rem)); background: #1d2533f0; border: 1px solid #ffffff22; border-radius: 8px; padding: 0.6rem 0.8rem; z-index: 8; font-size: 0.9rem; }
 .tutorial p { margin: 0.4rem 0; line-height: 1.35; }
+
+/* ---------- Start screen (Home, Multiplayer) over the planet backdrop ---------- */
+.backdrop { position: absolute; inset: 0; overflow: hidden;
+  background:
+    radial-gradient(ellipse 60% 45% at 18% 22%, rgba(88, 60, 140, 0.20) 0%, transparent 70%),
+    radial-gradient(ellipse 50% 40% at 85% 85%, rgba(30, 90, 140, 0.22) 0%, transparent 70%),
+    radial-gradient(ellipse at 50% 50%, #0a1220 0%, #04070d 75%); }
+.backdrop-canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+.backdrop-vignette { position: absolute; inset: 0; pointer-events: none;
+  background: linear-gradient(90deg, rgba(3, 6, 12, 0.72) 0%, rgba(3, 6, 12, 0.35) 34%, transparent 58%),
+              radial-gradient(ellipse at 50% 50%, transparent 55%, rgba(0, 0, 0, 0.55) 100%); }
+.pixeltext { display: block; overflow: visible; }
+.pixeltext .pt-fill { fill: #f3ead6; }
+.pixeltext .pt-shadow { fill: #1b2233; }
+.title-px .pt-fill { fill: #f6e7c1; }
+.title-px .pt-shadow { fill: #6b3f1f; }
+
+.home { position: absolute; inset: 0; display: flex; flex-direction: column; justify-content: center; padding: clamp(1.5rem, 6vw, 6rem); z-index: 2; color: #e9e3d6; }
+.home-col { display: flex; flex-direction: column; gap: 2.4rem; max-width: 640px; animation: home-in 1.4s cubic-bezier(.2,.7,.2,1) both; }
+.home-title { display: flex; flex-direction: column; gap: 1rem; }
+.home-title .title-px { width: min(477px, 78vw); height: auto; filter: drop-shadow(0 0 22px rgba(255, 196, 110, 0.18)); }
+.home-tag { margin: 0; font: 500 0.82rem/1.5 ui-monospace, 'Cascadia Mono', Consolas, monospace; letter-spacing: 0.22em; text-transform: uppercase; color: #a9b4c4; }
+.home-list { display: flex; flex-direction: column; gap: 0.35rem; align-items: flex-start; }
+.home-item { position: relative; display: flex; align-items: center; gap: 0.9rem; background: none; border: 0; padding: 0.55rem 0.4rem 0.55rem 1.6rem; cursor: pointer; color: inherit; opacity: 0.72;
+  transition: opacity .18s ease, transform .18s ease; animation: home-in 1s cubic-bezier(.2,.7,.2,1) both; }
+.home-list .home-item:nth-child(1) { animation-delay: .35s; } .home-list .home-item:nth-child(2) { animation-delay: .45s; }
+.home-list .home-item:nth-child(3) { animation-delay: .55s; } .home-list .home-item:nth-child(4) { animation-delay: .65s; }
+.home-item:hover, .home-item:focus-visible { opacity: 1; transform: translateX(6px); outline: none; border: 0; }
+.home-item:hover .pt-fill, .home-item:focus-visible .pt-fill { fill: #ffd98a; }
+.home-caret { position: absolute; left: 0; opacity: 0; transition: opacity .18s ease; }
+.home-caret .pt-fill { fill: #ffd98a; }
+.home-item:hover .home-caret, .home-item:focus-visible .home-caret { opacity: 1; animation: caret 1s steps(2) infinite; }
+.home-hint { font: 0.72rem ui-monospace, Consolas, monospace; color: #8d99a8; letter-spacing: 0.06em; }
+.home-foot { position: absolute; left: clamp(1.5rem, 6vw, 6rem); right: clamp(1.5rem, 6vw, 6rem); bottom: 1.4rem; display: flex; justify-content: space-between; align-items: center;
+  font: 0.7rem ui-monospace, Consolas, monospace; letter-spacing: 0.16em; text-transform: uppercase; color: #6f7b8c; animation: home-in 2s ease both; animation-delay: .8s; }
+.home-link { background: none; border: 0; color: #a9b4c4; font: inherit; letter-spacing: inherit; cursor: pointer; padding: 0.3rem 0; border-bottom: 1px solid rgba(169, 180, 196, 0.35); border-radius: 0; }
+.home-link:hover { color: #ffd98a; border-color: #ffd98a; }
+.home-back { align-self: flex-start; background: none; border: 0; padding: 0.3rem 0; opacity: 0.7; cursor: pointer; }
+.home-back:hover { opacity: 1; border: 0; }
+.home-back:hover .pt-fill { fill: #ffd98a; }
+@keyframes home-in { from { opacity: 0; transform: translateY(14px); filter: blur(6px); } to { opacity: 1; transform: none; filter: none; } }
+@keyframes caret { 50% { opacity: 0.25; } }
+@media (prefers-reduced-motion: reduce) { .home-col, .home-item, .home-foot { animation: none; } }
+
+.mp .home-col { gap: 1.4rem; max-width: 760px; }
+.mp-cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 1rem; }
+.mp-card { display: flex; flex-direction: column; gap: 0.8rem; padding: 1.2rem 1.3rem; border: 1px solid rgba(255, 255, 255, 0.09); border-radius: 4px;
+  background: linear-gradient(180deg, rgba(14, 20, 32, 0.78), rgba(8, 12, 20, 0.86)); backdrop-filter: blur(8px); box-shadow: 0 18px 48px rgba(0, 0, 0, 0.35); }
+.mp-card p, .mp-card small { margin: 0; color: #a9b4c4; font-size: 0.86rem; line-height: 1.5; }
+.mp-card label { display: flex; flex-direction: column; gap: 0.3rem; font-size: 0.8rem; color: #8d99a8; }
+.mp-card textarea, .mp-card input { font: 0.82rem ui-monospace, Consolas, monospace; background: rgba(0, 0, 0, 0.35); border: 1px solid #2b3542; color: #e6ebf2; border-radius: 3px; padding: 0.45rem; resize: vertical; }
+.home-btn { align-self: flex-start; display: flex; align-items: center; justify-content: center; padding: 0.65rem 1.1rem; background: rgba(255, 217, 138, 0.08); border: 1px solid rgba(255, 217, 138, 0.55); border-radius: 2px; cursor: pointer; }
+.home-btn:hover:not(:disabled) { background: rgba(255, 217, 138, 0.18); border-color: #ffd98a; }
+.home-btn:disabled { opacity: 0.35; cursor: default; }
+.home-btn .pt-fill { fill: #ffd98a; }
+
+/* New Game over the backdrop: glassy panels, the planet glows behind */
+.backdrop ~ .menu { background: linear-gradient(90deg, rgba(4, 7, 13, 0.82) 0%, rgba(4, 7, 13, 0.55) 55%, rgba(4, 7, 13, 0.25) 100%); z-index: 2; align-items: flex-start; padding-left: clamp(1rem, 5vw, 5rem); }
+.backdrop ~ .menu .panel { background: linear-gradient(180deg, rgba(14, 20, 32, 0.8), rgba(8, 12, 20, 0.88)); backdrop-filter: blur(8px); border-color: rgba(255, 255, 255, 0.09); box-shadow: 0 18px 48px rgba(0, 0, 0, 0.35); width: min(440px, 100%); }
+.menu-head { display: flex; flex-direction: column; gap: 0.8rem; margin-bottom: 0.4rem; }
+@media (max-aspect-ratio: 21/20) {
+  .backdrop-vignette { background: linear-gradient(180deg, rgba(3, 6, 12, 0.78) 0%, rgba(3, 6, 12, 0.45) 55%, rgba(3, 6, 12, 0.15) 100%); }
+  .home { justify-content: flex-start; padding-top: 18vh; }
+}
+.home-foot { text-shadow: 0 1px 6px rgba(0, 0, 0, 0.9); }
+.panel label.row { flex-direction: row; align-items: center; gap: 0.5rem; color: inherit; }
