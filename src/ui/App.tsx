@@ -21,6 +21,7 @@ import { MODES, modeDef, type ModeId } from '../app/modes';
 import type { MapOpts, SeaWidth } from '../sim/world/mapgen';
 import type { SimSettings } from '../sim/sim';
 import { TestOptionList } from './testOptions';
+import { roomCodeFrom } from '../net/rooms';
 
 const SPEED_LABEL: Record<SpeedName, string> = { slow: '0.5×', normal: '1×', fast: '2×', veryFast: '4×', x8: '8×', x16: '16×' };
 const WORDS_A = ['amber', 'quiet', 'rust', 'salt', 'ember', 'misty', 'iron', 'bright', 'hollow', 'wild', 'frost', 'golden'];
@@ -32,7 +33,7 @@ export function randomSeed(): string {
   return `${WORDS_A[r(WORDS_A.length)]}-${WORDS_B[r(WORDS_B.length)]}-${100 + r(900)}`;
 }
 
-function readUrl(): Partial<NewGameOptions> & { join?: string; menu?: string; play: boolean; botCount?: number; difficulty?: Difficulty; personality?: string; allies?: number } {
+function readUrl(): Partial<NewGameOptions> & { join?: string; room?: string; menu?: string; play: boolean; botCount?: number; difficulty?: Difficulty; personality?: string; allies?: number } {
   const q = new URLSearchParams(location.search);
   const size = q.get('size') as MapSize | null;
   const rivals = q.get('rivals'), bots = q.get('bots');
@@ -48,6 +49,7 @@ function readUrl(): Partial<NewGameOptions> & { join?: string; menu?: string; pl
     testOptions: q.get('opts') ? +q.get('opts')! : undefined,
     play: q.get('play') === '1',
     join: q.get('join') ?? undefined,
+    room: q.get('room') ?? undefined,
     menu: q.get('menu') ?? undefined,
     spectator: q.get('reveal') === '1',
   };
@@ -63,6 +65,7 @@ export function shareLink(seed: string, size: string, world?: SimSettings['world
 }
 
 declare global { interface Window { __game?: unknown } }
+const savedName = (): string => { try { return localStorage.getItem('fortnight.name') || 'Guest'; } catch { return 'Guest'; } };
 
 const defaultPlayers = (size: MapSize): number => Math.min(4, TUNING.map.sizes[size].maxPlayers);
 
@@ -159,7 +162,8 @@ export function App() {
 
   useEffect(() => {
     const u = url.current;
-    if (u.join) { start({ kind: 'join', code: u.join, name: 'Guest' }); return; }
+    if (u.room && roomCodeFrom(u.room)) { start({ kind: 'room', code: roomCodeFrom(u.room), name: savedName() }); return; }
+    if (u.join) { start({ kind: 'join', code: u.join, name: savedName() }); return; }
     if (u.play && u.seed) {
       const size = u.size ?? 'small';
       const m = u.botCount !== undefined ? makeMatch(u.seed, size, u.botCount, u.difficulty ?? 'hard', u.personality ?? 'random', u.allies ?? 0) : { players: u.players ?? defaultPlayers(size) };
@@ -173,7 +177,7 @@ export function App() {
       {screen === 'menu' && <Backdrop view={view === 'home' ? 'home' : 'panel'} />}
       {screen === 'menu' && view === 'home' && <Home onPlay={() => setView('new')} onMultiplayer={() => setView('multi')} onTutorial={startTutorial}
         onContinue={cont ? () => { void decodeSave(cont.blob).then((save) => start({ kind: 'load', save })).catch(() => store.set({ error: 'That save could not be read.' })); } : null} continueLabel={cont?.label ?? ''} />}
-      {screen === 'menu' && view === 'multi' && <MultiplayerScreen onBack={() => setView('home')} onHost={() => { setHostOnline(true); setView('new'); }} onJoin={(code, name) => start({ kind: 'join', code, name })} />}
+      {screen === 'menu' && view === 'multi' && <MultiplayerScreen onBack={() => setView('home')} onHost={() => { setHostOnline(true); setView('new'); }} onJoin={(code, name) => start({ kind: 'join', code, name })} onJoinRoom={(code, name) => start({ kind: 'room', code, name })} />}
       {screen === 'menu' && view === 'new' && <Menu initial={url.current} onStart={start} onBack={() => { setHostOnline(false); setView('home'); }} hostOnline={hostOnline} />}
       {screen === 'menu' && view !== 'new' && <SettingsModal />}
       {screen === 'loading' && (gameRef.current?.net?.role === 'guest' ? <JoinWaiting /> : <div class="loading">Generating continents…</div>)}

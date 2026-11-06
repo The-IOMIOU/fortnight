@@ -15,6 +15,7 @@ test('F-160 host invites a guest by link + answer code; lockstep without desync;
   await host.getByTestId('start').click();
   await host.waitForFunction(() => (window as any).__game?.state().net?.role === 'host', null, { timeout: 60_000 });
   await host.getByTestId('net-btn').click();
+  await host.getByTestId('manual-invite').locator('summary').click(); // the manual invite is the fallback now
   await host.getByTestId('net-invite').click();
   const link = await host.getByTestId('invite-link-1').inputValue({ timeout: 20_000 });
   expect(link).toContain('join=');
@@ -58,6 +59,7 @@ test('Start screen: Multiplayer → Host and Multiplayer → Join game connect t
   await host.getByTestId('start').click();
   await host.waitForFunction(() => (window as any).__game?.state().net?.role === 'host', null, { timeout: 60_000 });
   await host.getByTestId('net-btn').click();
+  await host.getByTestId('manual-invite').locator('summary').click(); // the manual invite is the fallback now
   await host.getByTestId('net-invite').click();
   const link = await host.getByTestId('invite-link-1').inputValue({ timeout: 20_000 });
   // the guest pastes the link into the Join game screen
@@ -74,4 +76,47 @@ test('Start screen: Multiplayer → Host and Multiplayer → Join game connect t
   await host.waitForFunction(() => (window as any).__game.state().net.seats.some((s: any) => s.connected && s.name === 'Robin'), null, { timeout: 20_000 });
   console.log('[home] guest joined from the start screen\'s Join game form (name Robin) and the host saw the seat connect');
   await ctxA.close(); await ctxB.close();
+});
+
+test('F-162 room codes (like the friend\'s game): host gets a code, the guest types it and is in, no answer code', async ({ browser }) => {
+  test.setTimeout(240_000);
+  const ctxA = await browser.newContext(), ctxB = await browser.newContext();
+  const host = await ctxA.newPage(), guest = await ctxB.newPage();
+  await host.goto('/');
+  await host.getByTestId('home-multiplayer').click();
+  await host.getByTestId('mp-host').click();
+  await host.getByTestId('seed').fill('mp-room');
+  await host.getByTestId('start').click();
+  await host.waitForFunction(() => (window as any).__game?.state().net?.role === 'host', null, { timeout: 60_000 });
+  await host.getByTestId('net-btn').click();
+  const code = (await host.getByTestId('room-code').innerText({ timeout: 30_000 })).trim();
+  expect(code).toMatch(/^[A-HJ-NP-Z2-9]{5}$/);
+  await expect(host.getByTestId('net-btn')).toContainText(code);
+  // the guest types the code (lower case and with a space, as people do)
+  await guest.goto('/');
+  await guest.getByTestId('home-multiplayer').click();
+  await guest.getByTestId('mp-code').fill(code.toLowerCase().slice(0, 2) + ' ' + code.slice(2));
+  await guest.getByTestId('mp-name').fill('Robin');
+  await guest.getByTestId('mp-join').click();
+  await guest.waitForFunction(() => (window as any).__game?.state().screen === 'game', null, { timeout: 60_000 });
+  await host.waitForFunction(() => (window as any).__game.state().net.seats.some((s: any) => s.connected && s.name === 'Robin'), null, { timeout: 30_000 });
+  const t0 = await guest.evaluate(() => (window as any).__game.state().tick);
+  await guest.waitForTimeout(3000);
+  const t1 = await guest.evaluate(() => (window as any).__game.state().tick);
+  // a ?room= link joins directly too
+  const ctxC = await browser.newContext(), third = await ctxC.newPage();
+  await third.goto(`/?room=${code}`);
+  await expect(third.getByTestId('join-room-wait')).toBeVisible();
+  console.log(`[F-162] room ${code}: guest typed it and joined as Robin, ${t1 - t0} lockstep ticks in 3 s; ?room= link opens the room join`);
+  expect(t1).toBeGreaterThan(t0);
+  await ctxA.close(); await ctxB.close(); await ctxC.close();
+});
+
+test('F-162 a wrong room code gives a clear message', async ({ page }) => {
+  await page.goto('/');
+  await page.getByTestId('home-multiplayer').click();
+  await page.getByTestId('mp-code').fill('ZZZZ9');
+  await page.getByTestId('mp-join').click();
+  await expect(page.getByTestId('mp-error')).toContainText(/No game with this code|matchmaking|does not answer/, { timeout: 40_000 });
+  console.log(`[F-162] wrong code: "${await page.getByTestId('mp-error').innerText()}"`);
 });

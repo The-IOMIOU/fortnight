@@ -5,16 +5,19 @@ import { store, useStore } from '../app/store';
 import { playerLabel } from '../render/palette';
 
 export const joinLink = (code: string): string => { const u = new URL(location.href); u.search = new URLSearchParams({ join: code }).toString(); return u.toString(); };
+/** Link that joins a room straight away (F-162). */
+export const roomLink = (code: string): string => { const u = new URL(location.href); u.search = new URLSearchParams({ room: code }).toString(); u.hash = ''; return u.toString(); };
 
 export function NetButton() {
   const net = useStore((s) => s.net);
   if (!net || net.role !== 'host') return null;
   const on = net.seats.filter((s) => s.connected).length;
-  return <button onClick={() => store.set({ netOpen: !store.state.netOpen })} data-testid="net-btn" title="Invite friends">Online {on + 1}/{net.seats.length + 1}</button>;
+  const room = useStore((s) => s.room);
+  return <button onClick={() => store.set({ netOpen: !store.state.netOpen })} data-testid="net-btn" title="Invite friends">Online {on + 1}/{net.seats.length + 1}{room?.code ? ` · ${room.code}` : ''}</button>;
 }
 
 export function NetPanel({ game }: { game: Game }) {
-  const s = useStore((st) => ({ open: st.netOpen, net: st.net, invites: st.invites }));
+  const s = useStore((st) => ({ open: st.netOpen, net: st.net, invites: st.invites, room: st.room }));
   const [answers, setAnswers] = useState<Record<number, string>>({});
   const [busy, setBusy] = useState(false);
   if (!s.open || !s.net) return null;
@@ -22,11 +25,19 @@ export function NetPanel({ game }: { game: Game }) {
   return (
     <div class="modal" data-testid="net-panel"><div class="panel dip-panel">
       <div class="sel-title">Online game <button onClick={() => store.set({ netOpen: false })} aria-label="Close">✕</button></div>
-      <p class="sel-sub">Players connect straight to you (no game server). 1. Create an invite and send the link to a friend. 2. They open it and send you back their answer code. 3. Paste it here.</p>
+      <div class="room-box" data-testid="room-box">
+        {s.room?.code ? <>
+          <small>Room code: friends enter it under Multiplayer → Join</small>
+          <button class="room-code" title="Click to copy" onClick={() => { copy(s.room!.code); store.set({ toast: 'Code copied' }); setTimeout(() => store.set({ toast: '' }), 1500); }} data-testid="room-code">{s.room.code}</button>
+          <button onClick={() => { copy(roomLink(s.room!.code)); store.set({ toast: 'Invite link copied' }); setTimeout(() => store.set({ toast: '' }), 1500); }} data-testid="room-link">Copy invite link</button>
+        </> : s.room?.error ? <p class="warn" data-testid="room-error">{s.room.error} You can still use a manual invite below.</p> : <small>Opening a room…</small>}
+      </div>
+      <p class="sel-sub">The game runs browser to browser. A free PeerJS server only introduces you to each other.</p>
       <table class="dip-table"><tbody>
         <tr><td>{playerLabel(game.viewer)}</td><td>you (host)</td></tr>
         {s.net.seats.map((st) => <tr data-testid={'seat-' + st.player}><td>{playerLabel(st.player)}</td><td>{st.token ? (st.connected ? `connected${st.name ? ` (${st.name})` : ''}` : 'disconnected: they can rejoin with a new invite') : 'free seat'}</td></tr>)}
       </tbody></table>
+      <details class="more" data-testid="manual-invite"><summary>No internet matchmaking? Manual invite (link + answer code)</summary>
       <button disabled={busy} onClick={() => { setBusy(true); void game.invite().finally(() => setBusy(false)); }} data-testid="net-invite">{busy ? 'Preparing…' : 'Create invite'}</button>
       {s.invites.map((inv) => (
         <div class="tech-row" data-testid={'invite-' + inv.peer}>
@@ -39,7 +50,7 @@ export function NetPanel({ game }: { game: Game }) {
           </div>
         </div>
       ))}
-      <p class="sel-sub">If a direct connection fails (strict firewalls), a relay (TURN) server is needed; none is set up yet.</p>
+      </details>
     </div></div>
   );
 }
@@ -77,7 +88,8 @@ export function NetNotices({ onSave, onRehost }: { onSave: () => void; onRehost:
 
 /** Guest, while connecting: the answer code to send back to the host. */
 export function JoinWaiting() {
-  const answer = useStore((s) => s.netAnswer);
+  const answer = useStore((s) => s.netAnswer), room = useStore((s) => s.joinRoom);
+  if (room) return <div class="loading" data-testid="join-room-wait">Connecting to room {room}…</div>;
   if (!answer) return <div class="loading">Reading the invite…</div>;
   return (
     <div class="loading join-wait" data-testid="join-wait">

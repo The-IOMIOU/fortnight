@@ -62,7 +62,7 @@ export interface NewGameOptions {
   /** Phase 9: start with the tutorial overlay. */
   tutorial?: boolean;
 }
-export type StartOptions = { kind: 'new'; opts: NewGameOptions } | { kind: 'load'; save: SaveData; online?: NewGameOptions['online']; viewer?: number } | { kind: 'join'; code: string; name: string };
+export type StartOptions = { kind: 'new'; opts: NewGameOptions } | { kind: 'load'; save: SaveData; online?: NewGameOptions['online']; viewer?: number } | { kind: 'join'; code: string; name: string } | { kind: 'room'; code: string; name: string };
 
 export class Game {
   readonly renderer: THREE.WebGLRenderer;
@@ -139,9 +139,16 @@ export class Game {
       if (o.races && o.races.some((r) => r !== 'baseline')) settings.races = o.races;
       if (o.testOptions) settings.testOptions = [o.testOptions];
       this.send({ type: 'init', settings, viewer: this.viewer, speed: o.speed, paused: false, bots: o.bots ?? [] });
-      if (o.online) { this.setupNet('host'); this.send({ type: 'hostNet', humans: [0, ...o.online.seats], pauseMode: o.online.pauseMode }); }
+      if (o.online) { void this.setupNet('host').openRoom(); this.send({ type: 'hostNet', humans: [0, ...o.online.seats], pauseMode: o.online.pauseMode }); }
       store.set({ myTeam: o.teams?.[0] ?? 0, impossibleBonusOn: !!o.impossibleBonus && !!o.bots?.some((b) => b.difficulty === 'impossible') });
       store.set({ screen: 'loading', seed: o.seed, size: o.size, speed: o.speed, paused: false, winner: -1, feed: [], stats: null, error: '', tutorial: o.tutorial ? 0 : -1 });
+    } else if (start.kind === 'room') {
+      // join by room code (F-162): no answer code, the connection opens by itself
+      this.viewer = -1;
+      const n = this.setupNet('guest');
+      store.set({ screen: 'loading', paused: false, winner: -1, feed: [], stats: null, error: '', netAnswer: '', joinRoom: start.code });
+      void n.joinRoom(start.code).then(() => this.send({ type: 'joinNet', token: netToken(), name: start.name }))
+        .catch((e: Error) => { store.set({ screen: 'menu', error: e.message, joinRoom: '' }); this.dispose(); });
     } else if (start.kind === 'join') {
       this.viewer = -1;
       const n = this.setupNet('guest');
@@ -153,7 +160,7 @@ export class Game {
     } else {
       this.viewer = start.viewer ?? 0;
       this.send({ type: 'load', save: start.save, viewer: this.viewer, speed: 'normal' });
-      if (start.online) { this.setupNet('host'); this.send({ type: 'hostNet', humans: [this.viewer, ...start.online.seats.filter((p) => p !== this.viewer)], pauseMode: start.online.pauseMode }); }
+      if (start.online) { void this.setupNet('host').openRoom(); this.send({ type: 'hostNet', humans: [this.viewer, ...start.online.seats.filter((p) => p !== this.viewer)], pauseMode: start.online.pauseMode }); }
       store.set({ screen: 'loading', seed: start.save.settings.seed, size: start.save.settings.size, paused: true, winner: -1, feed: [], stats: null, error: '' });
     }
     window.addEventListener('resize', this.onResize);
@@ -168,7 +175,7 @@ export class Game {
     const n = new NetSession(role);
     n.onMessage = (peer, msg) => this.send({ type: 'netIn', peer, msg });
     n.onGone = (peer) => this.send({ type: 'netGone', peer });
-    n.onChange = () => store.set({ invites: n.invites.map((i) => ({ peer: i.peer, code: i.code, state: i.state })) });
+    n.onChange = () => store.set({ invites: n.invites.map((i) => ({ peer: i.peer, code: i.code, state: i.state })), room: n.role === 'host' ? { ...n.room } : null });
     this.net = n;
     return n;
   }

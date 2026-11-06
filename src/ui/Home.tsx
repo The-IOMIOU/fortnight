@@ -3,8 +3,9 @@
 import { useEffect, useRef, useState } from 'preact/hooks';
 import { PlanetBackground, type BgView } from '../render/planetBg';
 import { PixelText } from './pixelFont';
-import { store } from '../app/store';
+import { store, useStore } from '../app/store';
 import { PLAYABLE_RACES } from '../sim/races';
+import { ROOM_CODE_LEN, roomCodeFrom } from '../net/rooms';
 
 export function Backdrop({ view }: { view: BgView }) {
   const ref = useRef<HTMLCanvasElement>(null);
@@ -70,16 +71,19 @@ export function Home({ onPlay, onMultiplayer, onTutorial, onContinue, continueLa
 }
 
 /** Host or join. Hosting opens New Game with online play on; joining takes an invite link or code. */
-export function MultiplayerScreen({ onBack, onHost, onJoin }: { onBack: () => void; onHost: () => void; onJoin: (code: string, name: string) => void }) {
+export function MultiplayerScreen({ onBack, onHost, onJoin, onJoinRoom }: { onBack: () => void; onHost: () => void; onJoin: (code: string, name: string) => void; onJoinRoom: (code: string, name: string) => void }) {
   const [code, setCode] = useState('');
+  const error = useStore((s) => s.error);
   const [name, setName] = useState(() => { try { return localStorage.getItem('fortnight.name') ?? ''; } catch { return ''; } });
   const join = (): void => {
     const c = code.trim();
     if (!c) return;
-    let k = c;
-    try { if (c.includes('join=')) k = new URL(c).searchParams.get('join') ?? c; } catch { /* plain code */ }
     try { localStorage.setItem('fortnight.name', name.trim()); } catch { /* storage unavailable */ }
-    onJoin(k, name.trim() || 'Guest');
+    const room = roomCodeFrom(c);
+    if (room) { onJoinRoom(room, name.trim() || 'Guest'); return; } // room code or ?room= link
+    let k = c;
+    try { if (c.includes('join=')) k = new URL(c).searchParams.get('join') ?? c; } catch { /* plain manual invite */ }
+    onJoin(k, name.trim() || 'Guest'); // manual invite (link + answer code)
   };
   return (
     <div class="home mp" data-testid="multiplayer">
@@ -90,19 +94,20 @@ export function MultiplayerScreen({ onBack, onHost, onJoin }: { onBack: () => vo
         <div class="mp-cards">
           <section class="mp-card">
             <PixelText text="HOST A GAME" px={3} />
-            <p>Choose the world and seats for your friends, start, then send each friend an invite link from the in-game <b>Online</b> panel.</p>
+            <p>Choose the world and seats for your friends and start. You get a <b>room code</b>: your friends type it under Join. (Or copy the invite link from the in-game <b>Online</b> panel.)</p>
             <button class="home-btn" onClick={onHost} data-testid="mp-host"><PixelText text="HOST" px={3} shadow={false} /></button>
           </section>
           <section class="mp-card">
             <PixelText text="JOIN A GAME" px={3} />
-            <label>Invite link or code from your friend
-              <textarea rows={2} value={code} onInput={(e) => setCode((e.target as HTMLTextAreaElement).value)} placeholder="https://…?join=…" data-testid="mp-code" />
+            <label>Room code (or invite link) from your friend
+              <input class="code-inp" value={code} onInput={(e) => setCode((e.target as HTMLInputElement).value)} onKeyDown={(e) => { if (e.key === 'Enter') join(); }} placeholder={'X'.repeat(ROOM_CODE_LEN)} autocomplete="off" data-testid="mp-code" />
             </label>
             <label>Your name
               <input value={name} maxLength={24} onInput={(e) => setName((e.target as HTMLInputElement).value)} placeholder="Guest" data-testid="mp-name" />
             </label>
+            {error && <p class="error" role="alert" data-testid="mp-error">{error}</p>}
             <button class="home-btn" disabled={!code.trim()} onClick={join} data-testid="mp-join"><PixelText text="JOIN" px={3} shadow={false} /></button>
-            <small>After joining you get an answer code: send it back to the host so they can let you in.</small>
+            <small>You connect straight away. Using an old manual invite link instead? Then you get an answer code to send back to the host.</small>
           </section>
         </div>
       </div>

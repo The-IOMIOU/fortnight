@@ -56,26 +56,50 @@ export async function acceptInvite(code: string): Promise<PeerLink & { answer: s
   return { pc, channel, answer: await pack({ v: 1, sdp: pc.localDescription!.sdp }) };
 }
 
-/** JSON messages over a data channel, split into chunks (saves are large; channels cap message size). */
+/** The bits of a connection the wire needs: a raw WebRTC data channel (manual invites) or a PeerJS
+ *  data connection in raw mode (room codes). */
+export interface Channel {
+  isOpen(): boolean;
+  send(s: string): void;
+  close(): void;
+  listen(onData: (s: string) => void, onClose: () => void): void;
+}
+export function fromDataChannel(dc: RTCDataChannel): Channel {
+  return {
+    isOpen: () => dc.readyState === 'open',
+    send: (x) => dc.send(x),
+    close: () => dc.close(),
+    listen: (onData, onClose) => { dc.onmessage = (ev) => onData(String(ev.data)); dc.onclose = onClose; },
+  };
+}
+export function fromPeerConnection(conn: { open: boolean; send(d: unknown): void; close(): void; on(ev: string, f: (d?: unknown) => void): unknown }): Channel {
+  return {
+    isOpen: () => conn.open,
+    send: (x) => conn.send(x),
+    close: () => conn.close(),
+    listen: (onData, onClose) => { conn.on('data', (d) => onData(String(d))); conn.on('close', onClose); conn.on('error', onClose); },
+  };
+}
+
+/** JSON messages over a channel, split into chunks (saves are large; channels cap message size). */
 export class Wire {
   private parts: string[] = [];
   onMessage: (m: unknown) => void = () => {};
   onClose: () => void = () => {};
-  constructor(readonly dc: RTCDataChannel) {
-    dc.onmessage = (ev) => {
-      const s = String(ev.data);
+  private closed = false;
+  constructor(readonly ch: Channel) {
+    ch.listen((s) => {
       if (s[0] === '+') { this.parts.push(s.slice(1)); return; }
       const whole = this.parts.join('') + s.slice(1);
       this.parts = [];
       try { this.onMessage(JSON.parse(whole)); } catch { /* ignore a broken message */ }
-    };
-    dc.onclose = () => this.onClose();
+    }, () => { if (!this.closed) { this.closed = true; this.onClose(); } });
   }
   send(m: unknown): void {
-    if (this.dc.readyState !== 'open') return;
+    if (!this.ch.isOpen()) return;
     const s = JSON.stringify(m), CH = 16000;
-    for (let i = 0; i < s.length; i += CH) this.dc.send((i + CH < s.length ? '+' : '.') + s.slice(i, i + CH));
-    if (!s.length) this.dc.send('.');
+    for (let i = 0; i < s.length; i += CH) this.ch.send((i + CH < s.length ? '+' : '.') + s.slice(i, i + CH));
+    if (!s.length) this.ch.send('.');
   }
-  close(): void { try { this.dc.close(); } catch { /* already closed */ } }
+  close(): void { try { this.ch.close(); } catch { /* already closed */ } }
 }
