@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { generateMap, BIOME_NAMES, Biome } from '../src/sim/world/mapgen';
-import { MAP_SIZES, TUNING } from '../src/sim/core/tuning';
+import { MAP_SIZES, TUNING, type MapSize } from '../src/sim/core/tuning';
+import { FARM_YIELD } from '../src/sim/defs';
 
 const MIN_TILES: Record<string, number> = { ocean: 100, lake: 4, river: 6, ice: 1, coast: 10, plains: 50, forest: 50, desert: 20, swamp: 10, mountain: 20, tundra: 20, snow: 1 };
 
@@ -80,5 +81,26 @@ describe('F-022 generation time', () => {
       if (size === 'small') expect(ms).toBeLessThan(1000);
     }
     console.log('[mapgen time] ' + out.join(', '));
+  });
+});
+
+describe('F-192 fair starts', () => {
+  it('poorest start has ≥ 45 % of the richest start\'s farmland (radius 6), 20 seeds × 4 sizes', () => {
+    const out: string[] = [];
+    for (const size of ['small', 'medium', 'large', 'huge'] as MapSize[]) {
+      let worst = 1;
+      for (let k = 0; k < 20; k++) {
+        const m = generateMap('fair-' + k, size), W = m.w;
+        const q = Array.from(m.starts.slice(0, TUNING.map.sizes[size].maxPlayers), (s) => {
+          let t = 0; const x0 = s % W, y0 = (s - x0) / W;
+          for (let y = y0 - 6; y <= y0 + 6; y++) for (let x = x0 - 6; x <= x0 + 6; x++) if (x >= 0 && y >= 0 && x < W && y < m.h) t += FARM_YIELD[m.biome[y * W + x]];
+          return t;
+        });
+        worst = Math.min(worst, Math.min(...q) / Math.max(...q));
+      }
+      out.push(`${size} worst ratio ${worst.toFixed(2)}`);
+      expect(worst).toBeGreaterThanOrEqual(0.45);
+    }
+    console.log(`[F-192] ${out.join('; ')} (before this fix: 0.17 / 0.13 / 0.06 / 0.00)`);
   });
 });

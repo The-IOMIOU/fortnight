@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'preact/hooks';
+import { useEffect, useMemo, useRef, useState } from 'preact/hooks';
 import { Game, type NewGameOptions, type StartOptions } from '../app/game';
 import { store, useStore } from '../app/store';
 import { applyUiScale } from '../app/settings';
@@ -9,6 +9,9 @@ import { generateMap } from '../sim/world/mapgen';
 import { hex } from '../sim/core/hash';
 import baseline from '../data/races/baseline.json';
 import { Hud, SettingsModal } from './Hud';
+import { DIFFICULTIES, PERSONALITIES, type Difficulty } from '../ai/utility';
+import { Rng } from '../sim/core/prng';
+import type { BotConfig } from '../ai/manager';
 import { sfxPlayed } from '../audio/sfx';
 
 const SPEED_LABEL: Record<SpeedName, string> = { slow: '0.5×', normal: '1×', fast: '2×', veryFast: '4×' };
@@ -22,14 +25,18 @@ export function randomSeed(): string {
   return `${WORDS_A[r(WORDS_A.length)]}-${WORDS_B[r(WORDS_B.length)]}-${100 + r(900)}`;
 }
 
-function readUrl(): Partial<NewGameOptions> & { play: boolean } {
+function readUrl(): Partial<NewGameOptions> & { play: boolean; botCount?: number; difficulty?: Difficulty; personality?: string; allies?: number } {
   const q = new URLSearchParams(location.search);
   const size = q.get('size') as MapSize | null;
-  const rivals = q.get('rivals');
+  const rivals = q.get('rivals'), bots = q.get('bots');
   return {
     seed: q.get('seed') ?? undefined,
     size: size && MAP_SIZES.includes(size) ? size : undefined,
     players: rivals !== null ? +rivals + 1 : undefined,
+    botCount: bots !== null ? +bots : undefined,
+    difficulty: (q.get('difficulty') as Difficulty | null) ?? undefined,
+    personality: q.get('personality') ?? undefined,
+    allies: q.get('allies') !== null ? +q.get('allies')! : undefined,
     play: q.get('play') === '1',
     spectator: q.get('reveal') === '1',
   };
@@ -43,8 +50,19 @@ export function shareLink(seed: string, size: string): string {
 
 declare global { interface Window { __game?: unknown } }
 
-/** Phase 1–3: rival start slots hold idle civilizations (bots arrive in Phase 4). */
 const defaultPlayers = (size: MapSize): number => Math.min(4, TUNING.map.sizes[size].maxPlayers);
+
+/** Build the match: player 0 is you, players 1..n are bots; the first `allies` bots share your team. */
+export function makeMatch(seed: string, size: MapSize, botCount: number, difficulty: Difficulty, personality: string, allies: number): Pick<NewGameOptions, 'players' | 'bots' | 'teams'> {
+  const max = TUNING.map.sizes[size].maxPlayers - 1;
+  const n = Math.max(0, Math.min(max, botCount));
+  const rng = Rng.stream(seed, 'menu-personalities'); // same link → same opponents
+  const bots: BotConfig[] = Array.from({ length: n }, (_, k) => ({
+    player: k + 1, difficulty, personality: personality === 'random' ? PERSONALITIES[rng.int(PERSONALITIES.length)].id : personality,
+  }));
+  const teams = Array.from({ length: n + 1 }, (_, p) => (p === 0 || p <= allies ? 0 : p));
+  return { players: n + 1, bots, teams };
+}
 
 export function App() {
   const screen = useStore((s) => s.screen);
@@ -103,7 +121,11 @@ export function App() {
 
   useEffect(() => {
     const u = url.current;
-    if (u.play && u.seed) start({ kind: 'new', opts: { seed: u.seed, size: u.size ?? 'small', speed: 'normal', players: u.players ?? defaultPlayers(u.size ?? 'small'), spectator: u.spectator } });
+    if (u.play && u.seed) {
+      const size = u.size ?? 'small';
+      const m = u.botCount !== undefined ? makeMatch(u.seed, size, u.botCount, u.difficulty ?? 'hard', u.personality ?? 'random', u.allies ?? 0) : { players: u.players ?? defaultPlayers(size) };
+      start({ kind: 'new', opts: { seed: u.seed, size, speed: 'normal', spectator: u.spectator, ...m } });
+    }
   }, []);
 
   return (
@@ -116,18 +138,32 @@ export function App() {
   );
 }
 
+interface MenuPrefs { size: MapSize; speed: SpeedName; rivals: number; difficulty: Difficulty; pers: string; allies: number; conquest: boolean; domination: boolean; domPct: number; bonus: boolean }
+const MENU_KEY = 'fortnight.menu.v1';
+function loadMenuPrefs(): Partial<MenuPrefs> { try { return JSON.parse(localStorage.getItem(MENU_KEY) ?? '{}') as Partial<MenuPrefs>; } catch { return {}; } }
+function saveMenuPrefs(p: MenuPrefs): void { try { localStorage.setItem(MENU_KEY, JSON.stringify(p)); } catch { /* storage unavailable */ } }
+
 function Menu({ initial, onStart }: { initial: Partial<NewGameOptions>; onStart: (s: StartOptions) => void }) {
+  const saved = useMemo(loadMenuPrefs, []);
   const [seed, setSeed] = useState(initial.seed ?? randomSeed());
-  const [size, setSize] = useState<MapSize>(initial.size ?? 'small');
-  const [speed, setSpeed] = useState<SpeedName>('normal');
-  const [rivals, setRivals] = useState(defaultPlayers(initial.size ?? 'small') - 1);
+  const [size, setSize] = useState<MapSize>(initial.size ?? (saved.size && MAP_SIZES.includes(saved.size) ? saved.size : 'small'));
+  const [speed, setSpeed] = useState<SpeedName>(saved.speed ?? 'normal');
+  const [rivals, setRivals] = useState(saved.rivals ?? defaultPlayers(initial.size ?? 'small') - 1);
+  const [difficulty, setDifficulty] = useState<Difficulty>(saved.difficulty && DIFFICULTIES.includes(saved.difficulty) ? saved.difficulty : 'hard');
+  const [pers, setPers] = useState(saved.pers ?? 'random');
+  const [allies, setAllies] = useState(saved.allies ?? 0);
+  const [conquest, setConquest] = useState(saved.conquest ?? true);
+  const [domination, setDomination] = useState(saved.domination ?? true);
+  const [domPct, setDomPct] = useState(saved.domPct ?? TUNING.economy.dominationPct);
+  const [bonus, setBonus] = useState(saved.bonus ?? false);
+  const [clampMsg, setClampMsg] = useState('');
   const [race, setRace] = useState(RACES[0].id);
   const [cont, setCont] = useState<{ label: string; blob: Blob } | null>(null);
   const error = useStore((s) => s.error);
   const fileRef = useRef<HTMLInputElement>(null);
   const maxRivals = TUNING.map.sizes[size].maxPlayers - 1;
   useEffect(() => { void getContinue().then((c) => c && setCont(c)); }, []);
-  useEffect(() => { if (rivals > maxRivals) setRivals(maxRivals); }, [size]);
+  useEffect(() => { if (rivals > maxRivals) { setRivals(maxRivals); setClampMsg(`A ${size} map has room for ${maxRivals} bots, so the bot count was lowered.`); } else setClampMsg(''); if (allies > Math.max(0, maxRivals - 1)) setAllies(Math.max(0, maxRivals - 1)); }, [size]);
 
   const loadBlob = async (b: Blob): Promise<void> => {
     try { onStart({ kind: 'load', save: await decodeSave(b) }); }
@@ -159,17 +195,41 @@ function Menu({ initial, onStart }: { initial: Partial<NewGameOptions>; onStart:
             <button type="button" onClick={() => setSeed(randomSeed())}>Random</button>
           </span>
         </label>
-        <label>Rival civilizations: {rivals}
-          <input type="range" min="0" max={maxRivals} value={rivals} onInput={(e) => setRivals(+(e.target as HTMLInputElement).value)} data-testid="rivals" />
-          <small class="later">Rivals stay idle until bots arrive (Phase 4).</small>
+        <label>Bots: {rivals} (up to {maxRivals} on this map)
+          <input type="range" min="0" max={maxRivals} value={rivals} onInput={(e) => { setRivals(+(e.target as HTMLInputElement).value); setClampMsg(''); }} data-testid="rivals" />
+          {clampMsg && <small class="warn" data-testid="clamp-msg">{clampMsg}</small>}
         </label>
+        <div class="row2">
+          <label>Bot difficulty
+            <select value={difficulty} onChange={(e) => setDifficulty((e.target as HTMLSelectElement).value as Difficulty)} data-testid="difficulty">
+              {DIFFICULTIES.map((d) => <option value={d}>{d[0].toUpperCase() + d.slice(1)}</option>)}
+            </select>
+          </label>
+          <label>Bot personality
+            <select value={pers} onChange={(e) => setPers((e.target as HTMLSelectElement).value)} data-testid="personality">
+              <option value="random">Random mix</option>
+              {PERSONALITIES.map((p) => <option value={p.id} title={p.description}>{p.name}</option>)}
+            </select>
+          </label>
+        </div>
+        {difficulty === 'impossible' && (
+          <label class="row"><input type="checkbox" checked={bonus} onChange={(e) => setBonus((e.target as HTMLInputElement).checked)} data-testid="bonus" /> Give Impossible bots +{TUNING.bots.impossibleIncomeBonusPct} % income (off by default; shown in-game when on)</label>
+        )}
+        <label>Allied bots (co-op: you + allies vs the rest): {Math.min(allies, Math.max(0, rivals - 1))}
+          <input type="range" min="0" max={Math.max(0, rivals - 1)} value={Math.min(allies, Math.max(0, rivals - 1))} onInput={(e) => setAllies(+(e.target as HTMLInputElement).value)} data-testid="allies" />
+        </label>
+        <div class="row2">
+          <label class="row"><input type="checkbox" checked={conquest} onChange={(e) => setConquest((e.target as HTMLInputElement).checked)} data-testid="v-conquest" /> Conquest</label>
+          <label class="row"><input type="checkbox" checked={domination} onChange={(e) => setDomination((e.target as HTMLInputElement).checked)} data-testid="v-domination" /> Domination at
+            <input type="number" min="50" max="95" value={domPct} style={{ width: '4rem' }} onInput={(e) => setDomPct(Math.max(50, Math.min(95, +(e.target as HTMLInputElement).value || 70)))} data-testid="v-dompct" /> %</label>
+        </div>
         <label>Game speed
           <select value={speed} onChange={(e) => setSpeed((e.target as HTMLSelectElement).value as SpeedName)}>
             {SPEED_NAMES.map((s) => <option value={s}>{SPEED_LABEL[s]}</option>)}
           </select>
         </label>
-        <p class="later">Victory: hold {TUNING.economy.dominationPct} % of all land for {TUNING.economy.dominationHoldTicks / 600} minutes. Conquest arrives with combat (Phase 3).</p>
-        <button class="primary" data-testid="start" disabled={!seed.trim()} onClick={() => { store.set({ error: '' }); onStart({ kind: 'new', opts: { seed: seed.trim(), size, speed, players: rivals + 1 } }); }}>Start</button>
+        <p class="later">Conquest: be the last team with a capital. Domination: your team holds the chosen share of all land for {TUNING.economy.dominationHoldTicks / 600} minutes.</p>
+        <button class="primary" data-testid="start" onClick={() => { store.set({ error: '' }); saveMenuPrefs({ size, speed, rivals, difficulty, pers, allies, conquest, domination, domPct, bonus }); const m = makeMatch(seed.trim(), size, rivals, difficulty, pers, Math.min(allies, Math.max(0, rivals - 1))); onStart({ kind: 'new', opts: { seed: seed.trim(), size, speed, ...m, victory: { conquest, domination, dominationPct: domPct }, impossibleBonus: bonus && difficulty === 'impossible' } }); }} disabled={!seed.trim() || (!conquest && !domination)}>Start</button>
       </section>
       <section class="panel">
         <h2>Saved games</h2>

@@ -4,6 +4,8 @@ import type { SpeedName } from '../sim/core/tuning';
 import type { CommandBody } from '../sim/commands';
 import type { PlayerStats } from '../sim/stats';
 import type { SaveData } from '../sim/serialize';
+import type { BotConfig } from '../ai/manager';
+import type { Goal } from '../ai/utility';
 
 export interface MapPayload {
   seed: string; size: string; w: number; h: number; hash: number;
@@ -14,7 +16,7 @@ export interface MapPayload {
 }
 
 export type ToWorker =
-  | { type: 'init'; settings: SimSettings; viewer: number; speed: SpeedName; paused: boolean }
+  | { type: 'init'; settings: SimSettings; viewer: number; speed: SpeedName; paused: boolean; bots: BotConfig[] }
   | { type: 'load'; save: SaveData; viewer: number; speed: SpeedName }
   | { type: 'cmd'; body: CommandBody }
   | { type: 'speed'; speed: SpeedName }
@@ -47,7 +49,10 @@ export interface Snapshot {
   fires: number[];
   /** The viewer was eliminated and now watches the whole map. */
   spectating: boolean;
+  /** Bot goals and utility scores for the debug overlay (F-125). */
+  bots: { player: number; personality: string; difficulty: string; goal: Goal; scores: Record<Goal, number>; naval: string }[];
   winner: number;
+  winnerTeam: number;
   simMsPerTick: number;
   ticksPerSec: number;
   droppedTicks: number;

@@ -6,6 +6,8 @@ import { FP_ONE } from '../sim/core/fixed';
 import { hex } from '../sim/core/hash';
 import type { CommandBody } from '../sim/commands';
 import type { SaveData } from '../sim/serialize';
+import type { SimSettings } from '../sim/sim';
+import type { BotConfig } from '../ai/manager';
 import type { PlayerStats } from '../sim/stats';
 import {
   BUILDABLE, BUILDING_TYPES, DROPOFF, FARM_YIELD, Kind, RES_NAMES, RES_NONE, TRAINS, UNIT_TYPES, buildingDef, isBuildingKind,
@@ -28,7 +30,15 @@ import { EffectsLayer } from '../render/effects';
 
 THREE.ColorManagement.enabled = false;
 
-export interface NewGameOptions { seed: string; size: MapSize; speed: SpeedName; players: number; spectator?: boolean }
+export interface NewGameOptions {
+  seed: string; size: MapSize; speed: SpeedName; players: number; spectator?: boolean;
+  /** Bot players (Phase 4); slots without a bot stay idle. */
+  bots?: BotConfig[];
+  teams?: number[];
+  victory?: SimSettings['victory'];
+  /** Optional Impossible-bot income bonus (shown in settings when enabled). */
+  impossibleBonus?: boolean;
+}
 export type StartOptions = { kind: 'new'; opts: NewGameOptions } | { kind: 'load'; save: SaveData };
 
 export class Game {
@@ -93,7 +103,9 @@ export class Game {
     if (start.kind === 'new') {
       const o = start.opts;
       this.viewer = o.spectator ? -1 : 0;
-      this.send({ type: 'init', settings: { seed: o.seed, size: o.size, players: o.players }, viewer: this.viewer, speed: o.speed, paused: false });
+      const bonus = Array.from({ length: o.players }, (_, p) => (o.impossibleBonus && o.bots?.find((b) => b.player === p)?.difficulty === 'impossible' ? TUNING.bots.impossibleIncomeBonusPct : 0));
+      this.send({ type: 'init', settings: { seed: o.seed, size: o.size, players: o.players, teams: o.teams, victory: o.victory, incomeBonusPct: bonus }, viewer: this.viewer, speed: o.speed, paused: false, bots: o.bots ?? [] });
+      store.set({ myTeam: o.teams?.[0] ?? 0, impossibleBonusOn: !!o.impossibleBonus && !!o.bots?.some((b) => b.difficulty === 'impossible') });
       store.set({ screen: 'loading', seed: o.seed, size: o.size, speed: o.speed, paused: false, winner: -1, feed: [], stats: null, error: '' });
     } else {
       this.viewer = 0;
@@ -176,7 +188,7 @@ export class Game {
     const perf = store.state.perf;
     store.set({
       tick: s.tick, isNight: s.isNight, dayPhase: s.dayPhase, dayLength: s.dayLength, speed: s.speed, paused: s.paused,
-      pendingOrders: s.pending.length, stats: s.stats, winner: s.winner,
+      pendingOrders: s.pending.length, stats: s.stats, winner: s.winner, winnerTeam: s.winnerTeam, bots: s.bots,
       perf: { ...perf, simMs: s.simMsPerTick, tps: s.ticksPerSec, dropped: s.droppedTicks, entities: s.ents.length / 9 },
     });
   }
@@ -580,6 +592,7 @@ export class Game {
     const key = eventKey(e);
     if (key === 'escape') { if (store.state.placing) this.cancelPlacement(); else { this.units.selected.clear(); store.set({ selected: 0, selection: this.selectionInfo() }); } return; }
     if (key === 'f3') { e.preventDefault(); store.set({ showPerf: !store.state.showPerf }); return; }
+    if (key === 'f4') { e.preventDefault(); store.set({ showBots: !store.state.showBots }); return; }
     const g = actionsFor(e, 'global')[0];
     if (g) {
       e.preventDefault();

@@ -9,10 +9,12 @@ import { BUILDING_TYPES, Task, UNIT_TYPES, isBuildingKind, unitDef, upgradeDef }
 import { FOG_VISIBLE } from '../sim/world/fog';
 import type { Command } from '../sim/commands';
 import type { BuildingInfo, FromWorker, ToWorker } from './protocol';
+import { BotManager, type BotSave } from '../ai/manager';
 
 declare const self: DedicatedWorkerGlobalScope;
 
 let sim: Sim | null = null;
+let bots: BotManager | null = null;
 let viewer = 0;
 let speedName: SpeedName = 'normal';
 const sched = new TickScheduler(TUNING.sim.tickHz, TUNING.sim.maxCatchUpTicks);
@@ -94,6 +96,7 @@ function snapshot(): void {
   post({
     type: 'snap', tick: sim.tick, isNight: sim.isNight, dayPhase: sim.dayPhase, dayLength: sim.dayLength,
     ents, fog, owner, tiles, pending, stats: viewer >= 0 ? computeStats(sim, viewer) : spectating ? computeStats(sim, 0) : null, events: ev, buildings: buildingInfo(sim),
+    bots: bots ? bots.debug().map((d) => ({ player: d.player, personality: d.personality, difficulty: d.difficulty, goal: d.goal, scores: d.scores, naval: d.naval })) : [], winnerTeam: sim.winnerTeam,
     shots: shotsArr, fires: viewer < 0 ? sim.burningList.slice() : sim.burningList.filter((t) => sim!.fog[viewer].data[t] === FOG_VISIBLE), spectating,
     winner: sim.winner, simMsPerTick: stepMsAvg, ticksPerSec: sched.paused ? 0 : tps,
     droppedTicks: sched.droppedTicks, paused: sched.paused, speed: speedName,
@@ -107,6 +110,7 @@ function loop(): void {
   if (sim && n > 0) {
     for (let k = 0; k < n; k++) {
       const t0 = performance.now();
+      bots?.tick();
       sim.step();
       const t1 = performance.now();
       stepMsAvg = stepMsAvg * 0.9 + (t1 - t0) * 0.1;
@@ -136,6 +140,7 @@ self.onmessage = (ev: MessageEvent<ToWorker>) => {
     case 'load': {
       try {
         sim = m.type === 'init' ? new Sim(m.settings) : loadSim(m.save);
+        bots = m.type === 'init' ? new BotManager(sim, m.bots) : BotManager.restore(sim, ((m.save.extra as { bots?: BotSave[] } | undefined)?.bots) ?? []);
       } catch (err) {
         post({ type: 'error', message: err instanceof SaveError ? err.message : `Could not start: ${String(err)}` });
         return;
@@ -168,7 +173,7 @@ self.onmessage = (ev: MessageEvent<ToWorker>) => {
     case 'pause': sched.paused = m.paused; last = performance.now(); snapshot(); break;
     case 'stall': { const end = performance.now() + m.ms; while (performance.now() < end) { /* busy */ } break; }
     case 'hash': if (sim) post({ type: 'hash', reqId: m.reqId, tick: sim.tick, hash: sim.hash() }); break;
-    case 'save': if (sim) post({ type: 'save', reqId: m.reqId, save: saveSim(sim) }); break;
+    case 'save': if (sim) { const sv = saveSim(sim); sv.extra = { bots: bots?.save() ?? [] }; post({ type: 'save', reqId: m.reqId, save: sv }); } break;
     case 'dump': if (sim && viewer >= 0) post({ type: 'dump', reqId: m.reqId, stats: computeStats(sim, viewer) }); break;
   }
 };

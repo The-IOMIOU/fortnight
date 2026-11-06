@@ -4,7 +4,7 @@ import { Sim, type PlayerState, type SimSettings } from './sim';
 import { Entities } from './entities/entities';
 import type { Command } from './commands';
 
-export const SAVE_VERSION = 3;
+export const SAVE_VERSION = 4;
 
 export interface SaveData {
   format: 'fortnight-save';
@@ -28,6 +28,9 @@ export interface SaveData {
   burning: string;
   burningList: number[];
   trenchList: number[];
+  winnerTeam: number;
+  /** Data kept by the host outside the sim (bot memories). */
+  extra?: unknown;
 }
 
 const B64 = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/';
@@ -61,7 +64,7 @@ export function saveSim(sim: Sim): SaveData {
     fog: sim.fog.map((f) => ({ data: toB64(f.data), visible: f.visibleTiles() })),
     ents: sim.ents.serialize(), ps: JSON.parse(JSON.stringify(sim.ps)), pending: JSON.parse(JSON.stringify(sim.pending)),
     pathQueue: sim.pathQueue.slice(), rngAnimals: sim.rngAnimals.getState(),
-    rngFire: sim.rngFire.getState(), burning: toB64(sim.burning), burningList: sim.burningList.slice(), trenchList: sim.trenchList.slice(),
+    rngFire: sim.rngFire.getState(), burning: toB64(sim.burning), burningList: sim.burningList.slice(), trenchList: sim.trenchList.slice(), winnerTeam: sim.winnerTeam,
   };
 }
 
@@ -72,7 +75,7 @@ export function loadSim(d: SaveData): Sim {
   if (d.version !== SAVE_VERSION) throw new SaveError(`This save is from a different game version (save v${d.version}, game v${SAVE_VERSION}) and can't be loaded.`);
   const sim = new Sim(d.settings, { skipSetup: true });
   if (sim.map.hash !== d.mapHash) throw new SaveError('Save does not match the generated map (different game version?).');
-  sim.tick = d.tick; sim.winner = d.winner;
+  sim.tick = d.tick; sim.winner = d.winner; sim.winnerTeam = d.winnerTeam;
   sim.map.biome.set(fromB64(d.biome));
   sim.tileOwner.set(fromB64(d.tileOwner));
   sim.occ.set(i32(d.occ));

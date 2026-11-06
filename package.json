@@ -11,7 +11,8 @@
     "typecheck": "tsc -p tsconfig.json",
     "test": "vitest run",
     "test:e2e": "playwright test",
-    "check": "node tools/check-sim-purity.mjs && node tools/check-tuning.mjs && node tools/check-assets.mjs && node tools/check-repo.mjs"
+    "check": "node tools/check-sim-purity.mjs && node tools/check-tuning.mjs && node tools/check-assets.mjs && node tools/check-repo.mjs && node tools/check-ai-fog.mjs",
+    "test:bots": "vitest run --config vitest.bots.config.ts --silent=false"
   },
   "dependencies": {
     "preact": "10.29.8",

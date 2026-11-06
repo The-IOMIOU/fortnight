@@ -359,6 +359,36 @@ export function generateMap(seed: string, size: MapSize): GameMap {
     if (c !== 255 && (b === Biome.PLAINS || b === Biome.FOREST) && height[i] <= 3 && distOcean[i] >= cfg.startMinCoastDistance) candByCont[c].push(i);
   }
   for (let c = 0; c < nc; c++) if (candByCont[c].length === 0) for (let i = 0; i < N; i++) if (continent[i] === c && land[i]) candByCont[c].push(i);
+  // Fair starts (F-192): score each candidate by farmland within startQualityRadius plus nearby forest,
+  // keep only candidates scoring ≥ startQualityPct % of the best on their continent (and of the best
+  // anywhere, when their continent has such spots), then spread players by farthest-point sampling.
+  {
+    const R = cfg.startQualityRadius;
+    const yieldOf = new Int32Array(16), forestOf = new Uint8Array(16);
+    const BK: [number, keyof typeof TUNING.biomes][] = [[Biome.PLAINS, 'plains'], [Biome.FOREST, 'forest'], [Biome.DESERT, 'desert'], [Biome.SWAMP, 'swamp'], [Biome.TUNDRA, 'tundra'], [Biome.COAST, 'coast']];
+    for (const [b, k] of BK) yieldOf[b] = (TUNING.biomes[k] as { farmYield: number }).farmYield;
+    forestOf[Biome.FOREST] = 1;
+    // summed-area tables → O(1) window sums
+    const S = new Int32Array((W + 1) * (H + 1)), F = new Int32Array((W + 1) * (H + 1));
+    for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
+      const i = y * W + x, o = (y + 1) * (W + 1) + x + 1;
+      S[o] = yieldOf[biome[i]] + S[o - 1] + S[o - W - 1] - S[o - W - 2];
+      F[o] = forestOf[biome[i]] + F[o - 1] + F[o - W - 1] - F[o - W - 2];
+    }
+    const win = (T: Int32Array, x: number, y: number, r: number): number => {
+      const x0 = Math.max(0, x - r), y0 = Math.max(0, y - r), x1 = Math.min(W, x + r + 1), y1 = Math.min(H, y + r + 1);
+      return T[y1 * (W + 1) + x1] - T[y0 * (W + 1) + x1] - T[y1 * (W + 1) + x0] + T[y0 * (W + 1) + x0];
+    };
+    const quality = (i: number): number => { const x = i % W, y = (i - x) / W; return win(S, x, y, R) + 100 * Math.min(cfg.startForestWanted, win(F, x, y, R + 2)); };
+    let globalBest = 0;
+    const qs = candByCont.map((cand) => cand.map((i) => { const q = quality(i); if (q > globalBest) globalBest = q; return q; }));
+    for (let c = 0; c < nc; c++) {
+      const best = qs[c].reduce((m, q) => Math.max(m, q), 0);
+      const bar = Math.floor((Math.min(best, globalBest) * cfg.startQualityPct) / 100);
+      const kept = candByCont[c].filter((_, k) => qs[c][k] >= bar);
+      if (kept.length) candByCont[c] = kept;
+    }
+  }
   const starts = new Int32Array(sz.maxPlayers);
   const chosen: number[] = [];
   for (let p = 0; p < sz.maxPlayers; p++) {

@@ -36,7 +36,7 @@ export class Military {
   udef(id: number): UnitDef { return unitDef(unitTypeOfKind(this.s.ents.kind[id])); }
   isEnemy(a: number, b: number): boolean {
     const e = this.s.ents, oa = e.owner[a], ob = e.owner[b], P = this.s.players;
-    return oa !== ob && oa < P && ob < P && !this.s.ps[ob].eliminated && !this.s.ps[oa].eliminated;
+    return oa < P && ob < P && !this.s.allied(oa, ob) && !this.s.ps[ob].eliminated && !this.s.ps[oa].eliminated;
   }
   private targetable(id: number): boolean {
     const e = this.s.ents;
@@ -210,6 +210,11 @@ export class Military {
       if (task === Task.ATTACK) {
         tgt = e.taskEnt[id];
         if (tgt < 0 || !this.targetable(tgt) || !this.isEnemy(id, tgt) || e.hp[tgt] <= 0) { this.onTargetGone(id); continue; }
+        // soldiers sent against a building defend themselves from enemy soldiers within 3 tiles
+        if (isBuildingKind(e.kind[tgt]) && isMilitaryKind(k) && s.tick % 5 === id % 5) {
+          const near = this.acquire(id, 3);
+          if (near >= 0 && isUnitKind(e.kind[near]) && isMilitaryKind(e.kind[near])) { e.srcEnt[id] = -1; e.taskEnt[id] = near; tgt = near; }
+        }
       } else if (isMilitaryKind(k) && (task === Task.IDLE || task === Task.HOLD || task === Task.PATROL) && s.tick >= e.repathAt[id]) {
         tgt = this.acquire(id, task === Task.HOLD ? Math.ceil(d.range / 10) + 1 : C.acquireRange);
         if (tgt < 0) continue;
@@ -696,10 +701,16 @@ export class Military {
       else if (bt === 'settlement') hasTown[e.owner[b]] = true;
     }
     for (let p = 0; p < s.players; p++) if (!s.ps[p].eliminated && !hasTown[p]) this.eliminate(p);
-    if (s.players < 2 || s.winner >= 0) return;
-    const withCapital = [];
-    for (let p = 0; p < s.players; p++) if (!s.ps[p].eliminated && hasCapital[p]) withCapital.push(p);
-    if (withCapital.length === 1) { s.winner = withCapital[0]; s.emit(withCapital[0], 'victory', 1); }
+    if (s.winner >= 0 || !s.victoryEnabled('conquest')) return;
+    // conquest: exactly one team still holds a capital (needs at least two teams in the match)
+    const teams = new Set<number>(), teamsWithCapital = new Set<number>();
+    for (let p = 0; p < s.players; p++) { teams.add(s.teamOf(p)); if (!s.ps[p].eliminated && hasCapital[p]) teamsWithCapital.add(s.teamOf(p)); }
+    if (teams.size < 2 || teamsWithCapital.size !== 1) return;
+    const t = [...teamsWithCapital][0];
+    let lead = -1;
+    for (let p = 0; p < s.players && lead < 0; p++) if (s.teamOf(p) === t && hasCapital[p]) lead = p;
+    s.winner = lead; s.winnerTeam = t;
+    s.emit(lead, 'victory', 1, t);
   }
 
   eliminate(p: number): void {

@@ -39,6 +39,7 @@ export function Hud({ game, onQuit, onSave }: { game: Game; onQuit: () => void; 
       <BoxRect />
       <GameOver onQuit={onQuit} />
       <KeysModal />
+      <BotOverlay />
       <Spectating />
       <Toast />
       <Help />
@@ -53,6 +54,7 @@ function Help() {
 }
 
 function TopBar({ game, onQuit, onSave }: { game: Game; onQuit: () => void; onSave: () => void }) {
+  const bonusOn = useStore((st) => st.impossibleBonusOn);
   const s = useStore((st) => ({ tick: st.tick, paused: st.paused, speed: st.speed, isNight: st.isNight, pending: st.pendingOrders, stats: st.stats, seed: st.seed, size: st.size, owners: st.ownerOverlay }));
   const st = s.stats;
   return (
@@ -77,6 +79,8 @@ function TopBar({ game, onQuit, onSave }: { game: Game; onQuit: () => void; onSa
       )}
       {s.paused && <div class="paused-tag">PAUSED{s.pending > 0 ? ` · ${s.pending} order${s.pending > 1 ? 's' : ''} queued` : ''}</div>}
       <div class="spacer" />
+      {bonusOn && <span class="res warn" title="Impossible bots receive extra income" data-testid="bonus-badge">Impossible bonus +{TUNING.bots.impossibleIncomeBonusPct} %</span>}
+      <button onClick={() => store.set({ showBots: !store.state.showBots })} data-testid="bots-btn" title="Bot goals (F4)">Bots</button>
       <button onClick={() => store.set({ showStats: !store.state.showStats })} data-testid="stats-btn" title="Continent stats (Tab)">Stats</button>
       <button onClick={onSave} data-testid="save" title="Download a save file">Save</button>
       <button onClick={() => store.set({ settingsOpen: true })} data-testid="settings-btn">⚙</button>
@@ -300,6 +304,7 @@ export function SettingsModal() {
         </label>
         <label class="row"><input type="checkbox" checked={settings.muted} onChange={(e) => set({ muted: (e.target as HTMLInputElement).checked })} data-testid="mute" /> Mute</label>
         <button onClick={() => store.set({ keysOpen: true, settingsOpen: false })} data-testid="keys-btn">Key bindings…</button>
+        {store.state.impossibleBonusOn && <p class="warn" data-testid="settings-bonus">This match: Impossible bots get +{TUNING.bots.impossibleIncomeBonusPct} % income.</p>}
         <button class="primary" onClick={() => store.set({ settingsOpen: false })}>Close</button>
       </div>
     </div>
@@ -333,6 +338,30 @@ function KeysModal() {
   );
 }
 
+/** F-125: what every bot is trying to do right now, with its utility scores. */
+function BotOverlay() {
+  const show = useStore((st) => st.showBots);
+  const bots = useStore((st) => st.bots);
+  if (!show) return null;
+  return (
+    <div class="botpanel panel-float" data-testid="bot-overlay" role="dialog" aria-label="Bot goals">
+      <div class="stats-head"><b>Bot goals</b><small>utility scores × personality</small><button onClick={() => store.set({ showBots: false })} aria-label="Close">✕</button></div>
+      {!bots.length && <p class="later">No bots in this match.</p>}
+      {bots.map((b) => {
+        const max = Math.max(1, ...Object.values(b.scores));
+        return (
+          <div class="botrow" data-testid={'bot-' + b.player}>
+            <div><i class="swatch" style={{ background: playerSwatchCss(b.player) }} />{playerLabel(b.player)} · {b.personality} · {b.difficulty} → <b data-testid={'bot-goal-' + b.player}>{b.goal}</b>{b.naval !== 'none' ? <small> (navy: {b.naval})</small> : null}</div>
+            <div class="scorebars">
+              {Object.entries(b.scores).map(([g, v]) => <span class={g === b.goal ? 'on' : ''} title={`${g}: ${v}`}><i style={{ width: `${(v / max) * 100}%` }} />{g.slice(0, 4)} {v}</span>)}
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
 function Spectating() {
   const s = useStore((st) => st.spectating);
   return s ? <div class="spectating" data-testid="spectating">You have been eliminated: spectating the whole map</div> : null;
@@ -345,16 +374,16 @@ function BoxRect() {
 }
 
 function GameOver({ onQuit }: { onQuit: () => void }) {
-  const s = useStore((st) => ({ winner: st.winner, stats: st.stats }));
+  const s = useStore((st) => ({ winner: st.winner, winnerTeam: st.winnerTeam, myTeam: st.myTeam }));
   const spectating = useStore((st) => st.spectating);
   const [dismissed, setDismissed] = useState(false);
   if (s.winner < 0 || dismissed) return null;
-  const me = s.stats?.player ?? 0;
+  const won = s.winnerTeam === s.myTeam && !spectating;
   return (
     <div class="modal" data-testid="gameover">
       <div class="panel">
-        <h2>{s.winner === me && !spectating ? 'Victory' : 'Defeat'}</h2>
-        <p>{s.winner === me && !spectating ? 'The world is yours.' : `${playerLabel(s.winner)} has won.`}</p>
+        <h2 data-testid="gameover-title">{won ? 'Victory' : 'Defeat'}</h2>
+        <p>{won ? (s.winner === 0 ? 'The world is yours.' : 'Your alliance has won.') : `${playerLabel(s.winner)}${s.winnerTeam !== s.winner ? ' and allies have' : ' has'} won.`}</p>
         <div class="row"><button class="primary" onClick={onQuit}>Main menu</button><button onClick={() => setDismissed(true)}>Keep looking</button></div>
       </div>
     </div>

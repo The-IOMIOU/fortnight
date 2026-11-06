@@ -54,6 +54,9 @@ Source of truth is [src/data/tuning.json](src/data/tuning.json). `npm run check`
 | `map.seaIceRange` | 3 | Cold ocean within 3 tiles of land freezes (sea ice for ice fishing, F-107). |
 | `map.startMinCoastDistance` | 3 | Start positions sit at least 3 tiles inland. |
 | `map.startClaimRadius` | 4 | Starting territory radius. Territory rules proper come in Phase 2 (F-055). |
+| `map.startQualityRadius` | 6 | Start spots are scored by farmland yield within this many tiles (F-192). |
+| `map.startForestWanted` | 12 | Forest tiles near a start that count towards its score (wood for the first houses). |
+| `map.startQualityPct` | 80 | Only spots scoring ≥ 80 % of the best on their continent are used; then players are spread apart. Added in Phase 4: before, farthest-point sampling pushed starts to continent edges (often desert/tundra) and the poorest start had 0–17 % of the richest start's farmland. |
 
 ## Day/night
 
@@ -467,7 +470,7 @@ Key = building + target level.
 
 | Constant | Value | Why |
 |---|---|---|
-| `buildingTypes.capital.hp` | 3000 | Hit points. Under construction, HP grows with build progress. |
+| `buildingTypes.capital.hp` | 2200 | Hit points. Lowered from 3000 in Phase 4: bot armies of ~12 soldiers + 2 rams took over 10 minutes to raze a capital, so many headless matches timed out. |
 | `buildingTypes.capital.attack` | 6 | Arrow damage (towers, capital) before garrison bonus. |
 | `buildingTypes.capital.range` | 70 | Arrow range in tenths of a tile. |
 | `buildingTypes.capital.cooldown` | 15 | Ticks between arrows. |
@@ -643,6 +646,26 @@ Damage = attack × vs% × tier% × height% × cover% → minus armor → × armo
 | `groups.flowFieldCache` | 12 | Flow fields kept (LRU). Cleared on any terrain/building change; recomputing is deterministic. |
 | `groups.transportBoardRange` | 2 | Land units board a transport from up to 2 tiles away. |
 
-## Bot difficulty
+## Bot difficulty (F-121)
 
-Defined in Phase 4 (F-121).
+The same bot code runs at every difficulty; only these numbers change. No difficulty sees through fog (F-122) — Impossible plays faster and wider, it does not cheat. Its +income bonus is optional, off by default, and shown in the HUD and settings when on.
+
+| Constant | Easy | Hard | Impossible | What it does |
+|---|---|---|---|---|
+| `bots.easy.thinkEvery` / `bots.hard.thinkEvery` / `bots.impossible.thinkEvery` | 40 | 10 | 5 | Ticks between decisions (10 = 1 s). Easy reacts every 4 s, Hard every second, Impossible twice a second. |
+| `bots.easy.actionChancePct` / `bots.hard.actionChancePct` / `bots.impossible.actionChancePct` | 55 | 100 | 100 | Chance to act on a decision each think (training, building, settling, fortifying). Easy hesitates almost half the time. |
+| `bots.easy.workerTarget` / `bots.hard.workerTarget` / `bots.impossible.workerTarget` | 11 | 20 | 26 | Workers the bot aims for. More workers = stronger economy. |
+| `bots.easy.armyAttackSize` / `bots.hard.armyAttackSize` / `bots.impossible.armyAttackSize` | 5 | 12 | 16 | Soldiers gathered before a land attack or an invasion wave. |
+| `bots.easy.maxBarracks` / `bots.hard.maxBarracks` / `bots.impossible.maxBarracks` | 1 | 2 | 3 | Barracks the bot builds (production rate of soldiers). |
+| `bots.easy.useDefences` / `bots.hard.useDefences` / `bots.impossible.useDefences` | 0 | 1 | 1 | 1 = builds towers and walls when its goal is defense (only personalities with defences ≥ 0.5). |
+| `bots.easy.sizeWaves` / `bots.hard.sizeWaves` / `bots.impossible.sizeWaves` | 0 | 1 | 1 | 1 = counts visible defenders around the target and sends invasion waves big enough to beat them. |
+| `bots.easy.retreatWounded` / `bots.hard.retreatWounded` / `bots.impossible.retreatWounded` | 0 | 0 | 1 | 1 = pulls soldiers below 30 % HP out of fights (micro). |
+| `bots.easy.maxTowns` / `bots.hard.maxTowns` / `bots.impossible.maxTowns` | 2 | 3 | 4 | Towns (capital + settlements) the bot tries to own. |
+
+| Constant | Value | Why |
+|---|---|---|
+| `bots.impossibleIncomeBonusPct` | 25 | Optional extra income for Impossible bots (menu toggle, off by default; badge in HUD when on). |
+| `bots.boredomStartMin` | 8 | From this minute the attack drive starts to grow even without a full army, so bots don't turtle forever. |
+| `bots.boredomFullMin` | 25 | Boredom reaches its maximum here. After minute 30 every personality escalates further, and after 35 the attack weight is at least 0.9 (pacifists too) so matches end. |
+| `bots.threatRadius` | 12 | Enemy soldiers within this many tiles of the bot's buildings count as a threat (defense score). |
+| `bots.matchLimitMin` | 90 | Headless harness time limit (game minutes). Raised from 60 to 90: invasions across the sea on Small maps often decide the match after minute 45. |

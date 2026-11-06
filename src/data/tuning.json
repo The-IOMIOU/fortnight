@@ -27,7 +27,10 @@
     "desertMaxMoisturePercentile": 0.6,
     "seaIceRange": 3,
     "startMinCoastDistance": 3,
-    "startClaimRadius": 4
+    "startClaimRadius": 4,
+    "startQualityRadius": 6,
+    "startForestWanted": 12,
+    "startQualityPct": 80
   },
   "dayNight": { "dayLengthTicks": 3600, "nightTicks": 1260 },
   "units": {
@@ -83,7 +86,7 @@
     "transport": { "food": 0,   "wood": 100, "gold": 0,  "trainTicks": 220, "pop": 1, "speed": 320, "vision": 6, "hp": 160, "attack": 0,  "range": 0,  "cooldown": 0,  "armor": 1, "vsUnits": 0,   "vsBuildings": 0,   "water": 1, "stealth": 0, "capacity": 8 }
   },
   "buildingTypes": {
-    "capital":    { "size": 3, "wood": 0,   "stone": 0,  "buildPoints": 0,   "housing": 10, "territory": 7, "vision": 9, "hp": 3000, "attack": 6, "range": 70, "cooldown": 15, "garrison": 10 },
+    "capital":    { "size": 3, "wood": 0,   "stone": 0,  "buildPoints": 0,   "housing": 10, "territory": 7, "vision": 9, "hp": 2200, "attack": 6, "range": 70, "cooldown": 15, "garrison": 10 },
     "settlement": { "size": 2, "wood": 0,   "stone": 0,  "buildPoints": 0,   "housing": 5,  "territory": 6, "vision": 8, "hp": 1500, "attack": 0, "range": 70, "cooldown": 15, "garrison": 6 },
     "house":      { "size": 1, "wood": 40,  "stone": 0,  "buildPoints": 200, "housing": 6,  "territory": 0, "vision": 3, "hp": 300,  "attack": 0, "range": 0,  "cooldown": 0,  "garrison": 0 },
     "farm":       { "size": 2, "wood": 60,  "stone": 0,  "buildPoints": 250, "housing": 0,  "territory": 0, "vision": 3, "hp": 250,  "attack": 0, "range": 0,  "cooldown": 0,  "garrison": 0, "maxWorkers": 2 },
@@ -136,6 +139,16 @@
     "igniteTicks": 30
   },
   "groups": { "flowFieldMinUnits": 6, "flowFieldCache": 12, "transportBoardRange": 2 },
+  "bots": {
+    "easy":       { "thinkEvery": 40, "actionChancePct": 55,  "workerTarget": 11, "armyAttackSize": 5,  "maxBarracks": 1, "useDefences": 0, "sizeWaves": 0, "retreatWounded": 0, "maxTowns": 2 },
+    "hard":       { "thinkEvery": 10, "actionChancePct": 100, "workerTarget": 20, "armyAttackSize": 12, "maxBarracks": 2, "useDefences": 1, "sizeWaves": 1, "retreatWounded": 0, "maxTowns": 3 },
+    "impossible": { "thinkEvery": 5,  "actionChancePct": 100, "workerTarget": 26, "armyAttackSize": 16, "maxBarracks": 3, "useDefences": 1, "sizeWaves": 1, "retreatWounded": 1, "maxTowns": 4 },
+    "impossibleIncomeBonusPct": 25,
+    "boredomStartMin": 8,
+    "boredomFullMin": 25,
+    "threatRadius": 12,
+    "matchLimitMin": 90
+  },
   "upgrades": {
     "capital2": { "wood": 150, "stone": 100, "gold": 0,   "ticks": 400, "housing": 10, "territory": 2 },
     "capital3": { "wood": 300, "stone": 250, "gold": 100, "ticks": 600, "housing": 10, "territory": 2 },

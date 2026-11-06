@@ -24,6 +24,19 @@ Status: **approved 2026-11-05** ("okay do phase 1") with these owner amendments:
    - **Heroes:** optional and not built (F-073, Phase 9).
    - **Demolishing your own building:** gives no refund.
 
+9. **Phase 4 decisions (2026-11-06, owner: "do phase 4 and commit").**
+   - **Bots** live in `src/ai` and see the game only through `BotView` (own and allied units in full; others only when `visibleTo`; terrain and resources from their own memory of tiles they have seen). `tools/check-ai-fog.mjs` fails `npm run check` if any other bot file touches the sim. Their commands go through the same queue as a player's, so bot matches are deterministic and saves include each bot's memory.
+   - **Utility AI:** six goals (economy, expand, defense, attack, raid, diplomacy) scored 0–100 from a numeric summary, times the personality's weights. Diplomacy scores 0 until treaties exist (Phase 6). Intruders at home always win (defense floor). Boredom from minute 8 and a late-game escalation after minute 30 push every personality to war, so matches end.
+   - **Difficulty** changes only numbers (think rate, hesitation, worker and army targets, defences, wave sizing, retreating wounded). No difficulty sees through fog. Impossible's +25 % income is an opt-in menu toggle, shown in the HUD and settings when on.
+   - **Personalities (all 7 as data):** Berserker, Pacifist builder, Merchant, Schemer, Expansionist, Defender, Raider. Spy actions for the Schemer wait for Phase 6.
+   - **Invasions across the sea:** dock on the ocean (never a lake), at least 2 transports, explore the sea frontier until enemy land is seen, gather and board, land next to the nearest known town, fight; further waves follow.
+   - **Capital HP 3000 → 2200** and **harness time limit 60 → 90 min** (TUNING.md has the reasons).
+   - **Fair starts (derived F-192):** start spots are now filtered by farmland and nearby forest before players are spread apart. Before, the second and later players usually got desert/tundra starts, and in 1v1 bot tests player 1 won every finished match whatever the difficulty. This changes every map's start positions (map hashes changed).
+   - **Bot economy rules found by testing:** wood comes first (stone and gold by deficit), a stone/gold glut moves gatherers back to wood, farms are upgraded and built around settlements too, an invasion waiting for transports reserves wood for them, a beach the ships can't reach is abandoned after 3 tries, and a settlement site that fails 3 times is skipped.
+   - **Menu choices** (size, speed, bots, difficulty, personality, allies, victory, bonus) are remembered in the browser.
+   - **Long bot suites** run separately (`npm run test:bots`, about 15 min on 9 cores; `node tools/bot-report.mjs` prints the report) so `npm test` stays quick.
+   - **Not met at this gate (reported in the ledger, proposals P-007/P-008):** 43/50 Small matches finish (F-126 asks for all 50); Small median length 34.6 min (target 15–25); Impossible beats Hard 4/10 (target ≥ 7/10). Hard beats Easy 9/10 (met).
+
 Items in §7 that weren't commented on are taken as accepted. Proposals P-001…P-005 stay open until answered.
 
 Companion files: [FEATURES.md](FEATURES.md) (feature ledger), [CONTINENT_STRATEGY_GAME.md](CONTINENT_STRATEGY_GAME.md) (master spec).

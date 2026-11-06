@@ -104,3 +104,14 @@ kbd { font: 0.7rem ui-monospace, Consolas, monospace; border: 1px solid var(--li
 .keyrow button { min-width: 6rem; }
 .keyrow button.on { border-color: var(--accent); background: #233548; }
 .spectating { position: absolute; top: 3.4rem; left: 50%; transform: translateX(-50%); background: #4a2525; border: 1px solid #a85050; padding: 0.35rem 0.8rem; border-radius: 6px; }
+
+/* ---------- Phase 4 ---------- */
+.row2 { display: flex; gap: 0.6rem; }
+.row2 > label { flex: 1; }
+.warn { color: #ffb34d; }
+.botpanel { top: auto; bottom: 14rem; right: 0.6rem; width: min(30rem, calc(100vw - 1.2rem)); max-height: 40vh; }
+.botrow { padding: 0.3rem 0; border-top: 1px solid var(--line); font-size: 0.82rem; }
+.scorebars { display: flex; flex-wrap: wrap; gap: 0.25rem; margin-top: 0.2rem; }
+.scorebars span { position: relative; min-width: 4.4rem; padding: 0 0.25rem; font-size: 0.72rem; color: var(--muted); border: 1px solid var(--line); border-radius: 3px; overflow: hidden; }
+.scorebars span i { position: absolute; left: 0; top: 0; bottom: 0; background: #2f7fd033; z-index: -1; }
+.scorebars span.on { color: var(--text); border-color: var(--accent); }

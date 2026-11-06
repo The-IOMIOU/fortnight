@@ -2,7 +2,7 @@
 import { useEffect, useState } from 'preact/hooks';
 import type { SpeedName } from '../sim/core/tuning';
 import type { PlayerStats } from '../sim/stats';
-import type { BuildingInfo } from '../worker/protocol';
+import type { BuildingInfo, Snapshot } from '../worker/protocol';
 import { loadSettings, type Settings } from './settings';
 
 export interface PerfStats { fps: number; p95Ms: number; simMs: number; tps: number; drawCalls: number; triangles: number; entities: number; dropped: number }
@@ -51,6 +51,11 @@ export interface GameState {
   formation: 'box' | 'line';
   spectating: boolean;
   keysOpen: boolean;
+  winnerTeam: number;
+  myTeam: number;
+  bots: Snapshot['bots'];
+  showBots: boolean;
+  impossibleBonusOn: boolean;
 }
 
 type Listener = () => void;
@@ -61,7 +66,7 @@ export class Store {
     speed: 'normal', paused: false, pendingOrders: 0, selected: 0, selection: { units: {}, building: null, unit: null },
     ownerOverlay: true, showPerf: false, showStats: false, settingsOpen: false,
     perf: { fps: 0, p95Ms: 0, simMs: 0, tps: 0, drawCalls: 0, triangles: 0, entities: 0, dropped: 0 },
-    stats: null, feed: [], placing: null, winner: -1, players: 1, toast: '', error: '', box: null, settings: loadSettings(), formation: 'box', spectating: false, keysOpen: false,
+    stats: null, feed: [], placing: null, winner: -1, players: 1, toast: '', error: '', box: null, settings: loadSettings(), formation: 'box', spectating: false, keysOpen: false, winnerTeam: -1, myTeam: 0, bots: [], showBots: false, impossibleBonusOn: false,
   };
   private listeners = new Set<Listener>();
   set(patch: Partial<GameState>): void { this.state = { ...this.state, ...patch }; for (const l of this.listeners) l(); }

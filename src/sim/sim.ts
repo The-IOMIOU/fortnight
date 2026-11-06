@@ -25,6 +25,12 @@ export interface SimSettings {
   size: MapSize;
   /** Number of player slots on the map (1..maxPlayers for the size). */
   players: number;
+  /** Team id per player (allies share a team id). Default: everyone on their own team. */
+  teams?: number[];
+  /** Extra income % per player (the optional Impossible-bot bonus; 0 = none). */
+  incomeBonusPct?: number[];
+  /** Which victories are enabled (default: both) and the domination share in %. */
+  victory?: { domination?: boolean; conquest?: boolean; dominationPct?: number };
 }
 
 export const NO_OWNER = 255;
@@ -49,6 +55,8 @@ export interface PlayerState {
   totalIncome: number[];
   /** Lost every town (Phase 3): units removed, may only spectate. */
   eliminated: boolean;
+  /** Fractional income-bonus accumulator per resource (×100). */
+  bonusAcc: number[];
 }
 
 export interface SimEvent { tick: number; player: number; type: string; a?: number; b?: number }
@@ -68,6 +76,8 @@ export class Sim {
   readonly totalLand: number;
   tick = 0;
   winner = -1;
+  /** Winning team (−1 while undecided). */
+  winnerTeam = -1;
   pending: Command[] = [];
   pathQueue: number[] = [];
   rngAnimals: Rng;
@@ -122,7 +132,7 @@ export class Sim {
       this.ps.push({
         stock: new Array(NUM_RES).fill(0), ring: new Array(NUM_RES * RING).fill(0), upkeepAcc: 0, starving: false, pop: 0, housing: 0,
         landOwned: 0, found: new Array(NUM_RES).fill(0), foundMask: 0, dominationTicks: 0, housingWarned: false, seq: 0,
-        totalIncome: new Array(NUM_RES).fill(0), eliminated: false,
+        totalIncome: new Array(NUM_RES).fill(0), eliminated: false, bonusAcc: new Array(NUM_RES).fill(0),
       });
     }
     if (opts.skipSetup) return;
@@ -166,7 +176,7 @@ export class Sim {
     const o = this.occ[t];
     if (o) {
       const bt = buildingTypeOfKind(this.ents.kind[o - 1]);
-      if (bt === 'gate') return this.ents.owner[o - 1] === p && this.ents.complete[o - 1] ? 10 : 0;
+      if (bt === 'gate') return p >= 0 && p < this.players && this.allied(this.ents.owner[o - 1], p) && this.ents.complete[o - 1] ? 10 : 0;
       if (!WALKABLE_BUILDING[bt]) return 0;
     }
     const rt = this.res.type[t];
@@ -533,14 +543,23 @@ export class Sim {
     switch (c.type) {
       case 'move': {
         let x = Math.max(0, Math.min(w * FP_ONE - 1, c.x | 0)), y = Math.max(0, Math.min(h * FP_ONE - 1, c.y | 0));
-        let t = (y >> FP_SHIFT) * w + (x >> FP_SHIFT);
-        if (this.cost(t) === 0) {
+        const raw = (y >> FP_SHIFT) * w + (x >> FP_SHIFT);
+        let t = raw;
+        const all = this.ownUnits(p, c.ids);
+        // ships sail to the clicked water tile (or the nearest water to it)
+        const ships = all.filter((id) => this.isNaval(id));
+        if (ships.length) {
+          const st = this.waterCost(raw) > 0 ? raw : this.nearestWater(raw, 12);
+          if (st >= 0) for (const id of ships) { const [sx, sy] = Sim.tileCenterFp(st, w); this.stop(id); e.task[id] = Task.MOVE; this.goTo(id, this.tileRectAround(st, 0), sx, sy); }
+        }
+        const units = all.filter((id) => !this.isNaval(id));
+        if (!units.length) break;
+        if (this.cost(t, p) === 0) {
           // clicked on water/rock: head for the nearest walkable tile instead
-          const near = this.nearestPassable(t, 8);
+          const near = this.nearestPassable(t, 8, p);
           if (near < 0) return;
           t = near; [x, y] = Sim.tileCenterFp(t, w);
         }
-        const units = this.ownUnits(p, c.ids);
         if (units.length <= 1) {
           for (const id of units) { this.stop(id); e.task[id] = Task.MOVE; this.goTo(id, this.tileRectAround(t, 0), x, y); }
           break;
@@ -700,7 +719,19 @@ export class Sim {
 
   mult(p: number): number { return this.ps[p].starving ? ECO.starvingRatePct : 100; }
 
+  teamOf(p: number): number { return this.settings.teams?.[p] ?? p; }
+  allied(p: number, q: number): boolean { return p === q || (p < this.players && q < this.players && this.teamOf(p) === this.teamOf(q)); }
+  victoryEnabled(kind: 'domination' | 'conquest'): boolean { return this.settings.victory?.[kind] ?? true; }
+
   private addIncome(p: number, r: number, amt: number): void {
+    const bonus = this.settings.incomeBonusPct?.[p] ?? 0;
+    if (bonus > 0) {
+      const ps = this.ps[p];
+      ps.bonusAcc[r] += amt * bonus;
+      const extra = Math.floor(ps.bonusAcc[r] / 100);
+      ps.bonusAcc[r] -= extra * 100;
+      amt += extra;
+    }
     this.ps[p].stock[r] += amt;
     this.ps[p].totalIncome[r] += amt;
     this.ps[p].ring[r * RING + (Math.floor(this.tick / 10) % RING)] += amt;
@@ -775,6 +806,16 @@ export class Sim {
       if (x < 0 || y < 0 || x >= w || y >= h) continue;
       const q = y * w + x;
       if (!used.has(q) && this.cost(q, p) > 0) return q;
+    }
+    return -1;
+  }
+
+  nearestWater(t: number, R: number): number {
+    const { w, h } = this.map, x0 = t % w, y0 = (t - x0) / w;
+    for (let r = 1; r <= R; r++) for (let dy = -r; dy <= r; dy++) for (let dx = -r; dx <= r; dx++) {
+      if (Math.max(Math.abs(dx), Math.abs(dy)) !== r) continue;
+      const x = x0 + dx, y = y0 + dy;
+      if (x >= 0 && y >= 0 && x < w && y < h && this.waterCost(y * w + x) > 0) return y * w + x;
     }
     return -1;
   }
@@ -1022,13 +1063,23 @@ export class Sim {
     }
   }
 
+  /** Domination: a team holding ≥ dominationPct of all land for the hold time wins (counter kept on the team's lowest player). */
   private checkVictory(): void {
-    const D = ECO;
+    if (this.winner >= 0 || !this.victoryEnabled('domination')) return;
+    const pct = this.settings.victory?.dominationPct ?? ECO.dominationPct;
+    const land = new Map<number, number>(), lead = new Map<number, number>();
     for (let p = 0; p < this.players; p++) {
+      if (this.ps[p].eliminated) continue;
+      const t = this.teamOf(p);
+      land.set(t, (land.get(t) ?? 0) + this.ps[p].landOwned);
+      if (!lead.has(t)) lead.set(t, p);
+    }
+    for (let p = 0; p < this.players; p++) {
+      const t = this.teamOf(p);
+      if (lead.get(t) !== p) { this.ps[p].dominationTicks = 0; continue; }
       const ps = this.ps[p];
-      if (ps.eliminated || this.winner >= 0) continue;
-      if (ps.landOwned * 100 >= D.dominationPct * this.totalLand) {
-        if (++ps.dominationTicks >= D.dominationHoldTicks) { this.winner = p; this.emit(p, 'victory', 0); }
+      if ((land.get(t) ?? 0) * 100 >= pct * this.totalLand) {
+        if (++ps.dominationTicks >= ECO.dominationHoldTicks) { this.winner = p; this.winnerTeam = t; this.emit(p, 'victory', 0, t); return; }
       } else ps.dominationTicks = 0;
     }
   }
@@ -1047,6 +1098,7 @@ export class Sim {
     const e = this.ents;
     if (e.carrier[id] >= 0) return false;
     if (viewer < 0 || e.owner[id] === viewer) return true;
+    if (e.owner[id] < this.players && this.allied(e.owner[id], viewer)) return true; // allies see each other's units
     if (isUnitKind(e.kind[id]) && unitDef(unitTypeOfKind(e.kind[id])).stealth) {
       // stealthed units are only seen by enemies within 2 tiles of one of their entities
       const R = 2 * FP_ONE;
@@ -1095,6 +1147,8 @@ export class Sim {
     for (const t of this.trenchList) hs.u32(t);
     for (const ps of this.ps) hs.u32(ps.eliminated ? 1 : 0);
     hs.u32(this.winner + 1);
+    hs.u32(this.winnerTeam + 1);
+    for (const ps of this.ps) for (const v of ps.bonusAcc) hs.u32(v);
     return hs.digest();
   }
 
