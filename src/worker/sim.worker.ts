@@ -8,7 +8,7 @@ import { loadSim, saveSim, SaveError } from '../sim/serialize';
 import { BUILDING_TYPES, Task, UNIT_TYPES, isBuildingKind, unitDef, upgradeDef } from '../sim/defs';
 import { FOG_VISIBLE } from '../sim/world/fog';
 import type { Command } from '../sim/commands';
-import type { BuildingInfo, FromWorker, ToWorker } from './protocol';
+import type { BuildingInfo, FromWorker, Snapshot, ToWorker } from './protocol';
 import { BotManager, type BotSave } from '../ai/manager';
 
 declare const self: DedicatedWorkerGlobalScope;
@@ -107,10 +107,15 @@ function snapshot(): void {
     ents, fog, owner, tiles, pending, stats: viewer >= 0 ? computeStats(sim, viewer) : spectating ? computeStats(sim, 0) : null, events: ev, buildings: buildingInfo(sim),
     bots: bots ? bots.debug().map((d) => ({ player: d.player, personality: d.personality, difficulty: d.difficulty, goal: d.goal, scores: d.scores, naval: d.naval })) : [], winnerTeam: sim.winnerTeam,
     shots: shotsArr, fires: E < 0 ? sim.burningList.slice() : sim.burningList.filter((t) => sim!.fog[E].data[t] === FOG_VISIBLE), spectating,
-    modified: sim.modified, opts: viewer >= 0 ? sim.ps[viewer].opts : 0,
+    modified: sim.modified, opts: viewer >= 0 ? sim.ps[viewer].opts : 0, me: viewer >= 0 ? meOf(sim, viewer) : null,
     winner: sim.winner, simMsPerTick: stepMsAvg, ticksPerSec: sched.paused ? 0 : tps,
     droppedTicks: sched.droppedTicks, paused: sched.paused, speed: speedName,
   }, transfer);
+}
+
+function meOf(s: Sim, p: number): Snapshot['me'] {
+  const ps = s.ps[p], n = ps.researching ? s.rules.node(p, ps.researching) : null;
+  return { race: ps.race, researched: ps.researched.slice(), researching: ps.researching, researchPermille: n ? Math.floor((ps.researchProgress * 1000) / n.ticks) : 0, gear: ps.gear.slice() };
 }
 
 function loop(): void {

@@ -50,6 +50,9 @@ export interface NewGameOptions {
   popLimit?: number;
   /** Test options for you (player 0) from the start; the run counts as modified. */
   testOptions?: number;
+  // ---- Phase 5 ----
+  /** Race id per player (you are player 0). */
+  races?: string[];
 }
 export type StartOptions = { kind: 'new'; opts: NewGameOptions } | { kind: 'load'; save: SaveData };
 
@@ -121,6 +124,7 @@ export class Game {
       if (o.wildlifePct !== undefined && o.wildlifePct !== 100) settings.wildlifePct = o.wildlifePct;
       if (o.dayLengthTicks && o.dayLengthTicks !== TUNING.dayNight.dayLengthTicks) settings.dayLengthTicks = o.dayLengthTicks;
       if (o.popLimit) settings.popLimit = o.popLimit;
+      if (o.races && o.races.some((r) => r !== 'baseline')) settings.races = o.races;
       if (o.testOptions) settings.testOptions = [o.testOptions];
       this.send({ type: 'init', settings, viewer: this.viewer, speed: o.speed, paused: false, bots: o.bots ?? [] });
       store.set({ myTeam: o.teams?.[0] ?? 0, impossibleBonusOn: !!o.impossibleBonus && !!o.bots?.some((b) => b.difficulty === 'impossible') });
@@ -207,7 +211,7 @@ export class Game {
     const perf = store.state.perf;
     store.set({
       tick: s.tick, isNight: s.isNight, dayPhase: s.dayPhase, dayLength: s.dayLength, speed: s.speed, paused: s.paused,
-      pendingOrders: s.pending.length, stats: s.stats, winner: s.winner, winnerTeam: s.winnerTeam, bots: s.bots, modified: s.modified, opts: s.opts,
+      pendingOrders: s.pending.length, stats: s.stats, winner: s.winner, winnerTeam: s.winnerTeam, bots: s.bots, modified: s.modified, opts: s.opts, me: s.me,
       perf: { ...perf, simMs: s.simMsPerTick, tps: s.ticksPerSec, dropped: s.droppedTicks, entities: s.ents.length / 9 },
     });
   }
@@ -229,6 +233,10 @@ export class Game {
       case 'fed': text = 'Food supply restored'; kind = 'good'; break;
       case 'cantPlace': text = `Can't build ${bn(a).toLowerCase()} there`; kind = 'warn'; break;
       case 'cantAfford': text = 'Not enough resources'; kind = 'warn'; break;
+      case 'researched': if (player !== this.viewer) return; text = `Research complete${a === undefined || a < 0 ? '' : ''}${b ? ': capstone reached!' : ''}`; kind = 'good'; sfx.built(); break;
+      case 'cantResearch': text = "Can't research that now"; kind = 'warn'; break;
+      case 'crafted': text = 'Gear crafted'; kind = 'good'; break;
+      case 'tamed': text = 'An animal was tamed'; kind = 'good'; sfx.trained(); break;
       case 'noDropoff': text = `No drop-off for ${RES_LABELS[a ?? 0].toLowerCase()}: build a camp or storehouse`; kind = 'warn'; break;
       case 'unreachable': text = "Can't reach that place"; kind = 'warn'; break;
       case 'victory': { const how = a === 1 ? 'conquest' : 'domination'; text = player === this.viewer ? `Victory by ${how}!` : `P${player + 1} has won by ${how}`; kind = player === this.viewer ? 'good' : 'warn'; sfx.victory(); break; }
@@ -627,6 +635,12 @@ export class Game {
   train(building: number, utype: number): void { this.cmd({ type: 'train', building, utype }); sfx.click(); }
   cancelTrain(building: number, index: number): void { this.cmd({ type: 'cancelTrain', building, index }); sfx.click(); }
   upgrade(building: number): void { this.cmd({ type: 'upgrade', building }); sfx.click(); }
+  // ---- Phase 5 ----
+  research(node: string): void { this.cmd({ type: 'research', node }); sfx.click(); }
+  cancelResearch(): void { this.cmd({ type: 'cancelResearch' }); sfx.click(); }
+  craft(building: number, item: number): void { this.cmd({ type: 'craft', building, item }); sfx.click(); }
+  equip(item: number): void { const ids = this.ownSelectedUnits(); if (ids.length) { this.cmd({ type: 'equip', ids, item }); sfx.click(); } }
+  burrow(on: boolean): void { const ids = this.ownSelectedUnits(); if (ids.length) { this.cmd({ type: 'burrow', ids, on }); sfx.order(); } }
   ungarrison(building: number): void { this.cmd({ type: 'ungarrison', building }); sfx.click(); }
   demolish(building: number): void { this.cmd({ type: 'demolish', building }); sfx.click(); }
   /** Stop / hold / retreat for the selected units. */

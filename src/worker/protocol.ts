@@ -43,6 +43,8 @@ export interface Snapshot {
   tiles: Int32Array | null;
   pending: { tick: number; type: string }[];
   stats: PlayerStats | null;
+  /** Phase 5: the viewer's people, research and gear store. */
+  me: { race: string; researched: string[]; researching: string; researchPermille: number; gear: number[] } | null;
   /** A test option was used in this run (F-198), and the viewer's active test options. */
   modified: boolean;
   opts: number;

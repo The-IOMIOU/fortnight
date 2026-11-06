@@ -58,7 +58,7 @@ export function resetKeys(): void { overrides = {}; try { localStorage.removeIte
 /** Normalised name of a keyboard event's key. */
 export const eventKey = (e: KeyboardEvent): string => (e.key === ' ' ? ' ' : e.key.toLowerCase());
 /** Pretty label for a key. */
-export const keyLabel = (k: string): string => (k === ' ' ? 'Space' : k.length === 1 ? k.toUpperCase() : k[0].toUpperCase() + k.slice(1));
+export const keyLabel = (k: string): string => (!k ? '' : k === ' ' ? 'Space' : k.length === 1 ? k.toUpperCase() : k[0].toUpperCase() + k.slice(1));
 /** Action ids in a context whose key matches the event. */
 export function actionsFor(e: KeyboardEvent, context: KeyAction['context']): string[] {
   const k = eventKey(e);

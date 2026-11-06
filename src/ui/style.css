@@ -134,3 +134,12 @@ details.more > * + * { margin-top: 0.5rem; }
 .warn-btn { background: #6b2b23 !important; border-color: #d0624f !important; }
 .panel .row input[type="checkbox"] { flex: 0 0 auto; width: auto; }
 .modal .panel { max-height: 92vh; overflow-y: auto; }
+
+/* Phase 5: research panel, race summary */
+.modal .panel.tech-panel { width: min(560px, calc(100vw - 2rem)); max-height: 85vh; overflow-y: auto; }
+.tech-row { display: grid; grid-template-columns: 1fr auto; gap: 0.15rem 0.5rem; padding: 0.35rem 0; border-bottom: 1px solid #ffffff14; }
+.tech-row > :first-child, .tech-row > .sel-sub { grid-column: 1; }
+.tech-row > button, .tech-row > small, .tech-row > .bar { grid-column: 2; grid-row: 1 / span 2; align-self: center; }
+.tech-row.done { opacity: 0.6; }
+.tech-panel h3 { margin: 0.6rem 0 0.2rem; font-size: 0.95rem; }
+.race-summary { font-size: 0.85rem; line-height: 1.35; margin: -0.2rem 0 0.6rem; opacity: 0.9; }

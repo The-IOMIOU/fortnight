@@ -424,3 +424,39 @@ describe('Phase 5 determinism and saves', () => {
     void STAT_KEYS;
   });
 });
+
+describe('F-044 piers and F-133 tech victory', () => {
+  it('piers: locked before Piers, then placeable only on open water touching own land; land units walk on them', () => {
+    const { s, at } = arena(['baseline', 'baseline'], 'pier');
+    for (const t of rect(at, 20, 0, 29, 29)) s.map.biome[t] = Biome.OCEAN;
+    own(s, 0, rect(at, 10, 5, 19, 15));
+    expect(s.canPlace(0, 'pier', at(20, 8))).toBe('not researched yet');
+    unlock(s, 0, 'piers');
+    expect(s.canPlace(0, 'pier', at(20, 8))).toBeNull();
+    expect(s.canPlace(0, 'pier', at(25, 8))).toBe('must touch your land');
+    expect(s.canPlace(0, 'pier', at(18, 8))).toBe('must be on open water');
+    const p = s.createBuilding(0, 'pier', at(20, 8), true);
+    expect(s.cost(at(21, 9), 0)).toBeGreaterThan(0);
+    expect(s.cost(at(22, 9), 0)).toBe(0);
+    const u = spawn(s, 0, 'spearman', at(15, 9));
+    const [x, y] = Sim.tileCenterFp(at(21, 9), s.map.w);
+    issue(s, 0, { type: 'move', ids: [u], x, y });
+    run(s, 200);
+    expect(s.tileOf(u)).toBe(at(21, 9));
+    void p;
+  });
+
+  it('tech victory is off by default; when on, own capstone + 60 % of the shared tree wins', () => {
+    const make = (tech: boolean): Sim => new Sim({ seed: 'techwin', size: 'small', players: 2, races: ['rimeborn', 'baseline'], victory: tech ? { tech: true } : undefined });
+    for (const on of [false, true]) {
+      const s = make(on);
+      unlock(s, 0, 'iceLodges', 'deepWinter', 'mammothHerds', 'smithing', 'toolmaking', 'alloys');
+      s.step();
+      expect(s.winner).toBe(on ? 0 : -1);
+    }
+    const s = make(true);
+    unlock(s, 0, 'iceLodges', 'deepWinter', 'mammothHerds', 'smithing', 'toolmaking'); // 40 % of the shared tree
+    s.step();
+    expect(s.winner).toBe(-1);
+  });
+});

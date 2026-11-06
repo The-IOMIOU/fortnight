@@ -7,7 +7,8 @@ import { MAP_SIZES, SPEED_NAMES, TUNING, type MapSize, type SpeedName } from '..
 import { scriptedRun } from '../sim/scripted';
 import { generateMap } from '../sim/world/mapgen';
 import { hex } from '../sim/core/hash';
-import baseline from '../data/races/baseline.json';
+import { RACES, PLAYABLE_RACES } from '../sim/races';
+import { RaceSummary } from './RacePanels';
 import { Hud, SettingsModal } from './Hud';
 import { DIFFICULTIES, PERSONALITIES, type Difficulty } from '../ai/utility';
 import { Rng } from '../sim/core/prng';
@@ -21,7 +22,6 @@ import { TestOptionList } from './testOptions';
 const SPEED_LABEL: Record<SpeedName, string> = { slow: '0.5×', normal: '1×', fast: '2×', veryFast: '4×', x8: '8×', x16: '16×' };
 const WORDS_A = ['amber', 'quiet', 'rust', 'salt', 'ember', 'misty', 'iron', 'bright', 'hollow', 'wild', 'frost', 'golden'];
 const WORDS_B = ['ridge', 'delta', 'fjord', 'mesa', 'marsh', 'vale', 'cove', 'steppe', 'basin', 'reef', 'crag', 'grove'];
-const RACES = [baseline];
 const AUTOSAVE_MS = 120_000;
 
 export function randomSeed(): string {
@@ -62,6 +62,12 @@ declare global { interface Window { __game?: unknown } }
 const defaultPlayers = (size: MapSize): number => Math.min(4, TUNING.map.sizes[size].maxPlayers);
 
 /** Build the match: player 0 is you, players 1..n are bots; the first `allies` bots share your team. */
+/** Race per player: yours, then the bots' (one race for all, or seeded random over the playable races: same link → same peoples). */
+export function matchRaces(seed: string, mine: string, bots: string, players: number): string[] {
+  const rng = Rng.stream(seed, 'menu-races');
+  return Array.from({ length: players }, (_, p) => (p === 0 ? mine : bots === 'random' ? PLAYABLE_RACES[rng.int(PLAYABLE_RACES.length)].id : bots));
+}
+
 export function makeMatch(seed: string, size: MapSize, botCount: number, difficulty: Difficulty, personality: string, allies: number): Pick<NewGameOptions, 'players' | 'bots' | 'teams'> {
   const max = TUNING.map.sizes[size].maxPlayers - 1;
   const n = Math.max(0, Math.min(max, botCount));
@@ -150,6 +156,7 @@ export function App() {
 interface MenuPrefs {
   mode: ModeId; size: MapSize; speed: SpeedName; rivals: number; difficulty: Difficulty; pers: string; allies: number; conquest: boolean; domination: boolean; domPct: number; bonus: boolean;
   globe: boolean; continents: number; sea: SeaWidth; wildlife: number; dayLen: number; popLimit: number; perBot: boolean; botRows: { difficulty: Difficulty; personality: string }[]; testOpts: number;
+  race: string; botRace: string;
 }
 const MENU_KEY = 'fortnight.menu.v1';
 function loadMenuPrefs(): Partial<MenuPrefs> { try { return JSON.parse(localStorage.getItem(MENU_KEY) ?? '{}') as Partial<MenuPrefs>; } catch { return {}; } }
@@ -183,7 +190,8 @@ function Menu({ initial, onStart }: { initial: Partial<NewGameOptions>; onStart:
   const [botRows, setBotRows] = useState<MenuPrefs['botRows']>(saved.botRows ?? []);
   const [testOpts, setTestOpts] = useState(saved.testOpts ?? 0);
   const [clampMsg, setClampMsg] = useState('');
-  const [race, setRace] = useState(RACES[0].id);
+  const [race, setRace] = useState(saved.race ?? RACES[0].id);
+  const [botRace, setBotRace] = useState(saved.botRace ?? 'random');
   const [cont, setCont] = useState<{ label: string; blob: Blob } | null>(null);
   const error = useStore((s) => s.error);
   const fileRef = useRef<HTMLInputElement>(null);
@@ -212,15 +220,16 @@ function Menu({ initial, onStart }: { initial: Partial<NewGameOptions>; onStart:
     try { onStart({ kind: 'load', save: await decodeSave(b) }); }
     catch { store.set({ error: 'That file is not a readable Fortnight save.' }); }
   };
-  const chosen = RACES.find((r) => r.id === race)!;
+  const chosen = RACES.find((r) => r.id === race) ?? RACES[0];
   const start = (): void => {
     store.set({ error: '' });
-    saveMenuPrefs({ mode, size, speed, rivals, difficulty, pers, allies, conquest, domination, domPct, bonus, globe, continents, sea, wildlife, dayLen, popLimit, perBot, botRows: rows, testOpts });
+    saveMenuPrefs({ mode, size, speed, rivals, difficulty, pers, allies, conquest, domination, domPct, bonus, globe, continents, sea, wildlife, dayLen, popLimit, perBot, botRows: rows, testOpts, race, botRace });
     const m = makeMatch(seed.trim(), size, rivals, difficulty, pers, Math.min(allies, Math.max(0, rivals - 1)));
     if (perBot && m.bots) m.bots = m.bots.map((b, k) => ({ ...b, difficulty: rows[k].difficulty, personality: rows[k].personality === 'random' ? b.personality : rows[k].personality }));
     onStart({ kind: 'new', opts: {
       seed: seed.trim(), size, speed, ...m, victory: { conquest, domination, dominationPct: domPct }, impossibleBonus: bonus && (m.bots ?? []).some((b) => b.difficulty === 'impossible'),
       world: { globe, sea, continents }, wildlifePct: wildlife, dayLengthTicks: dayLen, popLimit, testOptions: testOpts, mode,
+      races: matchRaces(seed.trim(), race, botRace, m.players),
     } });
   };
 
@@ -243,6 +252,13 @@ function Menu({ initial, onStart }: { initial: Partial<NewGameOptions>; onStart:
             {RACES.map((r) => <option value={r.id}>{r.name}</option>)}
           </select>
           <small class="later">{chosen.description}</small>
+        </label>
+        <RaceSummary race={chosen} />
+        <label>Rival peoples
+          <select value={botRace} onChange={(e) => setBotRace((e.target as HTMLSelectElement).value)} data-testid="bot-race">
+            <option value="random">Random</option>
+            {RACES.map((r) => <option value={r.id}>{r.name}</option>)}
+          </select>
         </label>
         <label>Map size
           <select value={size} onChange={(e) => { const z = (e.target as HTMLSelectElement).value as MapSize; setSize(z); if (mode === 'custom') setContinents(TUNING.map.sizes[z].continents); }} data-testid="size">

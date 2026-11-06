@@ -22,7 +22,7 @@ export const UNKNOWN = 255;
 export interface MapMemory { biome: Uint8Array; res: Uint8Array }
 export const newMapMemory = (n: number): MapMemory => ({ biome: new Uint8Array(n).fill(UNKNOWN), res: new Uint8Array(n).fill(UNKNOWN) });
 
-export interface UnitInfo { id: number; kind: number; owner: number; tile: number; task: number; hp: number; maxHp: number; moving: boolean; carrier: number; carry: number; /** own units only: resource type carried (−1 = none) */ carryRes: number; /** own units only: entity the task is aimed at (−1 = none) */ target: number }
+export interface UnitInfo { id: number; kind: number; owner: number; tile: number; task: number; hp: number; maxHp: number; moving: boolean; carrier: number; carry: number; /** own units only: resource type carried (−1 = none) */ carryRes: number; /** own units only: entity the task is aimed at (−1 = none) */ target: number; /** own units only: underground (Delvers) */ burrowed?: boolean; /** own units only: weapon / armour tier */ weapon?: number; armor?: number }
 export interface BuildingInfo { id: number; kind: number; btype: BuildingTypeName; owner: number; anchor: number; size: number; complete: boolean; level: number; hp: number; maxHp: number; queue: number; upgrading: boolean; garrison: number }
 
 export class BotView {
@@ -42,11 +42,19 @@ export class BotView {
   readonly enemyBuildings: BuildingInfo[] = [];
   /** Visible wild animals and carcasses. */
   readonly animals: UnitInfo[] = [];
+  // ---- Phase 5: own people, research and gear (public knowledge for the player itself)
+  readonly race: string;
+  readonly researched: readonly string[];
+  readonly researching: string;
+  readonly gear: readonly number[];
+  readonly isNight: boolean;
 
   constructor(private sim: Sim, readonly player: number, readonly mem: MapMemory) {
     const m = sim.map;
     this.w = m.w; this.h = m.h; this.tick = sim.tick; this.wrap = sim.wrap;
     this.peaceful = sim.ps.some((ps) => (ps.opts & TestOpt.PEACEFUL_BOTS) !== 0);
+    const me = sim.ps[player];
+    this.race = me.race; this.researched = me.researched.slice(); this.researching = me.researching; this.gear = me.gear.slice(); this.isNight = sim.isNight;
     // refresh memory from what is visible right now
     for (const t of sim.fog[player].visibleTiles()) { mem.biome[t] = m.biome[t]; mem.res[t] = sim.res.amount[t] > 0 ? sim.res.type[t] : RES_NONE; }
     this.stats = computeStats(sim, player);
@@ -58,6 +66,7 @@ export class BotView {
       if (!mine && !ally && !sim.visibleTo(id, player)) continue;
       if (isUnitKind(k)) {
         const u: UnitInfo = { id, kind: k, owner: o, tile: sim.tileOf(id), task: mine ? e.task[id] : 0, hp: e.hp[id], maxHp: e.maxHp[id], moving: !!e.moving[id], carrier: e.carrier[id], carry: mine ? e.carryAmt[id] : 0, carryRes: mine && e.carryAmt[id] > 0 ? e.carryType[id] : -1, target: mine ? e.taskEnt[id] : -1 };
+        if (mine) { u.burrowed = !!e.burrowed[id]; u.weapon = e.weaponTier[id]; u.armor = e.armorTier[id]; }
         (mine ? this.myUnits : ally ? this.alliedUnits : this.enemyUnits).push(u);
       } else if (isBuildingKind(k)) {
         const bt = buildingTypeOfKind(k);
@@ -100,13 +109,13 @@ export class BotView {
       const bx = b.anchor % w, by = (b.anchor - bx) / w;
       if (ax < bx + b.size && ax + d.size > bx && ay < by + b.size && ay + d.size > by) return false;
     }
-    if (bt === 'fishingHut' || bt === 'dock') {
+    if (bt === 'fishingHut' || bt === 'dock' || bt === 'tidepool' || bt === 'iceLodge') {
       let water = false;
       for (let dy = -1; dy <= d.size && !water; dy++) for (let dx = -1; dx <= d.size; dx++) {
         const x = ax + dx, y = ay + dy;
         if (x < 0 || y < 0 || x >= w || y >= h) continue;
         const b = this.mem.biome[y * w + x];
-        if (b === Biome.OCEAN || b === Biome.LAKE || (b === Biome.RIVER && bt === 'fishingHut')) { water = true; break; }
+        if (b === Biome.OCEAN || b === Biome.LAKE || (b === Biome.RIVER && (bt === 'fishingHut' || bt === 'tidepool')) || (b === Biome.ICE && bt === 'iceLodge')) { water = true; break; }
       }
       if (!water) return false;
     }

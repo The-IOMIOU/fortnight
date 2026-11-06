@@ -8,6 +8,7 @@ import { Rng } from '../sim/core/prng';
 import { wdelta } from '../sim/core/topo';
 import { TUNING } from '../sim/core/tuning';
 import { Biome, isWaterBiome } from '../sim/world/mapgen';
+import { canExpandNow, racePlan, researchSaving } from './race';
 import { BUILDING_TYPES, Kind, Res, RES_NONE, Task, UNIT_TYPES, buildingDef, isMilitaryType, unitDef, type BuildingTypeName, type UnitTypeName } from '../sim/defs';
 
 const MILITARY = new Set<number>(UNIT_TYPES.filter((u) => isMilitaryType(u) && u !== 'warship').map((u) => UNIT_TYPES.indexOf(u) + 1));
@@ -181,14 +182,17 @@ export class Bot {
     }
     // an invasion waiting for transports gets first call on wood (houses and soldiers otherwise eat it all)
     const shipWood = (s.naval === 'ships' || s.naval === 'board' || s.naval === 'dock') && transports.length < 2 ? 130 : 0;
-    const spend = shipWood ? stock.map((x, i) => (i === Res.WOOD ? Math.max(0, x - shipWood) : x)) : stock;
+    const saving = researchSaving(v, minutes); // Phase 5: save up for the next research
+    const spend = stock.map((x, i) => Math.max(0, x - (i === Res.WOOD ? shipWood : 0) - saving[i]));
     // ---- 2. economy, always
     this.economy(v, home, capital, workers, units, spend, goal === 'economy');
     // ---- 3. military production when it matters
     const wantArmy = goal === 'attack' || goal === 'defense' || goal === 'raid' || threat > 0 || boredom(minutes) > 0.2;
     if (wantArmy && this.chance()) this.militaryProduction(v, home, workers, army, spend, pers);
+    // ---- 3b. Phase 5: research, own troops, gear, race abilities
+    if (this.chance()) racePlan({ v, home, workers, army, scouts, stock, wantArmy, minutes, cmd: (c) => this.cmd(c), pick: (ws, t) => this.pickWorker(ws, t, w), spot: (bt, near, a, b) => this.spotNear(v, bt, near, a, b), dist: (a, b) => this.dist(a, b, w), roll: (n) => this.rng.int(n) });
     // ---- 4. goal-specific
-    if (goal === 'expand' && this.chance()) this.expand(v, capital, settlers, sites, stock, st.pop, st.housing);
+    if (goal === 'expand' && canExpandNow(v) && this.chance()) this.expand(v, capital, settlers, sites, stock, st.pop, st.housing);
     if (goal === 'defense' && d.useDefences && pers.defences >= 0.5 && this.chance()) this.fortify(v, home, workers, spend);
     if (s.naval !== 'none' && !intruders.length) {
       // an overseas campaign keeps going whatever today's goal is
@@ -198,7 +202,7 @@ export class Bot {
       if (!(goal === 'raid' && soft > 0 && this.raid(v, army, home))) this.attack(v, home, army, landTowns, seaTowns, enemyTowns, workers, transports, stock, sit.attackSize, scouts);
     } else if (!intruders.length && scouts.length) this.explore(v, scouts, home);
     // spare settlers always try to settle
-    if (goal !== 'expand' && settlers.some((u) => u.task === Task.IDLE)) this.expand(v, capital, settlers, sites, stock, st.pop, st.housing);
+    if (goal !== 'expand' && canExpandNow(v) && settlers.some((u) => u.task === Task.IDLE)) this.expand(v, capital, settlers, sites, stock, st.pop, st.housing);
     this.saveRng();
     return this.out;
   }

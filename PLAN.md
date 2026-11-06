@@ -47,6 +47,16 @@ Status: **approved 2026-11-05** ("okay do phase 1") with these owner amendments:
    - **F-194 threshold changed:** the farthest continent pair must be ≥ 15 tiles apart on Medium and ≥ 25 on Large/Huge (was ≥ 25 everywhere). A 192-tile-wide Medium map with 4 continents can't fit 25-tile oceans between every cluster.
    - **Short mode uses 2 continents and close seas** (P-008's first half), to bring Small matches towards 15–25 minutes.
 
+11. **Phase 5 decisions (2026-11-06, owner: "do phase 4b and 5"; taken without asking, to confirm).**
+   - **The first 8 peoples** follow seeds 1–8 (P-002) with original names: Deepkin, Wildbond, Delvers, Mycelids, Windriders, Anvilborn, Fenfolk, Rimeborn. Wayfolk (Baseline) stays as the reference people.
+   - **Point rule numbers:** 1 point per 5 % stat step; abilities 5–8 points, weaknesses −4 to −8 (tuning `races.abilities.*.points`). Each people balances to exactly 0.
+   - **Sunburn** (Deepkin) hurts only outside your own territory (towns give shade); otherwise workers would die at home and the people couldn't be played. Settlements and outposts only at night.
+   - **Taming:** scouts tame (right-click an animal); workers still hunt.
+   - **Tunnels:** burrowed units are invisible and can't be attacked; they come up by order or automatically when in range of their target, with an ambush bonus for 3 s.
+   - **Research** happens at the capital, one item at a time, paid up front (refund on cancel). Each race tree has 3 nodes: unique building + first unit, a stat bonus, the capstone unit.
+   - **Gear** is crafted into a per-player store and handed to units within 6 tiles of a forge, barracks or town (not teleported to the front).
+   - **Unit gold costs are now charged.** Before Phase 5 the sim never took gold for riders, spies, saboteurs or warships although the HUD showed and required it.
+
 Items in §7 that weren't commented on are taken as accepted. Proposals P-001…P-005 stay open until answered.
 
 Companion files: [FEATURES.md](FEATURES.md) (feature ledger), [CONTINENT_STRATEGY_GAME.md](CONTINENT_STRATEGY_GAME.md) (master spec).

@@ -11,6 +11,8 @@ import { NUM_RES, TASK_NAMES, TRAINS, UNIT_TYPES, buildingDef, unitDef, upgradeD
 import { playerLabel, playerSwatchCss } from '../render/palette';
 import { BUILDING_HELP, BUILDING_NAMES, RES_COLORS, RES_LABELS, UNIT_HELP, UNIT_NAMES } from './names';
 import { DEFAULT_KEYS, keyFor, keyLabel, resetKeys, setKey } from '../app/keymap';
+import { ForgePanel, TechButton, TechPanel, UnitRaceBar, buildingAllowed, unitAllowed } from './RacePanels';
+import { raceById } from '../sim/races';
 
 const SPEED_LABEL: Record<SpeedName, string> = { slow: '0.5×', normal: '1×', fast: '2×', veryFast: '4×', x8: '8×', x16: '16×' };
 const BUILDABLE_LIST: BuildingTypeName[] = ['house', 'farm', 'lumberCamp', 'mineCamp', 'fishingHut', 'storehouse', 'outpost', 'barracks', 'workshop', 'dock'];
@@ -35,6 +37,7 @@ export function Hud({ game, onQuit, onSave }: { game: Game; onQuit: () => void; 
       <PerfHud />
       <Feed />
       <SelectionPanel game={game} />
+      <TechPanel game={game} />
       <StatsPanel />
       <SettingsModal />
       <BoxRect />
@@ -84,6 +87,7 @@ function TopBar({ game, onQuit, onSave }: { game: Game; onQuit: () => void; onSa
       <div class="spacer" />
       {modified && <span class="res warn" title="Test options were used in this run" data-testid="modified-badge">Modified run</span>}
       {bonusOn && <span class="res warn" title="Impossible bots receive extra income" data-testid="bonus-badge">Impossible bonus +{TUNING.bots.impossibleIncomeBonusPct} %</span>}
+      <TechButton />
       <button onClick={() => store.set({ showBots: !store.state.showBots })} data-testid="bots-btn" title="Bot goals (F4)">Bots</button>
       <button onClick={() => store.set({ showStats: !store.state.showStats })} data-testid="stats-btn" title="Continent stats (Tab)">Stats</button>
       <button onClick={onSave} data-testid="save" title="Download a save file">Save</button>
@@ -120,6 +124,8 @@ function SelectionPanel({ game }: { game: Game }) {
   const sel = useStore((st) => st.selection);
   const placing = useStore((st) => st.placing);
   useStore((st) => st.stats); // re-render when stock changes (affordability)
+  const me = useStore((st) => st.me);
+  const extra: BuildingTypeName[] = me ? (['forge', 'pier', raceById(me.race).unique_building].filter(Boolean) as BuildingTypeName[]).filter((bt) => buildingAllowed(me.race, me.researched, bt)) : [];
   const units = Object.entries(sel.units);
   if (!units.length && !sel.building) return null;
   const b = sel.building;
@@ -131,7 +137,7 @@ function SelectionPanel({ game }: { game: Game }) {
           {sel.unit && <div class="sel-sub" data-testid="unit-info">{TASK_NAMES[sel.unit.task]} · health {Math.round(sel.unit.hp / 10)} %{sel.unit.carryAmt > 0 ? ` · carrying ${sel.unit.carryAmt} ${RES_LABELS[sel.unit.carryType].toLowerCase()}` : ''} · {UNIT_HELP[sel.unit.type as UnitTypeName]}</div>}
           {(sel.units.worker ?? 0) > 0 && (
             <div class="buildmenu" data-testid="buildmenu">
-              {BUILDABLE_LIST.map((bt) => {
+              {[...BUILDABLE_LIST, ...extra].map((bt) => {
                 const d = buildingDef(bt), cost = { wood: d.wood, stone: d.stone };
                 return (
                   <button class={placing === bt ? 'on' : ''} disabled={!game.canAfford(cost)} title={`${BUILDING_HELP[bt]} [${K('build.' + bt)}]`} onClick={() => game.startPlacement(bt)} data-testid={'build-' + bt}>
@@ -164,6 +170,7 @@ function SelectionPanel({ game }: { game: Game }) {
             </div>
           )}
           <MilitaryBar game={game} />
+          <UnitRaceBar game={game} />
           {placing && <div class="sel-sub">{placing === 'patrol' ? 'Click the far end of the patrol route' : placing === 'ignite' ? 'Click a forest or building tile to set it on fire' : DEFENCE_LIST.includes(placing as BuildingTypeName) || placing === 'dig' ? 'Click the start, then the end of the line (Shift to keep drawing). Right-click or Esc cancels.' : `Placing ${BUILDING_NAMES[placing as BuildingTypeName]}: left-click to place (Shift for several), right-click or Esc to cancel`}</div>}
         </div>
       )}
@@ -178,15 +185,18 @@ function BuildingPanel({ game, b }: { game: Game; b: NonNullable<GameState['sele
   const info = b.info;
   const d = buildingDef(bt);
   const next = upgradeDef(bt, b.level + 1);
+  const me = useStore((st) => st.me);
+  const trains = (TRAINS[bt] ?? []).filter((u) => !me || unitAllowed(me.race, me.researched, u));
   return (
     <div class="sel-building" data-testid="building-panel">
       <div class="sel-title">{BUILDING_NAMES[bt]} {b.complete ? <small>level {b.level}</small> : <small>under construction {Math.floor(b.progressPermille / 10)} %</small>}</div>
       <div class="sel-sub">{BUILDING_HELP[bt]}</div>
       <div class="sel-sub" data-testid="building-hp">Health {Math.round(b.hp / 10)} %{d.garrison > 0 ? ` · garrison ${b.garrison}/${d.garrison}` : ''}{own && (TRAINS[bt] ?? []).length > 0 ? ' · right-click the map to set a rally point' : ''}</div>
       {own && b.complete && d.maxWorkers && info && <div class="sel-sub" data-testid="workers">Workers {info.workers}/{d.maxWorkers}</div>}
-      {own && b.complete && (TRAINS[bt] ?? []).length > 0 && (
+      {own && b.complete && bt === 'forge' && <ForgePanel game={game} building={b.id} />}
+      {own && b.complete && trains.length > 0 && (
         <div class="buildmenu">
-          {(TRAINS[bt] ?? []).map((u) => {
+          {trains.map((u) => {
             const ud = unitDef(u), cost = { food: ud.food, wood: ud.wood, gold: ud.gold };
             return (
               <button disabled={!game.canAfford(cost) || (info?.queue.length ?? 0) >= TUNING.economy.trainQueueMax} onClick={() => game.train(b.id, UNIT_TYPES.indexOf(u))} data-testid={'train-' + u} title={`${UNIT_NAMES[u]}: ${UNIT_HELP[u]} [${K('train.' + u)}]`}>
@@ -200,7 +210,7 @@ function BuildingPanel({ game, b }: { game: Game; b: NonNullable<GameState['sele
         <div class="queue" data-testid="queue">
           {info.queue.map((q, i) => (
             <button class="qitem" title="Click to cancel (refund)" onClick={() => game.cancelTrain(b.id, i)}>
-              {UNIT_NAMES[UNIT_TYPES[q]]}{i === 0 && <span class="bar"><span style={{ width: `${info.trainPermille / 10}%` }} /></span>}
+              {bt === 'forge' ? 'Gear' : UNIT_NAMES[UNIT_TYPES[q]]}{i === 0 && <span class="bar"><span style={{ width: `${info.trainPermille / 10}%` }} /></span>}
             </button>
           ))}
         </div>
