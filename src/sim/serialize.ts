@@ -4,7 +4,7 @@ import { Sim, type PlayerState, type SimSettings } from './sim';
 import { Entities } from './entities/entities';
 import type { Command } from './commands';
 
-export const SAVE_VERSION = 4;
+export const SAVE_VERSION = 5;
 
 export interface SaveData {
   format: 'fortnight-save';
@@ -31,6 +31,10 @@ export interface SaveData {
   winnerTeam: number;
   /** Phase 4b: a test option was used in this run (optional: older v4 saves lack it). */
   modified?: boolean;
+  /** Phase 5 (v5): rules in play, fungus layer, fungus RNG. */
+  p5?: boolean;
+  fungus?: string;
+  rngFungus?: [number, number, number, number];
   /** Data kept by the host outside the sim (bot memories). */
   extra?: unknown;
 }
@@ -67,6 +71,7 @@ export function saveSim(sim: Sim): SaveData {
     ents: sim.ents.serialize(), ps: JSON.parse(JSON.stringify(sim.ps)), pending: JSON.parse(JSON.stringify(sim.pending)),
     pathQueue: sim.pathQueue.slice(), rngAnimals: sim.rngAnimals.getState(),
     rngFire: sim.rngFire.getState(), burning: toB64(sim.burning), burningList: sim.burningList.slice(), trenchList: sim.trenchList.slice(), winnerTeam: sim.winnerTeam, modified: sim.modified,
+    p5: sim.p5, fungus: sim.fungus ? toB64(sim.fungus) : undefined, rngFungus: sim.rngFungus.getState(),
   };
 }
 
@@ -95,6 +100,10 @@ export function loadSim(d: SaveData): Sim {
   sim.trenchList = d.trenchList.slice();
   for (let p = 0; p < sim.players; p++) sim.ownedList[p] = [];
   for (let t = 0; t < sim.tileOwner.length; t++) if (sim.tileOwner[t] < sim.players) sim.ownedList[sim.tileOwner[t]].push(t);
+  sim.p5 = !!d.p5;
+  if (d.fungus && sim.fungus) sim.fungus.set(fromB64(d.fungus));
+  if (d.rngFungus) sim.rngFungus.setState(d.rngFungus);
+  for (let p = 0; p < sim.players; p++) sim.rules.refresh(p);
   sim.ownerDirty = true;
   sim.fogForce.fill(1);
   return sim;

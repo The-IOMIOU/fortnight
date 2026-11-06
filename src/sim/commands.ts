@@ -33,13 +33,27 @@ export interface IgniteCommand extends Base { type: 'ignite'; ids: number[]; til
 /** A transport sails next to a shore tile and lets its passengers off. */
 export interface UnloadCommand extends Base { type: 'unload'; ship: number; tile: number }
 
+// ---- Phase 5 ----
+/** Start researching a shared tech node or a node of the player's race tree (paid up front, done at the capital). */
+export interface ResearchCommand extends Base { type: 'research'; node: string }
+export interface CancelResearchCommand extends Base { type: 'cancelResearch' }
+/** Queue gear (GEAR_IDS index) at a forge. */
+export interface CraftCommand extends Base { type: 'craft'; building: number; item: number }
+/** Hand crafted gear to units standing near a forge, barracks or town. */
+export interface EquipCommand extends Base { type: 'equip'; ids: number[]; item: number }
+/** Delvers: go underground or come up. */
+export interface BurrowCommand extends Base { type: 'burrow'; ids: number[]; on: boolean }
+/** Wildbond: tame a wild animal with scouts or workers. */
+export interface TameCommand extends Base { type: 'tame'; ids: number[]; target: number }
+
 /** Turn a test option (F-197) on or off for the issuing player. Never touches resources. */
 export interface TestOptionCommand extends Base { type: 'testOption'; flag: number; on: boolean }
 
 export type Command =
   | MoveCommand | GatherCommand | InteractCommand | PlaceCommand | PlaceLineCommand | TrainCommand | CancelTrainCommand | UpgradeCommand
   | AttackCommand | StopCommand | HoldCommand | RetreatCommand | PatrolCommand | RallyCommand | DemolishCommand | UngarrisonCommand
-  | DigCommand | IgniteCommand | UnloadCommand | TestOptionCommand;
+  | DigCommand | IgniteCommand | UnloadCommand | TestOptionCommand
+  | ResearchCommand | CancelResearchCommand | CraftCommand | EquipCommand | BurrowCommand | TameCommand;
 
 /** A command as sent by a client, before the sim stamps tick/player/seq. */
 export type CommandBody = Command extends infer C ? (C extends Command ? Omit<C, 'tick' | 'player' | 'seq'> : never) : never;

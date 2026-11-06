@@ -1,0 +1,20 @@
+{
+  "id": "windriders",
+  "name": "Windriders",
+  "description": "Nomads of the high winds. Their gliders sail over walls, rivers and straits, and their scouts are the fastest anywhere. Their walls and towers are flimsy and their people slight.",
+  "biome_preference": ["mountain", "plains"],
+  "stat_modifiers": { "gather_speed": 100, "build_speed": 100, "unit_health": 80, "unit_damage": 100, "vision": 110, "movement": 110 },
+  "special_ability": "gliders",
+  "weakness": "poorDefense",
+  "starting_units": { "worker": 3, "scout": 2 },
+  "starting_buildings": ["capital"],
+  "starting_resources": { "food": 200, "wood": 200, "stone": 100, "gold": 0, "carbon": 0, "adamite": 0 },
+  "evolution_tree": [
+    { "id": "aerieCraft", "name": "Aerie craft", "cost": { "wood": 150, "food": 80 }, "ticks": 600, "requires": [], "unlocks": { "buildings": ["aerie"], "units": ["glider"] } },
+    { "id": "thermals", "name": "Riding the thermals", "cost": { "food": 150, "gold": 60 }, "ticks": 900, "requires": ["aerieCraft"], "unlocks": { "stats": { "movement": 10 } } },
+    { "id": "skyLancers", "name": "Sky lancers", "cost": { "food": 250, "wood": 150, "gold": 180 }, "ticks": 1800, "requires": ["thermals"], "unlocks": { "units": ["skyLancer"] }, "capstone": true }
+  ],
+  "unique_units": ["glider", "skyLancer"],
+  "unique_building": "aerie",
+  "bot_hints": { "personalities": ["raider", "expansionist"], "strategy": "Scout everything early, raid workers with gliders, avoid long sieges at home." }
+}

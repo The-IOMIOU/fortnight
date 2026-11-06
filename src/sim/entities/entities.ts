@@ -24,7 +24,10 @@ const FIELDS: [string, Ctor][] = [
   ['hp', Int32Array], ['maxHp', Int32Array], ['morale', Int32Array], ['cooldown', Int32Array], ['lastHit', Int32Array],
   ['weaponTier', Uint8Array], ['armorTier', Uint8Array], ['carrier', Int32Array],
   ['patrolA', Int32Array], ['patrolB', Int32Array], ['rally', Int32Array], ['flowGoal', Int32Array], ['resumeTask', Uint8Array],
+  // Phase 5 (hashed only when Phase 5 rules are in play, so older matches keep their hashes)
+  ['burrowed', Uint8Array], ['ambushUntil', Int32Array], ['restUntil', Int32Array],
 ];
+const P5_FIELDS = new Set(['burrowed', 'ambushUntil', 'restUntil']);
 
 export class Entities {
   capacity: number;
@@ -42,6 +45,7 @@ export class Entities {
   hp!: Int32Array; maxHp!: Int32Array; morale!: Int32Array; cooldown!: Int32Array; lastHit!: Int32Array;
   weaponTier!: Uint8Array; armorTier!: Uint8Array; carrier!: Int32Array;
   patrolA!: Int32Array; patrolB!: Int32Array; rally!: Int32Array; flowGoal!: Int32Array; resumeTask!: Uint8Array;
+  burrowed!: Uint8Array; ambushUntil!: Int32Array; restUntil!: Int32Array;
   /** Path (tile list) per entity; null when none. */
   paths: (number[] | null)[] = [];
   /** Training queue (unit type indices) per building. */
@@ -93,9 +97,9 @@ export class Entities {
   }
 
   /** All typed arrays (used prefix) for hashing. */
-  hashViews(): ArrayBufferView[] {
+  hashViews(phase5 = false): ArrayBufferView[] {
     const n = this.count, self = this as unknown as Record<string, TA>;
-    return FIELDS.map(([name]) => self[name].subarray(0, n));
+    return FIELDS.filter(([name]) => phase5 || !P5_FIELDS.has(name)).map(([name]) => self[name].subarray(0, n));
   }
 
   /** Plain-data snapshot for save files. */
@@ -108,7 +112,7 @@ export class Entities {
   static deserialize(d: ReturnType<Entities['serialize']>): Entities {
     const e = new Entities(d.capacity);
     const self = e as unknown as Record<string, TA>;
-    for (const [name] of FIELDS) self[name].set(d.fields[name]);
+    for (const [name] of FIELDS) if (d.fields[name]) self[name].set(d.fields[name]);
     e.count = d.count; e.paths = d.paths.map((p) => (p ? p.slice() : null)); e.queues = d.queues.map((q) => q.slice()); e.free = d.free.slice();
     return e;
   }

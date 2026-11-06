@@ -1,0 +1,20 @@
+{
+  "id": "anvilborn",
+  "name": "Anvilborn",
+  "description": "Smiths above all. Their forges turn out better weapons and armour for less, and every soldier marches in heavy plate. That plate makes their armies slow.",
+  "biome_preference": ["mountain", "desert"],
+  "stat_modifiers": { "gather_speed": 90, "build_speed": 100, "unit_health": 110, "unit_damage": 100, "vision": 100, "movement": 100 },
+  "special_ability": "masterSmiths",
+  "weakness": "heavyFooted",
+  "starting_units": { "worker": 3, "scout": 1 },
+  "starting_buildings": ["capital"],
+  "starting_resources": { "food": 200, "wood": 200, "stone": 150, "gold": 0, "carbon": 0, "adamite": 0 },
+  "evolution_tree": [
+    { "id": "guildHalls", "name": "Guild halls", "cost": { "stone": 150, "wood": 80 }, "ticks": 600, "requires": [], "unlocks": { "buildings": ["greatForge"], "units": ["ironguard"] } },
+    { "id": "steamworks", "name": "Steamworks", "cost": { "stone": 150, "carbon": 60 }, "ticks": 900, "requires": ["guildHalls"], "unlocks": { "stats": { "build_speed": 10 } } },
+    { "id": "golemcraft", "name": "Golemcraft", "cost": { "wood": 200, "gold": 200, "adamite": 60 }, "ticks": 1800, "requires": ["steamworks"], "unlocks": { "units": ["steamGolem"] }, "capstone": true }
+  ],
+  "unique_units": ["ironguard", "steamGolem"],
+  "unique_building": "greatForge",
+  "bot_hints": { "personalities": ["defender", "merchant"], "strategy": "Research smithing first, gear every soldier, then push slowly with an unbeatable army." }
+}

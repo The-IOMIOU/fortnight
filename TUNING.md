@@ -711,3 +711,621 @@ Presets for the New Game menu. The player can still change every value under "Mo
 | `modes.continental.sea` | mixed | |
 | `modes.continental.continents` | 7 | |
 | `modes.continental.targetMin` | 120 | Played over several sessions with save and resume. |
+
+## Race units (Phase 5, F-096)
+
+Each race unit is trained at its race's unique building once the evolution node that unlocks it is researched. Capstones cost about as much as 5–6 basic soldiers and are worth about as much.
+
+| Constant | Value | Why |
+|---|---|---|
+| `unitTypes.beast.food` | 60 | Wildbond: a tamed (free) or revived animal. Mid-strength melee, a bit faster than a spearman. Cost in food. |
+| `unitTypes.beast.wood` | 0 | Cost in wood. |
+| `unitTypes.beast.gold` | 0 | Cost in gold (charged since Phase 5; before, unit gold costs were shown but never taken). |
+| `unitTypes.beast.trainTicks` | 150 | Training time in ticks. |
+| `unitTypes.beast.pop` | 1 | Housing used. |
+| `unitTypes.beast.speed` | 300 | Fixed-point sub-units per tick on plains (1024 = 1 tile). |
+| `unitTypes.beast.vision` | 6 | Vision radius in tiles. |
+| `unitTypes.beast.hp` | 120 | Hit points. |
+| `unitTypes.beast.attack` | 10 | Damage per hit before modifiers. |
+| `unitTypes.beast.range` | 12 | Reach ×10 tiles (12 = melee). |
+| `unitTypes.beast.cooldown` | 11 | Ticks between hits. |
+| `unitTypes.beast.armor` | 1 | Flat damage reduction per hit. |
+| `unitTypes.beast.vsUnits` | 100 | Damage % against units. |
+| `unitTypes.beast.vsBuildings` | 40 | Damage % against buildings. |
+| `unitTypes.beast.water` | 0 | 1 = ships only (0 for every race unit). |
+| `unitTypes.beast.stealth` | 0 | 1 = hidden like spies (0: race stealth comes from abilities). |
+| `unitTypes.beast.capacity` | 0 | Transport capacity (0). |
+| `unitTypes.warbeast.food` | 90 | Wildbond tier 1: fast heavy melee, between a spearman and a rider. Cost in food. |
+| `unitTypes.warbeast.wood` | 0 | Cost in wood. |
+| `unitTypes.warbeast.gold` | 20 | Cost in gold (charged since Phase 5; before, unit gold costs were shown but never taken). |
+| `unitTypes.warbeast.trainTicks` | 220 | Training time in ticks. |
+| `unitTypes.warbeast.pop` | 2 | Housing used. |
+| `unitTypes.warbeast.speed` | 340 | Fixed-point sub-units per tick on plains (1024 = 1 tile). |
+| `unitTypes.warbeast.vision` | 7 | Vision radius in tiles. |
+| `unitTypes.warbeast.hp` | 220 | Hit points. |
+| `unitTypes.warbeast.attack` | 16 | Damage per hit before modifiers. |
+| `unitTypes.warbeast.range` | 13 | Reach ×10 tiles (12 = melee). |
+| `unitTypes.warbeast.cooldown` | 12 | Ticks between hits. |
+| `unitTypes.warbeast.armor` | 2 | Flat damage reduction per hit. |
+| `unitTypes.warbeast.vsUnits` | 110 | Damage % against units. |
+| `unitTypes.warbeast.vsBuildings` | 60 | Damage % against buildings. |
+| `unitTypes.warbeast.water` | 0 | 1 = ships only (0 for every race unit). |
+| `unitTypes.warbeast.stealth` | 0 | 1 = hidden like spies (0: race stealth comes from abilities). |
+| `unitTypes.warbeast.capacity` | 0 | Transport capacity (0). |
+| `unitTypes.thunderlizard.food` | 300 | Wildbond capstone (long research): a giant reptile worth about 6 spearmen, strong against buildings. Cost in food. |
+| `unitTypes.thunderlizard.wood` | 0 | Cost in wood. |
+| `unitTypes.thunderlizard.gold` | 120 | Cost in gold (charged since Phase 5; before, unit gold costs were shown but never taken). |
+| `unitTypes.thunderlizard.trainTicks` | 600 | Training time in ticks. |
+| `unitTypes.thunderlizard.pop` | 6 | Housing used. |
+| `unitTypes.thunderlizard.speed` | 220 | Fixed-point sub-units per tick on plains (1024 = 1 tile). |
+| `unitTypes.thunderlizard.vision` | 9 | Vision radius in tiles. |
+| `unitTypes.thunderlizard.hp` | 900 | Hit points. |
+| `unitTypes.thunderlizard.attack` | 40 | Damage per hit before modifiers. |
+| `unitTypes.thunderlizard.range` | 15 | Reach ×10 tiles (12 = melee). |
+| `unitTypes.thunderlizard.cooldown` | 18 | Ticks between hits. |
+| `unitTypes.thunderlizard.armor` | 5 | Flat damage reduction per hit. |
+| `unitTypes.thunderlizard.vsUnits` | 120 | Damage % against units. |
+| `unitTypes.thunderlizard.vsBuildings` | 250 | Damage % against buildings. |
+| `unitTypes.thunderlizard.water` | 0 | 1 = ships only (0 for every race unit). |
+| `unitTypes.thunderlizard.stealth` | 0 | 1 = hidden like spies (0: race stealth comes from abilities). |
+| `unitTypes.thunderlizard.capacity` | 0 | Transport capacity (0). |
+| `unitTypes.tideguard.food` | 60 | Deepkin tier 1: a slightly tougher spearman (all Deepkin units walk underwater). Cost in food. |
+| `unitTypes.tideguard.wood` | 20 | Cost in wood. |
+| `unitTypes.tideguard.gold` | 0 | Cost in gold (charged since Phase 5; before, unit gold costs were shown but never taken). |
+| `unitTypes.tideguard.trainTicks` | 160 | Training time in ticks. |
+| `unitTypes.tideguard.pop` | 1 | Housing used. |
+| `unitTypes.tideguard.speed` | 270 | Fixed-point sub-units per tick on plains (1024 = 1 tile). |
+| `unitTypes.tideguard.vision` | 6 | Vision radius in tiles. |
+| `unitTypes.tideguard.hp` | 120 | Hit points. |
+| `unitTypes.tideguard.attack` | 11 | Damage per hit before modifiers. |
+| `unitTypes.tideguard.range` | 12 | Reach ×10 tiles (12 = melee). |
+| `unitTypes.tideguard.cooldown` | 10 | Ticks between hits. |
+| `unitTypes.tideguard.armor` | 2 | Flat damage reduction per hit. |
+| `unitTypes.tideguard.vsUnits` | 100 | Damage % against units. |
+| `unitTypes.tideguard.vsBuildings` | 40 | Damage % against buildings. |
+| `unitTypes.tideguard.water` | 0 | 1 = ships only (0 for every race unit). |
+| `unitTypes.tideguard.stealth` | 0 | 1 = hidden like spies (0: race stealth comes from abilities). |
+| `unitTypes.tideguard.capacity` | 0 | Transport capacity (0). |
+| `unitTypes.leviathan.food` | 250 | Deepkin capstone: huge deep-sea beast; with amphibious movement it crosses straits on its own. Cost in food. |
+| `unitTypes.leviathan.wood` | 0 | Cost in wood. |
+| `unitTypes.leviathan.gold` | 100 | Cost in gold (charged since Phase 5; before, unit gold costs were shown but never taken). |
+| `unitTypes.leviathan.trainTicks` | 600 | Training time in ticks. |
+| `unitTypes.leviathan.pop` | 6 | Housing used. |
+| `unitTypes.leviathan.speed` | 260 | Fixed-point sub-units per tick on plains (1024 = 1 tile). |
+| `unitTypes.leviathan.vision` | 9 | Vision radius in tiles. |
+| `unitTypes.leviathan.hp` | 850 | Hit points. |
+| `unitTypes.leviathan.attack` | 34 | Damage per hit before modifiers. |
+| `unitTypes.leviathan.range` | 14 | Reach ×10 tiles (12 = melee). |
+| `unitTypes.leviathan.cooldown` | 16 | Ticks between hits. |
+| `unitTypes.leviathan.armor` | 4 | Flat damage reduction per hit. |
+| `unitTypes.leviathan.vsUnits` | 110 | Damage % against units. |
+| `unitTypes.leviathan.vsBuildings` | 200 | Damage % against buildings. |
+| `unitTypes.leviathan.water` | 0 | 1 = ships only (0 for every race unit). |
+| `unitTypes.leviathan.stealth` | 0 | 1 = hidden like spies (0: race stealth comes from abilities). |
+| `unitTypes.leviathan.capacity` | 0 | Transport capacity (0). |
+| `unitTypes.burrower.food` | 55 | Delvers tier 1: tough infantry; burrowing is what makes Delvers special, not this unit. Cost in food. |
+| `unitTypes.burrower.wood` | 15 | Cost in wood. |
+| `unitTypes.burrower.gold` | 0 | Cost in gold (charged since Phase 5; before, unit gold costs were shown but never taken). |
+| `unitTypes.burrower.trainTicks` | 160 | Training time in ticks. |
+| `unitTypes.burrower.pop` | 1 | Housing used. |
+| `unitTypes.burrower.speed` | 250 | Fixed-point sub-units per tick on plains (1024 = 1 tile). |
+| `unitTypes.burrower.vision` | 5 | Vision radius in tiles. |
+| `unitTypes.burrower.hp` | 125 | Hit points. |
+| `unitTypes.burrower.attack` | 12 | Damage per hit before modifiers. |
+| `unitTypes.burrower.range` | 12 | Reach ×10 tiles (12 = melee). |
+| `unitTypes.burrower.cooldown` | 10 | Ticks between hits. |
+| `unitTypes.burrower.armor` | 2 | Flat damage reduction per hit. |
+| `unitTypes.burrower.vsUnits` | 100 | Damage % against units. |
+| `unitTypes.burrower.vsBuildings` | 40 | Damage % against buildings. |
+| `unitTypes.burrower.water` | 0 | 1 = ships only (0 for every race unit). |
+| `unitTypes.burrower.stealth` | 0 | 1 = hidden like spies (0: race stealth comes from abilities). |
+| `unitTypes.burrower.capacity` | 0 | Transport capacity (0). |
+| `unitTypes.deepDrill.food` | 0 | Delvers capstone: siege engine (6× a spearman against buildings), nearly useless against soldiers. Cost in food. |
+| `unitTypes.deepDrill.wood` | 200 | Cost in wood. |
+| `unitTypes.deepDrill.gold` | 80 | Cost in gold (charged since Phase 5; before, unit gold costs were shown but never taken). |
+| `unitTypes.deepDrill.trainTicks` | 500 | Training time in ticks. |
+| `unitTypes.deepDrill.pop` | 4 | Housing used. |
+| `unitTypes.deepDrill.speed` | 160 | Fixed-point sub-units per tick on plains (1024 = 1 tile). |
+| `unitTypes.deepDrill.vision` | 4 | Vision radius in tiles. |
+| `unitTypes.deepDrill.hp` | 500 | Hit points. |
+| `unitTypes.deepDrill.attack` | 45 | Damage per hit before modifiers. |
+| `unitTypes.deepDrill.range` | 13 | Reach ×10 tiles (12 = melee). |
+| `unitTypes.deepDrill.cooldown` | 22 | Ticks between hits. |
+| `unitTypes.deepDrill.armor` | 6 | Flat damage reduction per hit. |
+| `unitTypes.deepDrill.vsUnits` | 30 | Damage % against units. |
+| `unitTypes.deepDrill.vsBuildings` | 600 | Damage % against buildings. |
+| `unitTypes.deepDrill.water` | 0 | 1 = ships only (0 for every race unit). |
+| `unitTypes.deepDrill.stealth` | 0 | 1 = hidden like spies (0: race stealth comes from abilities). |
+| `unitTypes.deepDrill.capacity` | 0 | Transport capacity (0). |
+| `unitTypes.sporeling.food` | 30 | Mycelids tier 1: cheap and fast to train to offset slow growth, but fragile. Cost in food. |
+| `unitTypes.sporeling.wood` | 0 | Cost in wood. |
+| `unitTypes.sporeling.gold` | 0 | Cost in gold (charged since Phase 5; before, unit gold costs were shown but never taken). |
+| `unitTypes.sporeling.trainTicks` | 90 | Training time in ticks. |
+| `unitTypes.sporeling.pop` | 1 | Housing used. |
+| `unitTypes.sporeling.speed` | 270 | Fixed-point sub-units per tick on plains (1024 = 1 tile). |
+| `unitTypes.sporeling.vision` | 5 | Vision radius in tiles. |
+| `unitTypes.sporeling.hp` | 50 | Hit points. |
+| `unitTypes.sporeling.attack` | 7 | Damage per hit before modifiers. |
+| `unitTypes.sporeling.range` | 12 | Reach ×10 tiles (12 = melee). |
+| `unitTypes.sporeling.cooldown` | 9 | Ticks between hits. |
+| `unitTypes.sporeling.armor` | 0 | Flat damage reduction per hit. |
+| `unitTypes.sporeling.vsUnits` | 100 | Damage % against units. |
+| `unitTypes.sporeling.vsBuildings` | 40 | Damage % against buildings. |
+| `unitTypes.sporeling.water` | 0 | 1 = ships only (0 for every race unit). |
+| `unitTypes.sporeling.stealth` | 0 | 1 = hidden like spies (0: race stealth comes from abilities). |
+| `unitTypes.sporeling.capacity` | 0 | Transport capacity (0). |
+| `unitTypes.bloomHulk.food` | 250 | Mycelids capstone: slow, massive brute. Cost in food. |
+| `unitTypes.bloomHulk.wood` | 100 | Cost in wood. |
+| `unitTypes.bloomHulk.gold` | 60 | Cost in gold (charged since Phase 5; before, unit gold costs were shown but never taken). |
+| `unitTypes.bloomHulk.trainTicks` | 550 | Training time in ticks. |
+| `unitTypes.bloomHulk.pop` | 5 | Housing used. |
+| `unitTypes.bloomHulk.speed` | 180 | Fixed-point sub-units per tick on plains (1024 = 1 tile). |
+| `unitTypes.bloomHulk.vision` | 6 | Vision radius in tiles. |
+| `unitTypes.bloomHulk.hp` | 800 | Hit points. |
+| `unitTypes.bloomHulk.attack` | 30 | Damage per hit before modifiers. |
+| `unitTypes.bloomHulk.range` | 14 | Reach ×10 tiles (12 = melee). |
+| `unitTypes.bloomHulk.cooldown` | 18 | Ticks between hits. |
+| `unitTypes.bloomHulk.armor` | 3 | Flat damage reduction per hit. |
+| `unitTypes.bloomHulk.vsUnits` | 100 | Damage % against units. |
+| `unitTypes.bloomHulk.vsBuildings` | 150 | Damage % against buildings. |
+| `unitTypes.bloomHulk.water` | 0 | 1 = ships only (0 for every race unit). |
+| `unitTypes.bloomHulk.stealth` | 0 | 1 = hidden like spies (0: race stealth comes from abilities). |
+| `unitTypes.bloomHulk.capacity` | 0 | Transport capacity (0). |
+| `unitTypes.glider.food` | 50 | Windriders tier 1: fragile ranged flier; range 40 so it can harass from beyond melee reach. Cost in food. |
+| `unitTypes.glider.wood` | 40 | Cost in wood. |
+| `unitTypes.glider.gold` | 0 | Cost in gold (charged since Phase 5; before, unit gold costs were shown but never taken). |
+| `unitTypes.glider.trainTicks` | 170 | Training time in ticks. |
+| `unitTypes.glider.pop` | 1 | Housing used. |
+| `unitTypes.glider.speed` | 420 | Fixed-point sub-units per tick on plains (1024 = 1 tile). |
+| `unitTypes.glider.vision` | 10 | Vision radius in tiles. |
+| `unitTypes.glider.hp` | 60 | Hit points. |
+| `unitTypes.glider.attack` | 8 | Damage per hit before modifiers. |
+| `unitTypes.glider.range` | 40 | Reach ×10 tiles (12 = melee). |
+| `unitTypes.glider.cooldown` | 14 | Ticks between hits. |
+| `unitTypes.glider.armor` | 0 | Flat damage reduction per hit. |
+| `unitTypes.glider.vsUnits` | 100 | Damage % against units. |
+| `unitTypes.glider.vsBuildings` | 20 | Damage % against buildings. |
+| `unitTypes.glider.water` | 0 | 1 = ships only (0 for every race unit). |
+| `unitTypes.glider.stealth` | 0 | 1 = hidden like spies (0: race stealth comes from abilities). |
+| `unitTypes.glider.capacity` | 0 | Transport capacity (0). |
+| `unitTypes.skyLancer.food` | 120 | Windriders capstone: heavy flying lancer. Cost in food. |
+| `unitTypes.skyLancer.wood` | 60 | Cost in wood. |
+| `unitTypes.skyLancer.gold` | 60 | Cost in gold (charged since Phase 5; before, unit gold costs were shown but never taken). |
+| `unitTypes.skyLancer.trainTicks` | 350 | Training time in ticks. |
+| `unitTypes.skyLancer.pop` | 3 | Housing used. |
+| `unitTypes.skyLancer.speed` | 440 | Fixed-point sub-units per tick on plains (1024 = 1 tile). |
+| `unitTypes.skyLancer.vision` | 10 | Vision radius in tiles. |
+| `unitTypes.skyLancer.hp` | 200 | Hit points. |
+| `unitTypes.skyLancer.attack` | 24 | Damage per hit before modifiers. |
+| `unitTypes.skyLancer.range` | 14 | Reach ×10 tiles (12 = melee). |
+| `unitTypes.skyLancer.cooldown` | 14 | Ticks between hits. |
+| `unitTypes.skyLancer.armor` | 1 | Flat damage reduction per hit. |
+| `unitTypes.skyLancer.vsUnits` | 110 | Damage % against units. |
+| `unitTypes.skyLancer.vsBuildings` | 40 | Damage % against buildings. |
+| `unitTypes.skyLancer.water` | 0 | 1 = ships only (0 for every race unit). |
+| `unitTypes.skyLancer.stealth` | 0 | 1 = hidden like spies (0: race stealth comes from abilities). |
+| `unitTypes.skyLancer.capacity` | 0 | Transport capacity (0). |
+| `unitTypes.ironguard.food` | 60 | Anvilborn tier 1: armour 4, the best-protected basic infantry; benefits most from gear. Cost in food. |
+| `unitTypes.ironguard.wood` | 10 | Cost in wood. |
+| `unitTypes.ironguard.gold` | 20 | Cost in gold (charged since Phase 5; before, unit gold costs were shown but never taken). |
+| `unitTypes.ironguard.trainTicks` | 180 | Training time in ticks. |
+| `unitTypes.ironguard.pop` | 1 | Housing used. |
+| `unitTypes.ironguard.speed` | 240 | Fixed-point sub-units per tick on plains (1024 = 1 tile). |
+| `unitTypes.ironguard.vision` | 6 | Vision radius in tiles. |
+| `unitTypes.ironguard.hp` | 150 | Hit points. |
+| `unitTypes.ironguard.attack` | 13 | Damage per hit before modifiers. |
+| `unitTypes.ironguard.range` | 12 | Reach ×10 tiles (12 = melee). |
+| `unitTypes.ironguard.cooldown` | 10 | Ticks between hits. |
+| `unitTypes.ironguard.armor` | 4 | Flat damage reduction per hit. |
+| `unitTypes.ironguard.vsUnits` | 100 | Damage % against units. |
+| `unitTypes.ironguard.vsBuildings` | 40 | Damage % against buildings. |
+| `unitTypes.ironguard.water` | 0 | 1 = ships only (0 for every race unit). |
+| `unitTypes.ironguard.stealth` | 0 | 1 = hidden like spies (0: race stealth comes from abilities). |
+| `unitTypes.ironguard.capacity` | 0 | Transport capacity (0). |
+| `unitTypes.steamGolem.food` | 0 | Anvilborn capstone: walking siege engine with armour 8. Cost in food. |
+| `unitTypes.steamGolem.wood` | 150 | Cost in wood. |
+| `unitTypes.steamGolem.gold` | 150 | Cost in gold (charged since Phase 5; before, unit gold costs were shown but never taken). |
+| `unitTypes.steamGolem.trainTicks` | 600 | Training time in ticks. |
+| `unitTypes.steamGolem.pop` | 6 | Housing used. |
+| `unitTypes.steamGolem.speed` | 170 | Fixed-point sub-units per tick on plains (1024 = 1 tile). |
+| `unitTypes.steamGolem.vision` | 6 | Vision radius in tiles. |
+| `unitTypes.steamGolem.hp` | 1000 | Hit points. |
+| `unitTypes.steamGolem.attack` | 38 | Damage per hit before modifiers. |
+| `unitTypes.steamGolem.range` | 14 | Reach ×10 tiles (12 = melee). |
+| `unitTypes.steamGolem.cooldown` | 18 | Ticks between hits. |
+| `unitTypes.steamGolem.armor` | 8 | Flat damage reduction per hit. |
+| `unitTypes.steamGolem.vsUnits` | 100 | Damage % against units. |
+| `unitTypes.steamGolem.vsBuildings` | 200 | Damage % against buildings. |
+| `unitTypes.steamGolem.water` | 0 | 1 = ships only (0 for every race unit). |
+| `unitTypes.steamGolem.stealth` | 0 | 1 = hidden like spies (0: race stealth comes from abilities). |
+| `unitTypes.steamGolem.capacity` | 0 | Transport capacity (0). |
+| `unitTypes.bogStalker.food` | 50 | Fenfolk tier 1: quick skirmisher; best in swamps where it is hidden. Cost in food. |
+| `unitTypes.bogStalker.wood` | 20 | Cost in wood. |
+| `unitTypes.bogStalker.gold` | 0 | Cost in gold (charged since Phase 5; before, unit gold costs were shown but never taken). |
+| `unitTypes.bogStalker.trainTicks` | 150 | Training time in ticks. |
+| `unitTypes.bogStalker.pop` | 1 | Housing used. |
+| `unitTypes.bogStalker.speed` | 300 | Fixed-point sub-units per tick on plains (1024 = 1 tile). |
+| `unitTypes.bogStalker.vision` | 7 | Vision radius in tiles. |
+| `unitTypes.bogStalker.hp` | 90 | Hit points. |
+| `unitTypes.bogStalker.attack` | 12 | Damage per hit before modifiers. |
+| `unitTypes.bogStalker.range` | 12 | Reach ×10 tiles (12 = melee). |
+| `unitTypes.bogStalker.cooldown` | 10 | Ticks between hits. |
+| `unitTypes.bogStalker.armor` | 1 | Flat damage reduction per hit. |
+| `unitTypes.bogStalker.vsUnits` | 100 | Damage % against units. |
+| `unitTypes.bogStalker.vsBuildings` | 40 | Damage % against buildings. |
+| `unitTypes.bogStalker.water` | 0 | 1 = ships only (0 for every race unit). |
+| `unitTypes.bogStalker.stealth` | 0 | 1 = hidden like spies (0: race stealth comes from abilities). |
+| `unitTypes.bogStalker.capacity` | 0 | Transport capacity (0). |
+| `unitTypes.mireHorror.food` | 260 | Fenfolk capstone: bog monster. Cost in food. |
+| `unitTypes.mireHorror.wood` | 0 | Cost in wood. |
+| `unitTypes.mireHorror.gold` | 90 | Cost in gold (charged since Phase 5; before, unit gold costs were shown but never taken). |
+| `unitTypes.mireHorror.trainTicks` | 550 | Training time in ticks. |
+| `unitTypes.mireHorror.pop` | 5 | Housing used. |
+| `unitTypes.mireHorror.speed` | 230 | Fixed-point sub-units per tick on plains (1024 = 1 tile). |
+| `unitTypes.mireHorror.vision` | 7 | Vision radius in tiles. |
+| `unitTypes.mireHorror.hp` | 750 | Hit points. |
+| `unitTypes.mireHorror.attack` | 32 | Damage per hit before modifiers. |
+| `unitTypes.mireHorror.range` | 14 | Reach ×10 tiles (12 = melee). |
+| `unitTypes.mireHorror.cooldown` | 16 | Ticks between hits. |
+| `unitTypes.mireHorror.armor` | 3 | Flat damage reduction per hit. |
+| `unitTypes.mireHorror.vsUnits` | 100 | Damage % against units. |
+| `unitTypes.mireHorror.vsBuildings` | 150 | Damage % against buildings. |
+| `unitTypes.mireHorror.water` | 0 | 1 = ships only (0 for every race unit). |
+| `unitTypes.mireHorror.stealth` | 0 | 1 = hidden like spies (0: race stealth comes from abilities). |
+| `unitTypes.mireHorror.capacity` | 0 | Transport capacity (0). |
+| `unitTypes.frostWarden.food` | 60 | Rimeborn tier 1: hardy infantry (armour 3). Cost in food. |
+| `unitTypes.frostWarden.wood` | 20 | Cost in wood. |
+| `unitTypes.frostWarden.gold` | 0 | Cost in gold (charged since Phase 5; before, unit gold costs were shown but never taken). |
+| `unitTypes.frostWarden.trainTicks` | 170 | Training time in ticks. |
+| `unitTypes.frostWarden.pop` | 1 | Housing used. |
+| `unitTypes.frostWarden.speed` | 260 | Fixed-point sub-units per tick on plains (1024 = 1 tile). |
+| `unitTypes.frostWarden.vision` | 6 | Vision radius in tiles. |
+| `unitTypes.frostWarden.hp` | 130 | Hit points. |
+| `unitTypes.frostWarden.attack` | 12 | Damage per hit before modifiers. |
+| `unitTypes.frostWarden.range` | 12 | Reach ×10 tiles (12 = melee). |
+| `unitTypes.frostWarden.cooldown` | 10 | Ticks between hits. |
+| `unitTypes.frostWarden.armor` | 3 | Flat damage reduction per hit. |
+| `unitTypes.frostWarden.vsUnits` | 100 | Damage % against units. |
+| `unitTypes.frostWarden.vsBuildings` | 40 | Damage % against buildings. |
+| `unitTypes.frostWarden.water` | 0 | 1 = ships only (0 for every race unit). |
+| `unitTypes.frostWarden.stealth` | 0 | 1 = hidden like spies (0: race stealth comes from abilities). |
+| `unitTypes.frostWarden.capacity` | 0 | Transport capacity (0). |
+| `unitTypes.mammoth.food` | 300 | Rimeborn capstone: woolly giant that tramples armies and gates. Cost in food. |
+| `unitTypes.mammoth.wood` | 0 | Cost in wood. |
+| `unitTypes.mammoth.gold` | 80 | Cost in gold (charged since Phase 5; before, unit gold costs were shown but never taken). |
+| `unitTypes.mammoth.trainTicks` | 600 | Training time in ticks. |
+| `unitTypes.mammoth.pop` | 6 | Housing used. |
+| `unitTypes.mammoth.speed` | 230 | Fixed-point sub-units per tick on plains (1024 = 1 tile). |
+| `unitTypes.mammoth.vision` | 7 | Vision radius in tiles. |
+| `unitTypes.mammoth.hp` | 950 | Hit points. |
+| `unitTypes.mammoth.attack` | 36 | Damage per hit before modifiers. |
+| `unitTypes.mammoth.range` | 15 | Reach ×10 tiles (12 = melee). |
+| `unitTypes.mammoth.cooldown` | 18 | Ticks between hits. |
+| `unitTypes.mammoth.armor` | 4 | Flat damage reduction per hit. |
+| `unitTypes.mammoth.vsUnits` | 110 | Damage % against units. |
+| `unitTypes.mammoth.vsBuildings` | 220 | Damage % against buildings. |
+| `unitTypes.mammoth.water` | 0 | 1 = ships only (0 for every race unit). |
+| `unitTypes.mammoth.stealth` | 0 | 1 = hidden like spies (0: race stealth comes from abilities). |
+| `unitTypes.mammoth.capacity` | 0 | Transport capacity (0). |
+
+## Phase 5 buildings (F-044, F-058, F-096)
+
+Costs sit between a barracks and a workshop: they are a mid-game investment.
+
+| Constant | Value | Why |
+|---|---|---|
+| `buildingTypes.forge.size` | 2 | Shared, needs Smithing: crafts alloy, tools, weapons and armour (F-058). Footprint in tiles. |
+| `buildingTypes.forge.wood` | 120 | Cost in wood. |
+| `buildingTypes.forge.stone` | 80 | Cost in stone. |
+| `buildingTypes.forge.buildPoints` | 350 | Work needed to build. |
+| `buildingTypes.forge.housing` | 0 | Housing provided. |
+| `buildingTypes.forge.territory` | 0 | Territory radius (0 = none). |
+| `buildingTypes.forge.vision` | 4 | Vision radius. |
+| `buildingTypes.forge.hp` | 900 | Hit points. |
+| `buildingTypes.forge.attack` | 0 | Arrow damage (0). |
+| `buildingTypes.forge.range` | 0 | Arrow range (0). |
+| `buildingTypes.forge.cooldown` | 0 | Arrow cooldown (0). |
+| `buildingTypes.forge.garrison` | 0 | Garrison slots (0). |
+| `buildingTypes.pier.size` | 2 | Shared, needs Piers: a deck on open water that land units can stand on (F-044). Footprint in tiles. |
+| `buildingTypes.pier.wood` | 60 | Cost in wood. |
+| `buildingTypes.pier.stone` | 0 | Cost in stone. |
+| `buildingTypes.pier.buildPoints` | 200 | Work needed to build. |
+| `buildingTypes.pier.housing` | 0 | Housing provided. |
+| `buildingTypes.pier.territory` | 0 | Territory radius (0 = none). |
+| `buildingTypes.pier.vision` | 5 | Vision radius. |
+| `buildingTypes.pier.hp` | 400 | Hit points. |
+| `buildingTypes.pier.attack` | 0 | Arrow damage (0). |
+| `buildingTypes.pier.range` | 0 | Arrow range (0). |
+| `buildingTypes.pier.cooldown` | 0 | Arrow cooldown (0). |
+| `buildingTypes.pier.garrison` | 0 | Garrison slots (0). |
+| `buildingTypes.tidepool.size` | 2 | Deepkin unique building: must touch water. Footprint in tiles. |
+| `buildingTypes.tidepool.wood` | 100 | Cost in wood. |
+| `buildingTypes.tidepool.stone` | 40 | Cost in stone. |
+| `buildingTypes.tidepool.buildPoints` | 350 | Work needed to build. |
+| `buildingTypes.tidepool.housing` | 0 | Housing provided. |
+| `buildingTypes.tidepool.territory` | 0 | Territory radius (0 = none). |
+| `buildingTypes.tidepool.vision` | 4 | Vision radius. |
+| `buildingTypes.tidepool.hp` | 900 | Hit points. |
+| `buildingTypes.tidepool.attack` | 0 | Arrow damage (0). |
+| `buildingTypes.tidepool.range` | 0 | Arrow range (0). |
+| `buildingTypes.tidepool.cooldown` | 0 | Arrow cooldown (0). |
+| `buildingTypes.tidepool.garrison` | 0 | Garrison slots (0). |
+| `buildingTypes.beastPen.size` | 2 | Wildbond unique building. Footprint in tiles. |
+| `buildingTypes.beastPen.wood` | 120 | Cost in wood. |
+| `buildingTypes.beastPen.stone` | 20 | Cost in stone. |
+| `buildingTypes.beastPen.buildPoints` | 300 | Work needed to build. |
+| `buildingTypes.beastPen.housing` | 0 | Housing provided. |
+| `buildingTypes.beastPen.territory` | 0 | Territory radius (0 = none). |
+| `buildingTypes.beastPen.vision` | 4 | Vision radius. |
+| `buildingTypes.beastPen.hp` | 800 | Hit points. |
+| `buildingTypes.beastPen.attack` | 0 | Arrow damage (0). |
+| `buildingTypes.beastPen.range` | 0 | Arrow range (0). |
+| `buildingTypes.beastPen.cooldown` | 0 | Arrow cooldown (0). |
+| `buildingTypes.beastPen.garrison` | 0 | Garrison slots (0). |
+| `buildingTypes.tunnelHall.size` | 2 | Delvers unique building; stone-heavy and sturdy. Footprint in tiles. |
+| `buildingTypes.tunnelHall.wood` | 80 | Cost in wood. |
+| `buildingTypes.tunnelHall.stone` | 120 | Cost in stone. |
+| `buildingTypes.tunnelHall.buildPoints` | 400 | Work needed to build. |
+| `buildingTypes.tunnelHall.housing` | 0 | Housing provided. |
+| `buildingTypes.tunnelHall.territory` | 0 | Territory radius (0 = none). |
+| `buildingTypes.tunnelHall.vision` | 4 | Vision radius. |
+| `buildingTypes.tunnelHall.hp` | 1100 | Hit points. |
+| `buildingTypes.tunnelHall.attack` | 0 | Arrow damage (0). |
+| `buildingTypes.tunnelHall.range` | 0 | Arrow range (0). |
+| `buildingTypes.tunnelHall.cooldown` | 0 | Arrow cooldown (0). |
+| `buildingTypes.tunnelHall.garrison` | 0 | Garrison slots (0). |
+| `buildingTypes.sporeTower.size` | 1 | Mycelids unique building: spreads fungus faster than a town (`races.abilities.fungalSpread.towerTries`). Footprint in tiles. |
+| `buildingTypes.sporeTower.wood` | 60 | Cost in wood. |
+| `buildingTypes.sporeTower.stone` | 40 | Cost in stone. |
+| `buildingTypes.sporeTower.buildPoints` | 250 | Work needed to build. |
+| `buildingTypes.sporeTower.housing` | 0 | Housing provided. |
+| `buildingTypes.sporeTower.territory` | 0 | Territory radius (0 = none). |
+| `buildingTypes.sporeTower.vision` | 6 | Vision radius. |
+| `buildingTypes.sporeTower.hp` | 500 | Hit points. |
+| `buildingTypes.sporeTower.attack` | 0 | Arrow damage (0). |
+| `buildingTypes.sporeTower.range` | 0 | Arrow range (0). |
+| `buildingTypes.sporeTower.cooldown` | 0 | Arrow cooldown (0). |
+| `buildingTypes.sporeTower.garrison` | 0 | Garrison slots (0). |
+| `buildingTypes.aerie.size` | 2 | Windriders unique building; vision 7 for spotting. Footprint in tiles. |
+| `buildingTypes.aerie.wood` | 140 | Cost in wood. |
+| `buildingTypes.aerie.stone` | 20 | Cost in stone. |
+| `buildingTypes.aerie.buildPoints` | 350 | Work needed to build. |
+| `buildingTypes.aerie.housing` | 0 | Housing provided. |
+| `buildingTypes.aerie.territory` | 0 | Territory radius (0 = none). |
+| `buildingTypes.aerie.vision` | 7 | Vision radius. |
+| `buildingTypes.aerie.hp` | 700 | Hit points. |
+| `buildingTypes.aerie.attack` | 0 | Arrow damage (0). |
+| `buildingTypes.aerie.range` | 0 | Arrow range (0). |
+| `buildingTypes.aerie.cooldown` | 0 | Arrow cooldown (0). |
+| `buildingTypes.aerie.garrison` | 0 | Garrison slots (0). |
+| `buildingTypes.greatForge.size` | 2 | Anvilborn unique building; also counts as an equipping site. Footprint in tiles. |
+| `buildingTypes.greatForge.wood` | 100 | Cost in wood. |
+| `buildingTypes.greatForge.stone` | 140 | Cost in stone. |
+| `buildingTypes.greatForge.buildPoints` | 450 | Work needed to build. |
+| `buildingTypes.greatForge.housing` | 0 | Housing provided. |
+| `buildingTypes.greatForge.territory` | 0 | Territory radius (0 = none). |
+| `buildingTypes.greatForge.vision` | 4 | Vision radius. |
+| `buildingTypes.greatForge.hp` | 1200 | Hit points. |
+| `buildingTypes.greatForge.attack` | 0 | Arrow damage (0). |
+| `buildingTypes.greatForge.range` | 0 | Arrow range (0). |
+| `buildingTypes.greatForge.cooldown` | 0 | Arrow cooldown (0). |
+| `buildingTypes.greatForge.garrison` | 0 | Garrison slots (0). |
+| `buildingTypes.stiltHall.size` | 2 | Fenfolk unique building. Footprint in tiles. |
+| `buildingTypes.stiltHall.wood` | 140 | Cost in wood. |
+| `buildingTypes.stiltHall.stone` | 0 | Cost in stone. |
+| `buildingTypes.stiltHall.buildPoints` | 300 | Work needed to build. |
+| `buildingTypes.stiltHall.housing` | 0 | Housing provided. |
+| `buildingTypes.stiltHall.territory` | 0 | Territory radius (0 = none). |
+| `buildingTypes.stiltHall.vision` | 4 | Vision radius. |
+| `buildingTypes.stiltHall.hp` | 800 | Hit points. |
+| `buildingTypes.stiltHall.attack` | 0 | Arrow damage (0). |
+| `buildingTypes.stiltHall.range` | 0 | Arrow range (0). |
+| `buildingTypes.stiltHall.cooldown` | 0 | Arrow cooldown (0). |
+| `buildingTypes.stiltHall.garrison` | 0 | Garrison slots (0). |
+| `buildingTypes.iceLodge.size` | 2 | Rimeborn unique building: a fishing hut that also counts sea ice, up to 3 workers. Footprint in tiles. |
+| `buildingTypes.iceLodge.wood` | 120 | Cost in wood. |
+| `buildingTypes.iceLodge.stone` | 20 | Cost in stone. |
+| `buildingTypes.iceLodge.buildPoints` | 300 | Work needed to build. |
+| `buildingTypes.iceLodge.housing` | 0 | Housing provided. |
+| `buildingTypes.iceLodge.territory` | 0 | Territory radius (0 = none). |
+| `buildingTypes.iceLodge.vision` | 5 | Vision radius. |
+| `buildingTypes.iceLodge.hp` | 800 | Hit points. |
+| `buildingTypes.iceLodge.attack` | 0 | Arrow damage (0). |
+| `buildingTypes.iceLodge.range` | 0 | Arrow range (0). |
+| `buildingTypes.iceLodge.cooldown` | 0 | Arrow cooldown (0). |
+| `buildingTypes.iceLodge.garrison` | 0 | Garrison slots (0). |
+| `buildingTypes.iceLodge.maxWorkers` | 3 | Workers that can fish here. |
+
+## Races and ability modules (F-090–F-112)
+
+Point rule (owner amendment 3): stat changes score 1 point per `races.statPctPerPoint` % away from 100 (above = +, below = −); each ability module has the `points` below (positive = power, negative = weakness). A race is valid only when everything adds up to exactly 0.
+
+| Constant | Value | Why |
+|---|---|---|
+| `races.statPctPerPoint` | 5 | Stats move in 5 % steps; each step is worth 1 point. |
+| `races.statMin` | 50 | No stat below half normal: a race must still be playable. |
+| `races.statMax` | 150 | No stat above 1.5× normal. |
+| `races.abilities.amphibious.points` | 8 | Big: armies cross straits without transports. |
+| `races.abilities.amphibious.waterMoveCost` | 14 | Path cost of a water tile (land is 10) — slightly dearer than plains so paths prefer land when it is close. |
+| `races.abilities.amphibious.waterSpeedPct` | 130 | Speed in water: 30 % faster than on plains. |
+| `races.abilities.sunburn.points` | -8 | Equal and opposite to amphibious: land expansion is limited to the night and armies burn on enemy land by day. |
+| `races.abilities.sunburn.everyTicks` | 20 | Damage interval (2 s). |
+| `races.abilities.sunburn.damage` | 2 | HP lost per interval outside own territory by day: a spearman (110 HP) survives about 18 minutes, a worker about 7 — painful but not instantly fatal. |
+| `races.abilities.tameAnimals.points` | 6 | Free units from wildlife, plus the beast tree. |
+| `races.abilities.tameAnimals.tameTicks` | 50 | Ticks a scout must stay next to the animal (5 s). |
+| `races.abilities.tameAnimals.range` | 2 | Tiles from the animal that count as next to it. |
+| `races.abilities.frailBuildings.points` | -6 | Raids hurt much more. |
+| `races.abilities.frailBuildings.hpPct` | 70 | Building HP 70 %. |
+| `races.abilities.tunneling.points` | 8 | Walls and moats stop working against them. |
+| `races.abilities.tunneling.speedPct` | 60 | Underground speed 60 %. |
+| `races.abilities.tunneling.ambushPct` | 150 | Damage 150 % right after surfacing. |
+| `races.abilities.tunneling.ambushTicks` | 30 | Ambush window after surfacing (3 s). |
+| `races.abilities.tunneling.surfaceTicks` | 10 | Coming up takes 1 s: no attack, and the ambush window starts after it. |
+| `races.abilities.poorSailors.points` | -6 | Most maps need ships to reach other continents. |
+| `races.abilities.poorSailors.navalHpPct` | 60 | Ship HP 60 %. |
+| `races.abilities.poorSailors.navalAttackPct` | 70 | Ship damage 70 %. |
+| `races.abilities.fungalSpread.points` | 8 | Slow, map-wide pressure on neighbours. |
+| `races.abilities.fungalSpread.spreadEveryTicks` | 30 | Spread attempts every 3 s. |
+| `races.abilities.fungalSpread.spreadTries` | 3 | Attempts per town each time. |
+| `races.abilities.fungalSpread.towerTries` | 4 | Attempts per spore tower. |
+| `races.abilities.fungalSpread.poisonEveryTicks` | 20 | Poison interval (2 s). |
+| `races.abilities.fungalSpread.poisonDamage` | 2 | HP lost per interval by enemy units on the fungus. |
+| `races.abilities.fungalSpread.farmYieldPct` | 50 | Enemy farm tiles on fungus yield 50 %. |
+| `races.abilities.fungalSpread.ownTerritoryOnlyStart` | 1 | Reserved: 1 = the start patch covers only the capital area (current behaviour). |
+| `races.abilities.slowGrowth.points` | -4 | Smaller penalty than most, because Mycelids are also fragile (unit_health 80). |
+| `races.abilities.slowGrowth.trainTimePct` | 140 | Training takes 140 %. |
+| `races.abilities.gliders.points` | 6 | Fly over walls, rivers and straits. |
+| `races.abilities.gliders.scoutSpeedPct` | 130 | Scouts 30 % faster. |
+| `races.abilities.gliders.glideTiles` | 16 | Longest single flight; a flight always ends on land. |
+| `races.abilities.gliders.restTicks` | 50 | Rest after each long flight (5 s). |
+| `races.abilities.poorDefense.points` | -6 | Turtling does not work for them. |
+| `races.abilities.poorDefense.defenceHpPct` | 60 | Walls, gates and towers have 60 % HP. |
+| `races.abilities.poorDefense.towerAttackPct` | 60 | Towers shoot for 60 %. |
+| `races.abilities.masterSmiths.points` | 6 | Gear is the strongest late-game multiplier. |
+| `races.abilities.masterSmiths.gearCostPct` | 60 | Gear costs 60 % (rounded up). |
+| `races.abilities.masterSmiths.gearTierBonus` | 1 | Weapons and armour count one tier higher. |
+| `races.abilities.heavyFooted.points` | -6 | Slow armies are easy to outmanoeuvre. |
+| `races.abilities.heavyFooted.militarySpeedPct` | 80 | Soldiers move at 80 % (workers and scouts are not affected). |
+| `races.abilities.swampStalkers.points` | 5 | Strong but only where swamps are. |
+| `races.abilities.swampStalkers.swampCostPct` | 40 | Swamp movement cost 40 % (swamp is otherwise very slow). |
+| `races.abilities.swampStalkers.swampStealth` | 1 | 1 = hidden in swamp unless an enemy is within 2 tiles. |
+| `races.abilities.openGroundWeak.points` | -5 | Plains and deserts are common, so this is a real cost. |
+| `races.abilities.openGroundWeak.damagePct` | 70 | Damage 70 % when standing on plains or desert. |
+| `races.abilities.frostAdapted.points` | 6 | Strong only on cold maps or cold starts. |
+| `races.abilities.frostAdapted.coldDamagePct` | 125 | Damage 125 % on tundra, snow and ice. |
+| `races.abilities.frostAdapted.coldGatherPct` | 130 | Gathering 130 % on cold tiles. |
+| `races.abilities.frostAdapted.iceFishPct` | 150 | Ice lodge fishing 150 %. |
+| `races.abilities.heatWeak.points` | -6 | Deserts become no-go areas. |
+| `races.abilities.heatWeak.hotOutputPct` | 60 | Gathering, farming and building 60 % on desert. |
+| `races.abilities.heatWeak.hotDamagePct` | 80 | Damage 80 % on desert. |
+
+## Shared tech tree (F-094) and tech victory (F-133)
+
+Research happens at the capital (one at a time per player, paid up front, refunded on cancel). Race evolution nodes are researched the same way; their costs are in each race file.
+
+| Constant | Value | Why |
+|---|---|---|
+| `tech.researchAt` | capital | Research needs a completed capital; losing it pauses research. |
+| `tech.victoryCapstonePlusPct` | 60 | Optional tech victory: own capstone + at least 60 % of the shared nodes (PLAN §7-D). Off unless chosen. |
+| `tech.nodes.smithing.wood` | 100 | Unlocks the forge and iron gear: the entry point of the gear chain. Cost in wood. |
+| `tech.nodes.smithing.stone` | 100 | Cost in stone. |
+| `tech.nodes.smithing.gold` | 0 | Cost in gold. |
+| `tech.nodes.smithing.carbon` | 0 | Cost in carbon. |
+| `tech.nodes.smithing.adamite` | 0 | Cost in adamite. |
+| `tech.nodes.smithing.ticks` | 600 | Research time in ticks. |
+| `tech.nodes.smithing.buildings.0` | forge | Building unlocked. |
+| `tech.nodes.smithing.gear.0` | ironWeapons | Gear unlocked. |
+| `tech.nodes.smithing.gear.1` | ironArmor | Gear unlocked. |
+| `tech.nodes.toolmaking.wood` | 80 | Tools: workers gather 20 % faster. Cost in wood. |
+| `tech.nodes.toolmaking.stone` | 40 | Cost in stone. |
+| `tech.nodes.toolmaking.gold` | 20 | Cost in gold. |
+| `tech.nodes.toolmaking.carbon` | 0 | Cost in carbon. |
+| `tech.nodes.toolmaking.adamite` | 0 | Cost in adamite. |
+| `tech.nodes.toolmaking.ticks` | 450 | Research time in ticks. |
+| `tech.nodes.toolmaking.requires.0` | smithing | Must be researched first. |
+| `tech.nodes.toolmaking.gear.0` | tools | Gear unlocked. |
+| `tech.nodes.alloys.wood` | 0 | Carbon + adamite → alloy, and alloy weapons/armour. Cost in wood. |
+| `tech.nodes.alloys.stone` | 60 | Cost in stone. |
+| `tech.nodes.alloys.gold` | 60 | Cost in gold. |
+| `tech.nodes.alloys.carbon` | 40 | Cost in carbon. |
+| `tech.nodes.alloys.adamite` | 20 | Cost in adamite. |
+| `tech.nodes.alloys.ticks` | 900 | Research time in ticks. |
+| `tech.nodes.alloys.requires.0` | smithing | Must be researched first. |
+| `tech.nodes.alloys.gear.0` | alloy | Gear unlocked. |
+| `tech.nodes.alloys.gear.1` | alloyWeapons | Gear unlocked. |
+| `tech.nodes.alloys.gear.2` | alloyArmor | Gear unlocked. |
+| `tech.nodes.firearms.wood` | 0 | Late game: tier 3 weapons. Cost in wood. |
+| `tech.nodes.firearms.stone` | 0 | Cost in stone. |
+| `tech.nodes.firearms.gold` | 150 | Cost in gold. |
+| `tech.nodes.firearms.carbon` | 80 | Cost in carbon. |
+| `tech.nodes.firearms.adamite` | 40 | Cost in adamite. |
+| `tech.nodes.firearms.ticks` | 1500 | Research time in ticks. |
+| `tech.nodes.firearms.requires.0` | alloys | Must be researched first. |
+| `tech.nodes.firearms.gear.0` | firearms | Gear unlocked. |
+| `tech.nodes.piers.wood` | 150 | Build on water (F-044). Cost in wood. |
+| `tech.nodes.piers.stone` | 0 | Cost in stone. |
+| `tech.nodes.piers.gold` | 20 | Cost in gold. |
+| `tech.nodes.piers.carbon` | 0 | Cost in carbon. |
+| `tech.nodes.piers.adamite` | 0 | Cost in adamite. |
+| `tech.nodes.piers.ticks` | 450 | Research time in ticks. |
+| `tech.nodes.piers.buildings.0` | pier | Building unlocked. |
+
+## Gear (F-058)
+
+Crafted at a forge from stock into a per-player gear store, then handed to units within `gear.assignRange` tiles of a forge, great forge, barracks or town. `slot` 1 = weapon, 2 = armour, 3 = tools (workers), 0 = intermediate (alloy). Weapon and armour tiers use `combat.weaponTierPct` / `combat.armorTierPct`.
+
+| Constant | Value | Why |
+|---|---|---|
+| `gear.craftAt` | forge | Where gear is crafted. |
+| `gear.assignRange` | 6 | Units must come home to be equipped: gear is not teleported to the front. |
+| `gear.toolsGatherPct` | 120 | Gathering and farming with tools: 120 %. |
+| `gear.items.alloy.food` | 0 | The chain's intermediate: 2 carbon + 1 adamite. Cost in food. |
+| `gear.items.alloy.wood` | 0 | Cost in wood. |
+| `gear.items.alloy.stone` | 0 | Cost in stone. |
+| `gear.items.alloy.gold` | 0 | Cost in gold. |
+| `gear.items.alloy.carbon` | 2 | Cost in carbon. |
+| `gear.items.alloy.adamite` | 1 | Cost in adamite. |
+| `gear.items.alloy.alloy` | 0 | Cost in alloy. |
+| `gear.items.alloy.ticks` | 80 | Crafting time in ticks. |
+| `gear.items.alloy.slot` | 0 | Slot (see above). |
+| `gear.items.alloy.tier` | 0 | Tier given to the unit. |
+| `gear.items.tools.food` | 0 | Cheap; pays for itself in a few minutes of gathering. Cost in food. |
+| `gear.items.tools.wood` | 15 | Cost in wood. |
+| `gear.items.tools.stone` | 10 | Cost in stone. |
+| `gear.items.tools.gold` | 0 | Cost in gold. |
+| `gear.items.tools.carbon` | 0 | Cost in carbon. |
+| `gear.items.tools.adamite` | 0 | Cost in adamite. |
+| `gear.items.tools.alloy` | 0 | Cost in alloy. |
+| `gear.items.tools.ticks` | 60 | Crafting time in ticks. |
+| `gear.items.tools.slot` | 3 | Slot (see above). |
+| `gear.items.tools.tier` | 1 | Tier given to the unit. |
+| `gear.items.ironWeapons.food` | 0 | Tier 1 weapon. Cost in food. |
+| `gear.items.ironWeapons.wood` | 5 | Cost in wood. |
+| `gear.items.ironWeapons.stone` | 20 | Cost in stone. |
+| `gear.items.ironWeapons.gold` | 10 | Cost in gold. |
+| `gear.items.ironWeapons.carbon` | 0 | Cost in carbon. |
+| `gear.items.ironWeapons.adamite` | 0 | Cost in adamite. |
+| `gear.items.ironWeapons.alloy` | 0 | Cost in alloy. |
+| `gear.items.ironWeapons.ticks` | 80 | Crafting time in ticks. |
+| `gear.items.ironWeapons.slot` | 1 | Slot (see above). |
+| `gear.items.ironWeapons.tier` | 1 | Tier given to the unit. |
+| `gear.items.ironArmor.food` | 0 | Tier 1 armour. Cost in food. |
+| `gear.items.ironArmor.wood` | 0 | Cost in wood. |
+| `gear.items.ironArmor.stone` | 30 | Cost in stone. |
+| `gear.items.ironArmor.gold` | 10 | Cost in gold. |
+| `gear.items.ironArmor.carbon` | 0 | Cost in carbon. |
+| `gear.items.ironArmor.adamite` | 0 | Cost in adamite. |
+| `gear.items.ironArmor.alloy` | 0 | Cost in alloy. |
+| `gear.items.ironArmor.ticks` | 90 | Crafting time in ticks. |
+| `gear.items.ironArmor.slot` | 2 | Slot (see above). |
+| `gear.items.ironArmor.tier` | 1 | Tier given to the unit. |
+| `gear.items.alloyWeapons.food` | 0 | Tier 2 weapon: 1 alloy. Cost in food. |
+| `gear.items.alloyWeapons.wood` | 0 | Cost in wood. |
+| `gear.items.alloyWeapons.stone` | 0 | Cost in stone. |
+| `gear.items.alloyWeapons.gold` | 15 | Cost in gold. |
+| `gear.items.alloyWeapons.carbon` | 0 | Cost in carbon. |
+| `gear.items.alloyWeapons.adamite` | 0 | Cost in adamite. |
+| `gear.items.alloyWeapons.alloy` | 1 | Cost in alloy. |
+| `gear.items.alloyWeapons.ticks` | 100 | Crafting time in ticks. |
+| `gear.items.alloyWeapons.slot` | 1 | Slot (see above). |
+| `gear.items.alloyWeapons.tier` | 2 | Tier given to the unit. |
+| `gear.items.alloyArmor.food` | 0 | Tier 2 armour: 2 alloy. Cost in food. |
+| `gear.items.alloyArmor.wood` | 0 | Cost in wood. |
+| `gear.items.alloyArmor.stone` | 0 | Cost in stone. |
+| `gear.items.alloyArmor.gold` | 15 | Cost in gold. |
+| `gear.items.alloyArmor.carbon` | 0 | Cost in carbon. |
+| `gear.items.alloyArmor.adamite` | 0 | Cost in adamite. |
+| `gear.items.alloyArmor.alloy` | 2 | Cost in alloy. |
+| `gear.items.alloyArmor.ticks` | 110 | Crafting time in ticks. |
+| `gear.items.alloyArmor.slot` | 2 | Slot (see above). |
+| `gear.items.alloyArmor.tier` | 2 | Tier given to the unit. |
+| `gear.items.firearms.food` | 0 | Tier 3 weapon: 2 alloy + carbon. Cost in food. |
+| `gear.items.firearms.wood` | 0 | Cost in wood. |
+| `gear.items.firearms.stone` | 0 | Cost in stone. |
+| `gear.items.firearms.gold` | 30 | Cost in gold. |
+| `gear.items.firearms.carbon` | 2 | Cost in carbon. |
+| `gear.items.firearms.adamite` | 0 | Cost in adamite. |
+| `gear.items.firearms.alloy` | 2 | Cost in alloy. |
+| `gear.items.firearms.ticks` | 140 | Crafting time in ticks. |
+| `gear.items.firearms.slot` | 1 | Slot (see above). |
+| `gear.items.firearms.tier` | 3 | Tier given to the unit. |

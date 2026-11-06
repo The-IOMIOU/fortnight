@@ -1,0 +1,20 @@
+{
+  "id": "rimeborn",
+  "name": "Rimeborn",
+  "description": "Folk of the frozen north. In tundra and snow they gather faster and hit harder, and they fish through sea ice for plenty of food. Heat saps them: in deserts their work and fighting falter.",
+  "biome_preference": ["tundra", "snow"],
+  "stat_modifiers": { "gather_speed": 100, "build_speed": 100, "unit_health": 105, "unit_damage": 100, "vision": 95, "movement": 100 },
+  "special_ability": "frostAdapted",
+  "weakness": "heatWeak",
+  "starting_units": { "worker": 3, "scout": 1 },
+  "starting_buildings": ["capital"],
+  "starting_resources": { "food": 200, "wood": 200, "stone": 100, "gold": 0, "carbon": 0, "adamite": 0 },
+  "evolution_tree": [
+    { "id": "iceLodges", "name": "Ice lodges", "cost": { "wood": 150, "food": 80 }, "ticks": 600, "requires": [], "unlocks": { "buildings": ["iceLodge"], "units": ["frostWarden"] } },
+    { "id": "deepWinter", "name": "Deep winter", "cost": { "food": 150, "stone": 100 }, "ticks": 900, "requires": ["iceLodges"], "unlocks": { "stats": { "unit_health": 10 } } },
+    { "id": "mammothHerds", "name": "Mammoth herds", "cost": { "food": 400, "gold": 150 }, "ticks": 1800, "requires": ["deepWinter"], "unlocks": { "units": ["mammoth"] }, "capstone": true }
+  ],
+  "unique_units": ["frostWarden", "mammoth"],
+  "unique_building": "iceLodge",
+  "bot_hints": { "personalities": ["defender", "expansionist"], "strategy": "Hold the cold lands, feed the army from ice fishing, and let enemies come to you." }
+}

@@ -14,7 +14,8 @@ import { PathFinder, type GoalRect } from './path/astar';
 import { compareCommands, type Command } from './commands';
 import { FlowFields } from './path/flowfield';
 import { Military, formationSlots } from './military';
-import baselineRace from '../data/races/baseline.json' with { type: 'json' };
+import { RaceRules, AB, GLIDERS, GEAR_IDS, TECH_IDS, isRaceBuilding, type GearId } from './abilities';
+import { raceById } from './races';
 import {
   BUILDABLE, BUILDING_TYPES, DROPOFF, FARM_YIELD, Kind, MOVE_COST, NATURE_OWNER, NUM_RES, Res, RES_NONE, TICKS_PER_MIN, TOWN_CENTERS,
   TRAINS, Task, UNIT_TYPES, WALKABLE_BUILDING, WATER_COST, DEFENSIVE, buildingDef, buildingKind, buildingTypeOfKind, isBuildingKind, isUnitKind,
@@ -31,7 +32,7 @@ export interface SimSettings {
   /** Extra income % per player (the optional Impossible-bot bonus; 0 = none). */
   incomeBonusPct?: number[];
   /** Which victories are enabled (default: both) and the domination share in %. */
-  victory?: { domination?: boolean; conquest?: boolean; dominationPct?: number };
+  victory?: { domination?: boolean; conquest?: boolean; dominationPct?: number; tech?: boolean };
   // ---- Phase 4b (F-193–F-197) ----
   /** World generation: globe (east–west wrap), continent count, sea width. Omitted = original flat map. */
   world?: MapOpts;
@@ -43,6 +44,9 @@ export interface SimSettings {
   popLimit?: number;
   /** Test options switched on from the start, per player (bit mask of TestOpt). */
   testOptions?: number[];
+  // ---- Phase 5 (F-090–F-112) ----
+  /** Race id per player (default: the Baseline reference race). */
+  races?: string[];
 }
 
 /** Test options ("cheats", F-197): they change rules, never resources. */
@@ -77,6 +81,15 @@ export interface PlayerState {
   eliminated: boolean;
   /** Fractional income-bonus accumulator per resource (×100). */
   bonusAcc: number[];
+  // ---- Phase 5 ----
+  race: string;
+  /** Finished research (shared tech ids and own race node ids), in order. */
+  researched: string[];
+  /** Research in progress ('' = none) and its ticks so far. */
+  researching: string;
+  researchProgress: number;
+  /** Crafted gear in stock, per item (GEAR_IDS order). */
+  gear: number[];
 }
 
 export interface SimEvent { tick: number; player: number; type: string; a?: number; b?: number }
@@ -127,6 +140,14 @@ export class Sim {
   readonly wrap: boolean;
   /** Set for good once any test option was switched on (the run counts as modified, F-198). */
   modified = false;
+  /** Phase 5 rules in play (a non-baseline race, research, gear…): their state is hashed only then. */
+  p5 = false;
+  rules!: RaceRules;
+  /** Fungus owner + 1 per tile (Mycelids), null when nobody spreads fungus. */
+  fungus: Uint8Array | null = null;
+  rngFungus!: Rng;
+  /** Movement class used by the current path search: 0 land, 2 tunnel, 3 glide. */
+  private pathMode = 0;
 
   constructor(readonly settings: SimSettings, opts: { skipSetup?: boolean } = {}) {
     this.map = generateMap(settings.seed, settings.size, settings.world);
@@ -161,9 +182,15 @@ export class Sim {
         stock: new Array(NUM_RES).fill(0), ring: new Array(NUM_RES * RING).fill(0), upkeepAcc: 0, starving: false, pop: 0, housing: 0,
         landOwned: 0, found: new Array(NUM_RES).fill(0), foundMask: 0, dominationTicks: 0, housingWarned: false, seq: 0, opts: settings.testOptions?.[p] ?? 0,
         totalIncome: new Array(NUM_RES).fill(0), eliminated: false, bonusAcc: new Array(NUM_RES).fill(0),
+        race: raceById(settings.races?.[p]).id, researched: [], researching: '', researchProgress: 0, gear: new Array(GEAR_IDS.length).fill(0),
       });
     }
     if (this.ps.some((ps) => ps.opts)) this.modified = true;
+    this.rules = new RaceRules(this);
+    for (let p = 0; p < this.players; p++) this.rules.refresh(p);
+    this.rngFungus = Rng.stream(settings.seed, 'fungus');
+    if (this.ps.some((ps) => ps.race !== 'baseline')) this.p5 = true;
+    if (this.ps.some((_, p) => this.rules.has(p, 'fungalSpread'))) this.fungus = new Uint8Array(w * h);
     if (opts.skipSetup) return;
     this.setupStart();
     this.recount();
@@ -175,8 +202,8 @@ export class Sim {
 
   private setupStart(): void {
     const { w } = this.map;
-    const race = baselineRace;
     for (let p = 0; p < this.players; p++) {
+      const race = raceById(this.ps[p].race);
       const s = this.map.starts[p], sx = s % w, sy = (s - sx) / w;
       // make sure the capital footprint is solid buildable ground
       for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) {
@@ -187,6 +214,11 @@ export class Sim {
       Object.entries(race.starting_resources).forEach(([k, v]) => { st[resIndex(k)] = v; });
       const cap = this.createBuilding(p, 'capital', (sy - 1) * w + (sx - 1), true);
       for (const [u, n] of Object.entries(race.starting_units)) for (let k = 0; k < n; k++) this.spawnUnitNear(p, u as UnitTypeName, cap);
+      for (const bt of race.starting_buildings) if (bt !== 'capital') this.placeNear(p, bt as BuildingTypeName, cap);
+      if (this.rules.has(p, 'fungalSpread') && this.fungus) for (let dy = -2; dy <= 4; dy++) for (let dx = -2; dx <= 4; dx++) {
+        const t = (sy - 1 + dy) * w + (sx - 1 + dx);
+        if (t >= 0 && t < this.fungus.length && !isWaterBiome(this.map.biome[t])) this.fungus[t] = p + 1;
+      }
     }
     for (const t of animalSpawns(this.map, this.players, this.res, this.settings.wildlifePct ?? 100)) {
       const x = t % w, y = (t - x) / w;
@@ -201,8 +233,13 @@ export class Sim {
   /** Land path cost of entering a tile for player p (gates open only for their owner); 0 = impassable. */
   cost(t: number, p = -1): number {
     const b = this.map.biome[t];
-    if (isWaterBiome(b) && b !== Biome.RIVER) return 0;
+    if (this.pathMode === 3) return 10; // gliders sail over everything (they land on land, see the move order)
+    if (this.pathMode === 2) return isWaterBiome(b) || b === Biome.RIVER ? 0 : 10; // tunnels pass under walls, never under water
     const o = this.occ[t];
+    if (isWaterBiome(b) && b !== Biome.RIVER) {
+      if (o && buildingTypeOfKind(this.ents.kind[o - 1]) === 'pier' && this.ents.complete[o - 1]) return 10;
+      return p >= 0 && p < this.players && this.rules.has(p, 'amphibious') && b !== Biome.ICE && !o ? this.rules.landCost(p, t, 0) : 0;
+    }
     if (o) {
       const bt = buildingTypeOfKind(this.ents.kind[o - 1]);
       if (bt === 'gate') return p >= 0 && p < this.players && this.allied(this.ents.owner[o - 1], p) && this.ents.complete[o - 1] ? 10 : 0;
@@ -210,14 +247,31 @@ export class Sim {
     }
     const rt = this.res.type[t];
     if (rt !== RES_NONE && rt !== Res.WOOD && this.res.amount[t] > 0) return 0;
-    return MOVE_COST[b];
+    return p >= 0 && p < this.players ? this.rules.landCost(p, t, MOVE_COST[b]) : MOVE_COST[b];
+  }
+
+  /** Movement class of a unit: 0 normal, 2 burrowed (tunnel), 3 glider. */
+  modeOf(id: number): number {
+    const e = this.ents;
+    if (!isUnitKind(e.kind[id])) return 0;
+    if (e.burrowed[id]) return 2;
+    return GLIDERS.has(unitTypeOfKind(e.kind[id])) ? 3 : 0;
   }
 
   /** Ship path cost: open water only. */
   waterCost(t: number): number { return this.occ[t] ? 0 : WATER_COST[this.map.biome[t]]; }
   isNaval(id: number): boolean { return isUnitKind(this.ents.kind[id]) && unitDef(unitTypeOfKind(this.ents.kind[id])).water === 1; }
   /** Cost of entering tile t for unit id. */
-  costFor(id: number, t: number): number { return this.isNaval(id) ? this.waterCost(t) : this.cost(t, this.ents.owner[id]); }
+  costFor(id: number, t: number): number {
+    if (this.isNaval(id)) return this.waterCost(t);
+    const m = this.modeOf(id);
+    if (!m) return this.cost(t, this.ents.owner[id]);
+    const old = this.pathMode;
+    this.pathMode = m;
+    const c = this.cost(t, this.ents.owner[id]);
+    this.pathMode = old;
+    return c;
+  }
 
   tileOf(id: number): number { return (this.ents.posY[id] >> FP_SHIFT) * this.map.w + (this.ents.posX[id] >> FP_SHIFT); }
 
@@ -249,7 +303,10 @@ export class Sim {
     const { w, h, biome } = this.map, d = buildingDef(bt);
     const ax = anchor % w, ay = (anchor - ax) / w;
     if (anchor < 0 || ax + d.size > w || ay + d.size > h) return 'outside map';
-    let nearWater = false, nearOwn = false;
+    if (p < this.players && !this.rules.buildingAllowed(p, bt)) return isRaceBuilding(bt) && this.rules.race[p].unique_building !== bt ? 'another people builds this' : 'not researched yet';
+    if ((bt === 'settlement' || bt === 'outpost') && p < this.players && this.rules.has(p, 'sunburn') && !this.isNight) return 'only at night (sunlight burns your people)';
+    if (bt === 'pier') return this.canPlacePier(p, ax, ay, d.size);
+    let nearWater = false, nearOwn = false, nearIce = false;
     for (let dy = 0; dy < d.size; dy++) for (let dx = 0; dx < d.size; dx++) {
       const t = (ay + dy) * w + (ax + dx), b = biome[t];
       if (isWaterBiome(b) || !BUILDABLE[b]) return 'terrain';
@@ -266,8 +323,10 @@ export class Sim {
       if (x < 0 || y < 0 || x >= w || y >= h) continue;
       const t = y * w + x, b = biome[t];
       if (b === Biome.OCEAN || b === Biome.LAKE || b === Biome.RIVER) nearWater = true;
+      if (b === Biome.ICE) nearIce = true;
     }
-    if (bt === 'fishingHut' && !nearWater) return 'must be next to water';
+    if ((bt === 'fishingHut' || bt === 'tidepool') && !nearWater) return 'must be next to water';
+    if (bt === 'iceLodge' && !nearWater && !nearIce) return 'must be next to water or sea ice';
     if (bt === 'dock') {
       let sea = false;
       for (let dy = -1; dy <= d.size && !sea; dy++) for (let dx = -1; dx <= d.size; dx++) {
@@ -302,7 +361,8 @@ export class Sim {
     const id = this.ents.spawn(buildingKind(bt), p, cx, cy, 0, d.vision);
     const e = this.ents;
     e.anchor[id] = anchor; e.level[id] = 1; e.btype[id] = BUILDING_TYPES.indexOf(bt);
-    e.maxHp[id] = d.hp; e.hp[id] = complete ? d.hp : Math.max(1, Math.floor(d.hp / 10));
+    const hp = p < this.players ? this.rules.buildingHp(p, bt, d.hp) : d.hp;
+    e.maxHp[id] = hp; e.hp[id] = complete ? hp : Math.max(1, Math.floor(hp / 10));
     const footprint: number[] = [];
     let yieldSum = 0, water = 0;
     for (let dy = 0; dy < d.size; dy++) for (let dx = 0; dx < d.size; dx++) {
@@ -313,13 +373,13 @@ export class Sim {
       yieldSum += FARM_YIELD[this.map.biome[t]];
     }
     if (bt === 'farm') e.yieldPct[id] = Math.floor(yieldSum / (d.size * d.size));
-    if (bt === 'fishingHut') {
+    if (bt === 'fishingHut' || bt === 'iceLodge') {
       const off = circleOffsets(3);
       for (let k = 0; k < off.length; k += 2) {
         const x = ax + off[k], y = ay + off[k + 1];
         if (x < 0 || y < 0 || x >= w || y >= this.map.h) continue;
         const b = this.map.biome[y * w + x];
-        if (b === Biome.OCEAN || b === Biome.LAKE || b === Biome.RIVER) water++;
+        if (b === Biome.OCEAN || b === Biome.LAKE || b === Biome.RIVER || (bt === 'iceLodge' && b === Biome.ICE)) water++;
       }
       e.yieldPct[id] = Math.min(100, Math.floor((water * 100) / ECO.fishWaterTilesForFull));
     }
@@ -387,17 +447,47 @@ export class Sim {
     if (tile < 0) tile = this.ents.anchor[buildingId];
     const x = tile % w, y = (tile - x) / w;
     const id = this.ents.spawn(unitKind(u), p, tileCenter(x), tileCenter(y), d.speed, d.vision);
-    this.ents.hp[id] = this.ents.maxHp[id] = d.hp;
+    this.applyStats(id, p, u);
     this.ents.morale[id] = TUNING.morale.max;
     this.ensureLastTile();
     return id;
+  }
+
+  /** HP, speed and vision from the unit type and the owner's race (stats, abilities, research). */
+  applyStats(id: number, p: number, u: UnitTypeName): void {
+    const e = this.ents;
+    if (p >= this.players) { e.hp[id] = e.maxHp[id] = unitDef(u).hp; return; }
+    const st = this.rules.unitStats(p, u);
+    e.hp[id] = e.maxHp[id] = st.hp; e.speed[id] = st.speed; e.vision[id] = st.vision;
+  }
+
+  /** Place a complete starting building near a town (race starting_buildings beyond the capital). */
+  private placeNear(p: number, bt: BuildingTypeName, town: number): void {
+    const r0 = this.footprintRect(town, 2), w = this.map.w;
+    for (let m = 0; m <= 6; m++) for (let y = r0.y0 - m; y <= r0.y1 + m; y++) for (let x = r0.x0 - m; x <= r0.x1 + m; x++) {
+      if (x < 0 || y < 0 || x >= w || y >= this.map.h) continue;
+      if (!this.canPlace(p, bt, y * w + x)) { this.createBuilding(p, bt, y * w + x, true); return; }
+    }
+  }
+
+  private canPlacePier(p: number, ax: number, ay: number, size: number): string | null {
+    const { w, h, biome } = this.map;
+    for (let dy = 0; dy < size; dy++) for (let dx = 0; dx < size; dx++) {
+      const t = (ay + dy) * w + ax + dx, b = biome[t];
+      if ((b !== Biome.OCEAN && b !== Biome.LAKE) || this.occ[t]) return 'must be on open water';
+    }
+    for (let dy = -1; dy <= size; dy++) for (let dx = -1; dx <= size; dx++) {
+      const x = ax + dx, y = ay + dy;
+      if (x >= 0 && y >= 0 && x < w && y < h && this.tileOwner[y * w + x] === p) return null;
+    }
+    return 'must touch your land';
   }
 
   /** Spawn a unit on a tile (setup, tests, transports unloading). */
   spawnUnitAt(p: number, u: UnitTypeName, tile: number): number {
     const d = unitDef(u), x = tile % this.map.w, y = (tile - x) / this.map.w;
     const id = this.ents.spawn(unitKind(u), p, tileCenter(x), tileCenter(y), d.speed, d.vision);
-    this.ents.hp[id] = this.ents.maxHp[id] = d.hp;
+    this.applyStats(id, p, u);
     this.ents.morale[id] = TUNING.morale.max;
     this.ensureLastTile();
     if (p < this.players) this.fogForce[p] = 1;
@@ -449,11 +539,12 @@ export class Sim {
   }
 
   private processPaths(): void {
-    const budget = 24, e = this.ents;
+    const budget = 24, e = this.ents, resting: number[] = [];
     let n = 0;
     while (this.pathQueue.length && n < budget) {
       const id = this.pathQueue.shift()!;
       if (!e.alive[id] || !e.waitPath[id]) continue;
+      if (this.tick < e.restUntil[id]) { resting.push(id); continue; } // gliders rest after each flight (F-081)
       e.waitPath[id] = 0;
       n++;
       const goal = { x0: e.gx0[id], y0: e.gy0[id], x1: e.gx1[id], y1: e.gy1[id] };
@@ -461,8 +552,18 @@ export class Sim {
       if (this.isNaval(id)) path = this.pfWater.find(this.tileOf(id), goal);
       else {
         this.pathPlayer = e.owner[id];
+        this.pathMode = this.modeOf(id);
         // chases are re-planned often: cap their search so unreachable targets fail fast
         path = this.pf.find(this.tileOf(id), goal, e.task[id] === Task.ATTACK ? { maxNodes: 6000 } : {});
+        if (path && this.pathMode === 3 && path.length > AB.gliders.glideTiles) {
+          // one flight covers glideTiles at most and must end on land; then the glider rests
+          let k = AB.gliders.glideTiles;
+          while (k > 1 && isWaterBiome(this.map.biome[path[k - 1]])) k--;
+          path = path.slice(0, k);
+          e.hasFinal[id] = 0;
+          e.restUntil[id] = this.tick + Math.ceil((k * FP_ONE) / Math.max(1, e.speed[id])) + AB.gliders.restTicks;
+        }
+        this.pathMode = 0;
         this.pathPlayer = -1;
       }
       if (!path) {
@@ -476,6 +577,7 @@ export class Sim {
       }
       e.paths[id] = path; e.pathIdx[id] = 0; e.moving[id] = path.length > 0 || e.hasFinal[id] ? 1 : 0;
     }
+    for (const id of resting) this.pathQueue.push(id);
   }
 
   arrived(id: number): boolean {
@@ -488,7 +590,8 @@ export class Sim {
     for (let id = 0; id < e.count; id++) {
       if (!e.alive[id] || !e.moving[id] || !isUnitKind(e.kind[id]) || e.carrier[id] >= 0) continue;
       // Movement budget for this tick depends on the terrain the unit starts the tick on.
-      const mc = this.isNaval(id) ? 10 : MOVE_COST[this.map.biome[this.tileOf(id)]] || 10;
+      const here = this.tileOf(id);
+      const mc = this.isNaval(id) || this.modeOf(id) ? 10 : this.rules.moveCostHere(id, here, MOVE_COST[this.map.biome[here]] || 10);
       let budget = Math.max(1, Math.floor((e.speed[id] * 10) / mc));
       // Spend the budget along the path; leftover carries past waypoints within the same tick.
       for (let guard = 0; guard < 8 && budget > 0 && e.moving[id]; guard++) {
@@ -612,7 +715,7 @@ export class Sim {
           const [sx, sy] = Sim.tileCenterFp(slot, w);
           this.stop(id); e.task[id] = Task.MOVE;
           this.goTo(id, this.tileRectAround(slot, 0), sx, sy);
-          if (useFlow && !this.isNaval(id)) {
+          if (useFlow && !this.isNaval(id) && !this.modeOf(id)) {
             // skip A*: follow the shared field until close to the slot
             e.waitPath[id] = 0; this.pathQueue = this.pathQueue.filter((q) => q !== id);
             e.flowGoal[id] = t; e.paths[id] = null; e.moving[id] = 1;
@@ -632,6 +735,7 @@ export class Sim {
         if (this.mil.interact(p, c.ids, tg)) return;
         const k = e.kind[tg];
         const workers = this.ownUnits(p, c.ids, (kk) => kk === Kind.WORKER);
+        if (k === Kind.ANIMAL && this.rules.has(p, 'tameAnimals')) this.startTame(p, this.ownUnits(p, c.ids, (kk) => kk === Kind.SCOUT), tg);
         if (k === Kind.ANIMAL) for (const id of workers) { this.stop(id); e.task[id] = Task.HUNT; e.taskEnt[id] = tg; this.goTo(id, this.tileRectAround(this.tileOf(tg))); }
         else if (k === Kind.CARCASS) for (const id of workers) this.startGatherCarcass(id, tg);
         else if (isBuildingKind(k) && e.owner[tg] === p) {
@@ -669,9 +773,9 @@ export class Sim {
       case 'train': {
         const b = c.building, ut = UNIT_TYPES[c.utype];
         if (!ut || b < 0 || b >= e.count || !e.alive[b] || e.owner[b] !== p || !isBuildingKind(e.kind[b]) || !e.complete[b]) return;
-        if (!TRAINS[buildingTypeOfKind(e.kind[b])]?.includes(ut)) return;
+        if (!TRAINS[buildingTypeOfKind(e.kind[b])]?.includes(ut) || !this.rules.unitAllowed(p, ut)) return;
         if (e.queues[b].length >= ECO.trainQueueMax) return;
-        const d = unitDef(ut), cost = costOf(d.wood, 0, 0, d.food);
+        const d = unitDef(ut), cost = costOf(d.wood, 0, d.gold, d.food);
         if (!this.canAfford(p, cost)) { this.emit(p, 'cantAfford', -1); return; }
         this.pay(p, cost);
         e.queues[b].push(c.utype);
@@ -682,8 +786,8 @@ export class Sim {
         if (b < 0 || b >= e.count || !e.alive[b] || e.owner[b] !== p || !isBuildingKind(e.kind[b])) return;
         const q = e.queues[b];
         if (c.index < 0 || c.index >= q.length) return;
-        const d = unitDef(UNIT_TYPES[q[c.index]]);
-        this.pay(p, costOf(d.wood, 0, 0, d.food), -1);
+        if (buildingTypeOfKind(e.kind[b]) === 'forge') { const g = this.rules.gearCost(p, GEAR_IDS[q[c.index]]); this.pay(p, g.res, -1); this.ps[p].gear[GEAR_IDS.indexOf('alloy')] += g.alloy; }
+        else { const d = unitDef(UNIT_TYPES[q[c.index]]); this.pay(p, costOf(d.wood, 0, d.gold, d.food), -1); }
         q.splice(c.index, 1);
         if (c.index === 0) e.trainProgress[b] = 0;
         break;
@@ -699,6 +803,99 @@ export class Sim {
         e.upTo[b] = e.level[b] + 1; e.upProgress[b] = 0;
         break;
       }
+      case 'research': {
+        const why = this.rules.canResearch(p, c.node);
+        if (why) { this.emit(p, 'cantResearch'); return; }
+        const n = this.rules.node(p, c.node)!;
+        if (!this.canAfford(p, n.cost)) { this.emit(p, 'cantAfford', -1); return; }
+        this.pay(p, n.cost);
+        this.ps[p].researching = c.node; this.ps[p].researchProgress = 0;
+        this.p5 = true;
+        break;
+      }
+      case 'cancelResearch': {
+        const ps = this.ps[p], n = ps.researching ? this.rules.node(p, ps.researching) : null;
+        if (!n) return;
+        this.pay(p, n.cost, -1);
+        ps.researching = ''; ps.researchProgress = 0;
+        break;
+      }
+      case 'craft': {
+        const b = c.building, g = GEAR_IDS[c.item];
+        if (!g || b < 0 || b >= e.count || !e.alive[b] || e.owner[b] !== p || !e.complete[b] || buildingTypeOfKind(e.kind[b]) !== TUNING.gear.craftAt) return;
+        if (!this.rules.gearOk[p].has(g) || e.queues[b].length >= ECO.trainQueueMax) return;
+        const cost = this.rules.gearCost(p, g), ai = GEAR_IDS.indexOf('alloy');
+        if (!this.canAfford(p, cost.res) || this.ps[p].gear[ai] < cost.alloy) { this.emit(p, 'cantAfford', -1); return; }
+        this.pay(p, cost.res); this.ps[p].gear[ai] -= cost.alloy;
+        e.queues[b].push(c.item);
+        this.p5 = true;
+        break;
+      }
+      case 'equip': this.equip(p, c.ids, c.item); break;
+      case 'burrow': {
+        if (!this.rules.has(p, 'tunneling')) return;
+        for (const id of this.ownUnits(p, c.ids, (k) => k !== Kind.SETTLER)) { if (c.on) this.rules.burrow(id); else this.rules.surface(id); }
+        this.p5 = true;
+        break;
+      }
+      case 'tame': {
+        if (!this.rules.has(p, 'tameAnimals') || c.target < 0 || c.target >= e.count || !e.alive[c.target] || e.kind[c.target] !== Kind.ANIMAL) return;
+        this.startTame(p, this.ownUnits(p, c.ids, (k) => k === Kind.SCOUT || k === Kind.WORKER), c.target);
+        break;
+      }
+    }
+  }
+
+  private startTame(p: number, ids: number[], animal: number): void {
+    const e = this.ents;
+    for (const id of ids) { this.stop(id); e.task[id] = Task.TAME; e.taskEnt[id] = animal; e.acc[id] = 0; this.goTo(id, this.tileRectAround(this.tileOf(animal))); }
+    if (ids.length) this.p5 = true;
+    void p;
+  }
+
+  /** Taming: stay next to the animal for tameTicks; it then becomes the tamer's beast. */
+  private tameTick(id: number): void {
+    const e = this.ents, a = e.taskEnt[id], p = e.owner[id];
+    if (a < 0 || !e.alive[a] || e.kind[a] !== Kind.ANIMAL) { this.stop(id); return; }
+    const ut = this.tileOf(id), at = this.tileOf(a), w = this.map.w, R = AB.tameAnimals.range;
+    const ux = ut % w, uy = (ut - ux) / w, ax = at % w, ay = (at - ax) / w;
+    if (Math.abs(wdelta(ux, ax, w, this.wrap)) <= R && Math.abs(uy - ay) <= R) {
+      e.moving[a] = 0; // the animal calms down
+      if (++e.acc[id] < AB.tameAnimals.tameTicks) return;
+      e.kind[a] = Kind.BEAST; e.owner[a] = p; e.food[a] = 0; e.task[a] = Task.IDLE; e.taskEnt[a] = -1;
+      this.applyStats(a, p, 'beast');
+      e.morale[a] = TUNING.morale.max;
+      this.stop(id);
+      this.fogForce[p] = 1;
+      this.emit(p, 'tamed', a);
+      return;
+    }
+    if (!e.moving[id] && !e.waitPath[id]) this.goTo(id, this.tileRectAround(at));
+  }
+
+  /** Give crafted gear to own units near a forge, barracks or town (F-058). Each unit uses one item. */
+  private equip(p: number, ids: number[], item: number): void {
+    const g = GEAR_IDS[item] as GearId | undefined, e = this.ents, ps = this.ps[p];
+    if (!g) return;
+    const it = TUNING.gear.items[g];
+    if (it.slot === 0) return;
+    const R = TUNING.gear.assignRange * FP_ONE, tier = this.rules.gearTier(p, g);
+    const sites: number[] = [];
+    for (let b = 0; b < e.count; b++) {
+      if (!e.alive[b] || e.owner[b] !== p || !isBuildingKind(e.kind[b]) || !e.complete[b]) continue;
+      const bt = buildingTypeOfKind(e.kind[b]);
+      if (bt === 'forge' || bt === 'greatForge' || bt === 'barracks' || TOWN_CENTERS.includes(bt)) sites.push(b);
+    }
+    for (const id of this.ownUnits(p, ids)) {
+      if (ps.gear[item] <= 0) break;
+      const k = e.kind[id], isWorker = k === Kind.WORKER;
+      if (it.slot === 3 ? !isWorker : isWorker || this.isNaval(id)) continue;
+      if (!sites.some((b) => this.mil.dist2(id, b) <= R * R)) continue;
+      if (it.slot === 2) { if (e.armorTier[id] >= tier) continue; e.armorTier[id] = tier; }
+      else { if (e.weaponTier[id] >= tier) continue; e.weaponTier[id] = tier; } // weapons, or tools for workers
+      ps.gear[item]--;
+      this.p5 = true;
+      this.emit(p, 'equipped', id, item);
     }
   }
 
@@ -744,13 +941,28 @@ export class Sim {
     this.mil.fireTick();
     this.mil.moatTick();
     this.production();
+    this.rules.tick();
     this.mil.cleanupDead();
     this.mil.victoryTick();
     this.recount();
     this.upkeep();
     this.updateFog();
     this.checkVictory();
+    this.checkTechVictory();
     this.tick++;
+  }
+
+  /** Optional tech victory (F-133, PLAN §7-D): own capstone researched plus a share of the shared tree. */
+  private checkTechVictory(): void {
+    if (this.winner >= 0 || !this.settings.victory?.tech) return;
+    for (let p = 0; p < this.players; p++) {
+      const ps = this.ps[p];
+      if (ps.eliminated) continue;
+      const cap = this.rules.race[p].evolution_tree.find((n) => n.capstone);
+      if (!cap || !ps.researched.includes(cap.id)) continue;
+      const shared = TECH_IDS.filter((t) => ps.researched.includes(t)).length;
+      if (shared * 100 >= TUNING.tech.victoryCapstonePlusPct * TECH_IDS.length) { this.winner = p; this.winnerTeam = this.teamOf(p); this.emit(p, 'victory', 2, this.winnerTeam); return; }
+    }
   }
 
   mult(p: number): number { return this.ps[p].starving ? ECO.starvingRatePct : 100; }
@@ -779,6 +991,7 @@ export class Sim {
       if (!e.alive[id] || !isUnitKind(e.kind[id]) || e.carrier[id] >= 0) continue;
       const task = e.task[id];
       if (task === Task.IDLE) continue;
+      if (task === Task.TAME) { if (!e.waitPath[id]) this.tameTick(id); continue; }
       if (task >= Task.ATTACK) { this.mil.taskTick(id); continue; }
       if (e.waitPath[id]) continue;
       if (!e.moving[id] && !this.arrived(id)) {
@@ -815,7 +1028,7 @@ export class Sim {
       rate = ECO.gatherPerMin[resKey(this.res.type[t])];
     }
     if (available <= 0) { this.afterSourceGone(id); return; }
-    e.acc[id] += rate * this.mult(p);
+    e.acc[id] += Math.floor((rate * this.mult(p) * this.rules.workPct(p, this.tileOf(id), 'gather', e.weaponTier[id] > 0)) / 100);
     while (e.acc[id] >= TICKS_PER_MIN * 100 && e.carryAmt[id] < cap) {
       e.acc[id] -= TICKS_PER_MIN * 100;
       e.carryAmt[id]++;
@@ -909,7 +1122,7 @@ export class Sim {
     const e = this.ents, b = e.taskEnt[id], p = e.owner[id];
     if (b < 0 || !e.alive[b] || !isBuildingKind(e.kind[b])) { this.stop(id); return; }
     if (e.complete[b]) { this.afterBuilt(id, b); return; }
-    e.acc[id] += ECO.buildPointsPerWorkerTick * this.mult(p);
+    e.acc[id] += Math.floor((ECO.buildPointsPerWorkerTick * this.mult(p) * this.rules.workPct(p, this.tileOf(id), 'build', false)) / 100);
     while (e.acc[id] >= 100) { e.acc[id] -= 100; e.progress[b]++; }
     const bp = buildingDef(buildingTypeOfKind(e.kind[b])).buildPoints;
     e.hp[b] = Math.max(e.hp[b], Math.floor((e.maxHp[b] * Math.min(e.progress[b], bp)) / bp));
@@ -932,6 +1145,9 @@ export class Sim {
     const rate = bt === 'farm' ? ECO.farmFoodPerWorkerPerMin : ECO.fishFoodPerWorkerPerMin;
     let pct = e.yieldPct[b];
     if (bt === 'farm') for (let l = 2; l <= e.level[b]; l++) pct = Math.floor((pct * (100 + (upgradeDef('farm', l)?.yieldPct ?? 0))) / 100);
+    if (bt === 'farm' && this.fungus) pct = Math.floor((pct * this.rules.farmPct(p, e.anchor[b], buildingDef(bt).size)) / 100);
+    if (bt === 'iceLodge' && this.rules.has(p, 'frostAdapted')) pct = Math.floor((pct * AB.frostAdapted.iceFishPct) / 100);
+    if (this.p5) pct = Math.floor((pct * this.rules.workPct(p, this.tileOf(id), 'work', e.weaponTier[id] > 0)) / 100);
     // exact integer accumulator: food per minute × pct × mult, one food per TICKS_PER_MIN × 10000
     e.acc[id] += rate * pct * this.mult(p);
     const unit = TICKS_PER_MIN * 10000;
@@ -980,8 +1196,9 @@ export class Sim {
       }
       const q = e.queues[b];
       if (!q.length) continue;
+      if (buildingTypeOfKind(e.kind[b]) === 'forge') { this.craftTick(b); continue; }
       const ut = UNIT_TYPES[q[0]], d = unitDef(ut);
-      if (e.trainProgress[b] < ((this.ps[p].opts & TestOpt.INSTANT_TRAIN) ? 1 : d.trainTicks)) {
+      if (e.trainProgress[b] < ((this.ps[p].opts & TestOpt.INSTANT_TRAIN) ? 1 : this.rules.trainTicks(p, ut))) {
         if (this.ps[p].starving) continue;
         e.trainProgress[b]++;
         continue;
@@ -1003,6 +1220,15 @@ export class Sim {
       this.ps[p].pop += d.pop;
       this.emit(p, 'trained', UNIT_TYPES.indexOf(ut));
     }
+  }
+
+  private craftTick(b: number): void {
+    const e = this.ents, p = e.owner[b], q = e.queues[b], g = GEAR_IDS[q[0]];
+    if (this.ps[p].starving) return;
+    if (++e.trainProgress[b] < ((this.ps[p].opts & TestOpt.INSTANT_TRAIN) ? 1 : TUNING.gear.items[g].ticks)) return;
+    q.shift(); e.trainProgress[b] = 0;
+    this.ps[p].gear[GEAR_IDS.indexOf(g)]++;
+    this.emit(p, 'crafted', GEAR_IDS.indexOf(g));
   }
 
   /** Recompute population and housing from scratch (cheap, keeps them exact). */
@@ -1136,7 +1362,8 @@ export class Sim {
     if (e.carrier[id] >= 0) return false;
     if (viewer < 0 || e.owner[id] === viewer) return true;
     if (e.owner[id] < this.players && this.allied(e.owner[id], viewer)) return true; // allies see each other's units
-    if (isUnitKind(e.kind[id]) && unitDef(unitTypeOfKind(e.kind[id])).stealth) {
+    if (e.burrowed[id]) return false; // underground (Delvers' tunnels)
+    if (isUnitKind(e.kind[id]) && (unitDef(unitTypeOfKind(e.kind[id])).stealth || this.rules.stealthy(id))) {
       // stealthed units are only seen by enemies within 2 tiles of one of their entities
       const R = 2 * FP_ONE;
       let seen = false;
@@ -1160,7 +1387,7 @@ export class Sim {
     const hs = new Hasher();
     hs.u32(this.tick);
     hs.u32(this.map.hash);
-    for (const v of this.ents.hashViews()) { hs.u32(v.byteLength); hs.bytes(v); }
+    for (const v of this.ents.hashViews(this.p5)) { hs.u32(v.byteLength); hs.bytes(v); }
     for (let id = 0; id < this.ents.count; id++) {
       const p = this.ents.paths[id];
       hs.u32(p ? p.length : 0xffffffff);
@@ -1187,6 +1414,17 @@ export class Sim {
     hs.u32(this.winner + 1);
     hs.u32(this.winnerTeam + 1);
     for (const ps of this.ps) for (const v of ps.bonusAcc) hs.u32(v);
+    if (this.p5) { // Phase 5 state (absent → older hashes unchanged)
+      hs.u32(0x5005);
+      for (const ps of this.ps) {
+        for (const ch of ps.race) hs.u32(ch.charCodeAt(0));
+        hs.u32(ps.researched.length); for (const r of ps.researched) for (const ch of r) hs.u32(ch.charCodeAt(0));
+        for (const ch of ps.researching) hs.u32(ch.charCodeAt(0));
+        hs.u32(ps.researchProgress); for (const g of ps.gear) hs.u32(g);
+      }
+      if (this.fungus) hs.bytes(this.fungus);
+      for (const s of this.rngFungus.getState()) hs.u32(s);
+    }
     return hs.digest();
   }
 

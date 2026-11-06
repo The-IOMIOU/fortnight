@@ -3,7 +3,7 @@
 // "trim" (roofs, banners, hats) so teams stay readable. Front faces +z (towards the camera).
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
-import type { BuildingTypeName } from '../sim/defs';
+import type { BuildingTypeName, UnitTypeName } from '../sim/defs';
 
 export interface Model { body: THREE.BufferGeometry; trim: THREE.BufferGeometry }
 
@@ -302,6 +302,72 @@ export function buildingModel(bt: BuildingTypeName, s: number): Model {
         trim: plain(box(0.26, 0.17, 0.01, 0.13, 1.9, 0)),
       };
     }
+    // ---- Phase 5 buildings (original, generated in code) ----
+    case 'forge': {
+      const [roof, attic, tiles] = gable(1.4, 1.0, 0.3, 0.7, 0.07);
+      return {
+        body: merge([
+          paint(box(1.7, 0.08, 1.4), STONE_D), paint(box(1.4, 0.62, 1.0, 0, 0.08, 0), STONE), paint(attic, STONE_D), tiles,
+          paint(box(0.3, 1.5, 0.3, 0.5, 0.08, -0.3), STONE_D), paint(box(0.36, 0.06, 0.36, 0.5, 1.58, -0.3), IRON),
+          paint(box(0.36, 0.3, 0.02, -0.3, 0.08, 0.51), 0xd8692f), paint(box(0.3, 0.12, 0.2, -0.3, 0.08, 0.75), IRON), paint(box(0.12, 0.2, 0.12, 0.35, 0.08, 0.75), IRON),
+        ]),
+        trim: roof,
+      };
+    }
+    case 'pier': {
+      const posts: G[] = [];
+      for (const [x, z] of [[-0.85, -0.85], [0.85, -0.85], [-0.85, 0.85], [0.85, 0.85], [0, -0.85], [0, 0.85]]) posts.push(paint(cyl(0.06, 0.5, 6, x, -0.3, z), DARKWOOD));
+      const planks: G[] = [];
+      for (let i = 0; i < 9; i++) planks.push(paint(box(0.2, 0.06, 1.9, -0.84 + i * 0.21, 0.14, 0), i % 2 ? PLANK : 0x8a6440));
+      return { body: merge([...posts, ...planks]), trim: plain(box(0.04, 0.4, 0.04, 0.85, 0.2, 0.85)) };
+    }
+    case 'tidepool': return {
+      body: merge([paint(cyl(0.95, 0.12, 12), STONE), paint(cyl(0.8, 0.05, 12, 0, 0.12, 0), 0x2f7f9a), paint(cone(0.25, 0.8, 7, -0.5, 0.1, -0.3), 0xd9826a), paint(cone(0.18, 0.6, 7, 0.55, 0.1, 0.25), 0xe2a07c), paint(ball(0.22, 0, 0.3, 0.5), 0xcfe3e8)]),
+      trim: plain(cone(0.3, 0.5, 6, 0, 0.4, -0.55)),
+    };
+    case 'beastPen': {
+      const fence: G[] = [];
+      for (let i = 0; i < 8; i++) { const a = (i / 8) * Math.PI * 2; fence.push(paint(cyl(0.04, 0.45, 5, Math.cos(a) * 0.85, 0, Math.sin(a) * 0.85), DARKWOOD)); }
+      for (const z of [-0.85, 0.85]) fence.push(paint(box(1.7, 0.05, 0.04, 0, 0.3, z), TIMBER));
+      const [roof, attic] = gable(0.8, 0.6, 0.25, 0.45, 0.06, 0.04, -0.3, -0.3);
+      return { body: merge([paint(box(1.8, 0.04, 1.8), SOIL), ...fence, paint(box(0.8, 0.45, 0.6, -0.3, 0, -0.3), TIMBER), paint(attic, TIMBER), paint(box(0.5, 0.12, 0.3, 0.45, 0, 0.4), HAY)]), trim: roof };
+    }
+    case 'tunnelHall': return {
+      body: merge([paint(cone(1.0, 0.9, 8), STONE_D), paint(box(0.5, 0.5, 0.2, 0, 0, 0.75), 0x2a2622), paint(box(0.62, 0.1, 0.25, 0, 0.5, 0.75), STONE), paint(cyl(0.05, 0.4, 5, -0.4, 0, 0.8), DARKWOOD), paint(cyl(0.05, 0.4, 5, 0.4, 0, 0.8), DARKWOOD)]),
+      trim: plain(box(0.5, 0.12, 0.05, 0, 0.62, 0.86)),
+    };
+    case 'sporeTower': return {
+      body: merge([paint(cyl(0.18, 1.0, 8, 0, 0, 0, 0.12), 0xd8cfb8), paint(ball(0.12, 0.2, 0.5, 0.1), 0xb98bc9), paint(ball(0.1, -0.18, 0.35, -0.05), 0xb98bc9)]),
+      trim: plain(new THREE.SphereGeometry(0.42, 10, 6, 0, Math.PI * 2, 0, Math.PI / 2).scale(1, 0.6, 1).translate(0, 1.0, 0)),
+    };
+    case 'aerie': {
+      const [roof] = gable(1.2, 0.9, 0.3, 1.2, 0.06);
+      return {
+        body: merge([paint(box(1.6, 0.06, 1.6), STONE), ...[[-0.6, -0.5], [0.6, -0.5], [-0.6, 0.5], [0.6, 0.5]].map(([x, z]) => paint(cyl(0.06, 1.2, 6, x, 0, z), TIMBER)), paint(box(1.3, 0.06, 1.0, 0, 1.15, 0), PLANK), paint(box(0.9, 0.04, 0.3, 0, 0.6, 0.65).rotateX(0.2), CANVAS)]),
+        trim: roof,
+      };
+    }
+    case 'greatForge': {
+      const [roof, attic, tiles] = gable(1.5, 1.1, 0.35, 0.85, 0.07);
+      return {
+        body: merge([
+          paint(box(1.8, 0.1, 1.5), STONE_D), paint(box(1.5, 0.75, 1.1, 0, 0.1, 0), IRON), paint(attic, STONE_D), tiles,
+          paint(cyl(0.16, 1.8, 8, -0.5, 0.1, -0.35), STONE_D), paint(cyl(0.16, 1.6, 8, 0.5, 0.1, -0.35), STONE_D), paint(box(0.5, 0.35, 0.02, 0, 0.1, 0.56), 0xe0792f),
+        ]),
+        trim: roof,
+      };
+    }
+    case 'stiltHall': {
+      const [roof, attic] = gable(1.3, 1.0, 0.45, 0.95, 0.08);
+      return {
+        body: merge([...[[-0.55, -0.4], [0.55, -0.4], [-0.55, 0.4], [0.55, 0.4], [0, 0]].map(([x, z]) => paint(cyl(0.05, 0.5, 5, x, 0, z), DARKWOOD)), paint(box(1.3, 0.45, 1.0, 0, 0.5, 0), TIMBER), paint(attic, THATCH), paint(box(0.3, 0.06, 0.6, 0, 0.25, 0.75).rotateX(-0.4), PLANK)]),
+        trim: roof,
+      };
+    }
+    case 'iceLodge': return {
+      body: merge([paint(new THREE.SphereGeometry(0.8, 12, 6, 0, Math.PI * 2, 0, Math.PI / 2), 0xe4eef2), paint(box(0.4, 0.4, 0.5, 0, 0, 0.75), 0xd2e0e6), paint(box(0.24, 0.3, 0.02, 0, 0, 1.01), 0x3a4a55), paint(box(0.3, 0.08, 0.3, 0.6, 0, -0.55), 0x9fc6d6)]),
+      trim: plain(box(0.04, 0.5, 0.25, -0.5, 0.6, 0)),
+    };
   }
   void s;
 }
@@ -317,7 +383,29 @@ function person(tunic: number, extra: G[] = []): G {
   ]);
 }
 
-export type UnitModelName = 'scout' | 'worker' | 'settler' | 'spearman' | 'archer' | 'rider' | 'ram' | 'spy' | 'saboteur' | 'warship' | 'transport' | 'animal' | 'carcass';
+export type UnitModelName = UnitTypeName | 'animal' | 'carcass';
+
+/** Four-legged beast (tamed animals, war beasts, mammoths), scaled up from the wild-animal shape. */
+function beastModel(fur: number, light: number, k: number, armored = false, tusks = false): Model {
+  const legs: G[] = [];
+  for (const [x, z] of [[-0.12, -0.05], [-0.12, 0.05], [0.12, -0.05], [0.12, 0.05]]) legs.push(paint(box(0.04, 0.18, 0.04, x, 0, z), fur));
+  const extra: G[] = [];
+  if (tusks) extra.push(paint(cone(0.015, 0.14, 5).rotateZ(-1.9).translate(0.3, 0.33, 0.04), 0xf3ead8), paint(cone(0.015, 0.14, 5).rotateZ(-1.9).translate(0.3, 0.33, -0.04), 0xf3ead8));
+  return {
+    body: merge([...legs, paint(ball(0.11, 0, 0.26, 0, 8, 6).scale(1.6, 0.95, 0.85), fur), paint(ball(0.08, 0.21, 0.38, 0, 6, 5), light), ...extra]).scale(k, k, k),
+    trim: (armored ? plain(box(0.26, 0.05, 0.2, 0, 0.36, 0)) : plain(box(0.1, 0.02, 0.17, -0.02, 0.36, 0))).scale(k, k, k),
+  };
+}
+
+/** Long reptile or sea beast (thunder lizard, leviathan). */
+function reptileModel(skin: number, belly: number, k: number, fins = false): Model {
+  const legs: G[] = [];
+  for (const [x, z] of [[-0.12, -0.07], [-0.12, 0.07], [0.12, -0.07], [0.12, 0.07]]) legs.push(paint(box(0.04, 0.12, 0.04, x, 0, z), skin));
+  return {
+    body: merge([...legs, paint(ball(0.1, 0, 0.2, 0, 8, 6).scale(2.2, 0.8, 0.8), skin), paint(ball(0.06, 0.28, 0.27, 0, 6, 5).scale(1.4, 0.8, 0.8), belly), paint(cone(0.06, 0.3, 6).rotateZ(Math.PI / 2).translate(-0.32, 0.2, 0), skin)]).scale(k, k, k),
+    trim: (fins ? plain(cone(0.05, 0.14, 3, 0, 0.26, 0).scale(1.8, 1, 0.3)) : plain(box(0.3, 0.03, 0.02, 0, 0.29, 0))).scale(k, k, k),
+  };
+}
 
 /** Unit models. */
 export function unitModel(kind: UnitModelName): Model {
@@ -394,6 +482,28 @@ export function unitModel(kind: UnitModelName): Model {
         trim: plain(box(0.14, 0.09, 0.005, -0.12, 0.42, 0)),
       };
     }
+    // ---- Phase 5 units ----
+    case 'beast': return beastModel(FUR, FUR_L, 1.25);
+    case 'warbeast': return beastModel(0x5e4636, 0x9c8167, 1.6, true);
+    case 'thunderlizard': return reptileModel(0x4d6b3a, 0x8fa66a, 2.6);
+    case 'tideguard': return { body: person(0x2f7f9a, [paint(cyl(0.012, 0.8, 4, 0.15, 0.0, 0.05), DARKWOOD), paint(cone(0.05, 0.14, 3, 0.15, 0.8, 0.05), 0xd9826a)]), trim: plain(cone(0.09, 0.16, 6, 0, 0.55, 0)) };
+    case 'leviathan': return reptileModel(0x2c5f73, 0x7fb3c4, 2.8, true);
+    case 'burrower': return { body: person(0x5c544a, [paint(box(0.2, 0.14, 0.14, 0, 0.3, 0), IRON), paint(cyl(0.014, 0.5, 4, 0.15, 0.1, 0.05), DARKWOOD), paint(box(0.16, 0.06, 0.03, 0.15, 0.58, 0.05), IRON)]), trim: plain(cyl(0.08, 0.07, 8, 0, 0.55, 0, 0.07)) };
+    case 'deepDrill': {
+      const wheels: G[] = [];
+      for (const [x, z] of [[-0.3, 0.22], [0.3, 0.22], [-0.3, -0.22], [0.3, -0.22]]) wheels.push(paint(cyl(0.12, 0.05, 10).rotateX(Math.PI / 2).translate(x, 0.12, z), IRON));
+      return { body: merge([...wheels, paint(box(0.8, 0.22, 0.46, 0, 0.12, 0), IRON), paint(cone(0.17, 0.5, 8).rotateZ(-Math.PI / 2).translate(0.62, 0.34, 0), 0x9a9da3)]), trim: plain(box(0.36, 0.18, 0.36, -0.15, 0.34, 0)) };
+    }
+    case 'sporeling': return { body: merge([paint(cyl(0.07, 0.3, 6, 0, 0, 0, 0.05), 0xd8cfb8), paint(ball(0.04, 0.05, 0.2, 0.06), 0xb98bc9)]), trim: plain(new THREE.SphereGeometry(0.16, 8, 5, 0, Math.PI * 2, 0, Math.PI / 2).translate(0, 0.3, 0)) };
+    case 'bloomHulk': return { body: merge([paint(cyl(0.3, 0.9, 8, 0, 0, 0, 0.22), 0xd8cfb8), paint(cyl(0.08, 0.5, 6, -0.32, 0.25, 0), 0xd8cfb8), paint(cyl(0.08, 0.5, 6, 0.32, 0.25, 0), 0xd8cfb8), paint(ball(0.08, 0.15, 0.6, 0.25), 0xb98bc9)]), trim: plain(new THREE.SphereGeometry(0.5, 10, 6, 0, Math.PI * 2, 0, Math.PI / 2).scale(1, 0.55, 1).translate(0, 0.9, 0)) };
+    case 'glider': return { body: person(CLOTH2, [paint(cyl(0.01, 0.4, 4, 0, 0.55, 0), DARKWOOD), paint(cyl(0.01, 0.5, 4, 0.12, 0.05, 0.04), DARKWOOD)]), trim: plain(new THREE.ConeGeometry(0.55, 0.12, 3).rotateX(-Math.PI / 2).scale(1, 1, 0.5).translate(0, 0.9, 0)) };
+    case 'skyLancer': return { body: person(0x6e6a64, [paint(box(0.19, 0.12, 0.13, 0, 0.3, 0), IRON), paint(cyl(0.013, 1.0, 4, 0.15, 0.0, 0.05).rotateZ(-0.3), DARKWOOD), paint(cyl(0.01, 0.4, 4, 0, 0.55, 0), DARKWOOD)]), trim: plain(new THREE.ConeGeometry(0.7, 0.14, 3).rotateX(-Math.PI / 2).scale(1, 1, 0.5).translate(0, 0.95, 0)) };
+    case 'ironguard': return { body: person(IRON, [paint(box(0.21, 0.26, 0.15, 0, 0.18, 0), 0x7d828a), paint(box(0.04, 0.32, 0.24, -0.15, 0.15, 0.04), IRON), paint(box(0.03, 0.4, 0.03, 0.15, 0.1, 0.05), 0x9a9da3)]), trim: plain(cyl(0.08, 0.1, 8, 0, 0.5, 0, 0.075)) };
+    case 'steamGolem': return { body: merge([paint(box(0.18, 0.4, 0.18, -0.15, 0, 0), IRON), paint(box(0.18, 0.4, 0.18, 0.15, 0, 0), IRON), paint(box(0.6, 0.5, 0.4, 0, 0.4, 0), 0x7d828a), paint(box(0.14, 0.45, 0.14, -0.38, 0.4, 0), IRON), paint(box(0.14, 0.45, 0.14, 0.38, 0.4, 0), IRON), paint(cyl(0.06, 0.3, 6, -0.15, 0.9, -0.1), STONE_D), paint(box(0.24, 0.18, 0.2, 0, 0.9, 0.05), 0x7d828a)]), trim: plain(box(0.26, 0.06, 0.06, 0, 0.98, 0.16)) };
+    case 'bogStalker': return { body: person(0x4f5e3a, [paint(cyl(0.012, 0.7, 4, 0.15, 0.0, 0.05), DARKWOOD), paint(box(0.24, 0.05, 0.14, 0, 0.42, 0), 0x6b7a3f)]), trim: plain(cone(0.1, 0.12, 6, 0, 0.55, 0)) };
+    case 'mireHorror': return { body: merge([paint(ball(0.4, 0, 0.4, 0, 9, 6).scale(1, 1.1, 0.9), 0x4a5a34), paint(cyl(0.1, 0.4, 6, -0.25, 0, 0), 0x3b4a2a), paint(cyl(0.1, 0.4, 6, 0.25, 0, 0), 0x3b4a2a), paint(ball(0.05, -0.1, 0.65, 0.33), 0xe8e070), paint(ball(0.05, 0.1, 0.65, 0.33), 0xe8e070)]), trim: plain(box(0.5, 0.06, 0.06, 0, 0.85, 0)) };
+    case 'frostWarden': return { body: person(0xc9d8e0, [paint(box(0.2, 0.12, 0.14, 0, 0.3, 0), 0xe8eef0), paint(cyl(0.013, 0.8, 4, 0.15, 0.0, 0.05), DARKWOOD), paint(box(0.08, 0.12, 0.02, 0.15, 0.72, 0.05), 0x9fc6d6)]), trim: plain(cone(0.1, 0.16, 8, 0, 0.55, 0)) };
+    case 'mammoth': return beastModel(0x6b4a33, 0x8a6648, 2.6, true, true);
     case 'animal': {
       const legs: G[] = [];
       for (const [x, z] of [[-0.12, -0.05], [-0.12, 0.05], [0.12, -0.05], [0.12, 0.05]]) legs.push(paint(box(0.035, 0.18, 0.035, x, 0, z), FUR));

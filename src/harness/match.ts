@@ -3,7 +3,7 @@
 import { Sim, type SimSettings } from '../sim/sim';
 import { BotManager, type BotConfig } from '../ai/manager';
 import { TUNING, type MapSize } from '../sim/core/tuning';
-import { Kind, isBuildingKind, buildingTypeOfKind } from '../sim/defs';
+import { Kind, isBuildingKind, isUnitKind, isMilitaryType, buildingTypeOfKind, unitTypeOfKind } from '../sim/defs';
 import type { Difficulty } from '../ai/utility';
 
 export interface MatchSpec {
@@ -67,7 +67,7 @@ function sample(sim: Sim, metrics: BotMetrics[]): void {
   for (let id = 0; id < e.count; id++) {
     if (!e.alive[id] || e.owner[id] >= sim.players) continue;
     const k = e.kind[id], p = e.owner[id];
-    if (k === Kind.SPEARMAN || k === Kind.ARCHER || k === Kind.RIDER || k === Kind.RAM) army[p]++;
+    if (isUnitKind(k) && isMilitaryType(unitTypeOfKind(k)) && k !== Kind.WARSHIP && k !== Kind.SABOTEUR) army[p]++;
     if (isBuildingKind(k) && e.complete[id]) {
       const bt = buildingTypeOfKind(k);
       if (bt === 'capital' || bt === 'settlement') towns[p]++;

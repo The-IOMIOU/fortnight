@@ -45,7 +45,7 @@ const building = (s: Sim, p: number, bt: (typeof BUILDING_TYPES)[number], t: num
 describe('F-072 unit types', () => {
   it('every unit type exists with its distinguishing trait', () => {
     const d = (u: UnitTypeName) => unitDef(u);
-    expect(UNIT_TYPES).toEqual(['scout', 'worker', 'settler', 'spearman', 'archer', 'rider', 'ram', 'spy', 'saboteur', 'warship', 'transport']);
+    expect(UNIT_TYPES.slice(0, 11)).toEqual(['scout', 'worker', 'settler', 'spearman', 'archer', 'rider', 'ram', 'spy', 'saboteur', 'warship', 'transport']); // base types; Phase 5 race units follow
     expect(d('archer').range).toBeGreaterThan(5 * d('spearman').range);                 // ranged
     expect(d('rider').speed).toBeGreaterThan(1.5 * d('spearman').speed);                 // cavalry
     expect(d('ram').vsBuildings).toBeGreaterThanOrEqual(5 * d('spearman').vsBuildings);  // siege

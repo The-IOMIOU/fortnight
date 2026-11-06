@@ -1,6 +1,7 @@
 {
   "id": "baseline",
   "name": "Wayfolk",
+  "reference": true,
   "description": "A plain reference people with no special gifts or flaws. Used to test the economy and as the control group for balance.",
   "biome_preference": ["plains", "forest"],
   "stat_modifiers": { "gather_speed": 100, "build_speed": 100, "unit_health": 100, "unit_damage": 100, "vision": 100, "movement": 100 },
@@ -8,5 +9,9 @@
   "weakness": null,
   "starting_units": { "worker": 3, "scout": 1 },
   "starting_buildings": ["capital"],
-  "starting_resources": { "food": 200, "wood": 200, "stone": 100, "gold": 0, "carbon": 0, "adamite": 0 }
+  "starting_resources": { "food": 200, "wood": 200, "stone": 100, "gold": 0, "carbon": 0, "adamite": 0 },
+  "evolution_tree": [],
+  "unique_units": [],
+  "unique_building": null,
+  "bot_hints": { "personalities": ["merchant", "defender", "berserker"], "strategy": "Plain economy and army; the control group for balance." }
 }

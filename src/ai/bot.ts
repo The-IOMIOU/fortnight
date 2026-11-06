@@ -8,9 +8,9 @@ import { Rng } from '../sim/core/prng';
 import { wdelta } from '../sim/core/topo';
 import { TUNING } from '../sim/core/tuning';
 import { Biome, isWaterBiome } from '../sim/world/mapgen';
-import { BUILDING_TYPES, Kind, Res, RES_NONE, Task, UNIT_TYPES, buildingDef, unitDef, type BuildingTypeName, type UnitTypeName } from '../sim/defs';
+import { BUILDING_TYPES, Kind, Res, RES_NONE, Task, UNIT_TYPES, buildingDef, isMilitaryType, unitDef, type BuildingTypeName, type UnitTypeName } from '../sim/defs';
 
-const MILITARY = new Set<number>([Kind.SPEARMAN, Kind.ARCHER, Kind.RIDER, Kind.RAM, Kind.SABOTEUR]);
+const MILITARY = new Set<number>(UNIT_TYPES.filter((u) => isMilitaryType(u) && u !== 'warship').map((u) => UNIT_TYPES.indexOf(u) + 1));
 const TOWN: BuildingTypeName[] = ['capital', 'settlement'];
 const B = (b: BuildingTypeName): number => BUILDING_TYPES.indexOf(b);
 const U = (u: UnitTypeName): number => UNIT_TYPES.indexOf(u);

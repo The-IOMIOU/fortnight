@@ -16,7 +16,7 @@ A browser real-time 2.5D strategy game on a world of continents (TypeScript, Thr
 | 3 Combat, naval, conquest | done, approved |
 | 4 Bots (utility AI, personalities, difficulty) | done, approved (3 targets unmet, see below) |
 | 4b Modes, Earth-like continents, globe, settings, test options | done (committed "Phase 4b: …"), waiting for owner review; Short-mode length target unmet, Firefox and FPS not re-measured (see below) |
-| 5 Tech, equipment, first 6–8 races | **in progress** (see "Phase 5" below) |
+| 5 Tech, equipment, first 6–8 races | **in progress**: sim, data and tests pushed as WIP; UI, bots, render left (see "Phase 5" below) |
 | 6–9 | not started |
 
 Last updated: 2026-11-06.
@@ -49,8 +49,22 @@ Last updated: 2026-11-06.
 - **Short mode misses its length target:** `tests/bots/f193-short.test.ts` (new, part of `npm run test:bots`; `MatchSpec` now takes `world`): 10 matches with 2–3 Hard bots on the Short world → 6/10 finished, median 37.1 min (target 15–25). Closer seas did not shorten matches; P-008's stalemate breaker / bot behaviour is the likelier fix. Owner decision needed.
 - Ledger: F-194, F-196, F-197, F-198 done-verified; F-193 and F-195 in progress (reasons in Evidence). PLAN amendment 10 records the globe interpretation and the F-194 threshold change; the owner hasn't confirmed either.
 
-### Phase 5 (next, after 4b is committed)
-Spec: "Tech and evolution: the tech tree, equipment crafting chain, and the first 6–8 races with their abilities and evolution branches. Acceptance: each race plays distinctly and its special works in a scripted test." Ledger rows marked phase 5 (e.g. F-058 equipment, F-090+ race data format, F-100–F-107 race batch per P-002, derived mechanics F-029 day/night use, fungal spread, tunnels F-082, gliders F-081, build on water F-044, F-112 point-buy race builder: power-ups positive score, power-downs negative, total must be 0). Read every phase-5 row in FEATURES.md before designing; owner amendments 2–3 (fewer races on web; point-buy builder) apply. Bots must use races/tech too (Phase 4 bots live in `src/ai`, fog-safe via `BotView` only; `tools/check-ai-fog.mjs`).
+### Phase 5 (in progress; spec "tech, equipment crafting chain, first 6–8 races")
+**Done and tested (Node, `tests/races.test.ts`, 16 tests; whole unit suite 100/100):**
+- **Race data and validation** (F-090, F-091, F-112): `src/sim/races.ts` (`validateRace`, `loadRaces`, `racePoints`, `registerRace`; startup throws with "race <id>: <field>: <message>"). Races in `src/data/races/*.json`: Baseline (reference, P-001) + 8 playable: **Deepkin** (amphibious / sunburn), **Wildbond** (tameAnimals / frailBuildings), **Delvers** (tunneling / poorSailors), **Mycelids** (fungalSpread / slowGrowth), **Windriders** (gliders / poorDefense), **Anvilborn** (masterSmiths / heavyFooted), **Fenfolk** (swampStalkers / openGroundWeak), **Rimeborn** (frostAdapted / heatWeak). Point rule: 1 point per 5 % stat step + module `points` (tuning `races.abilities.*.points`); every race totals 0.
+- **Ability modules** (F-092): `src/sim/abilities.ts` `RaceRules` (per-player race, ability bits, stats incl. research bonuses; hooks for unit stats, building HP, work rates, damage, path cost, stealth, per-tick sunburn/fungus/research). A JSON-only race combining existing modules works with no code change (test `F-092`).
+- **Research** (F-093, F-094): shared tree `tuning.tech.nodes` (smithing → forge + iron gear, toolmaking, alloys, firearms, piers) and each race's `evolution_tree` (3 nodes: unique building + tier-1 unit, a stat bonus, capstone unit). Commands `research` / `cancelResearch`; done at the capital, one at a time, paid up front.
+- **Gear** (F-058): forge crafts into `ps.gear` (alloy = 2 carbon + 1 adamite → alloy weapons/armour → firearms); command `equip` near a forge/barracks/town sets `weaponTier`/`armorTier` (tools on workers = +20 % gathering).
+- **New sim pieces**: unit types `beast…mammoth` (17), buildings `forge, pier, tidepool, beastPen, tunnelHall, sporeTower, aerie, greatForge, stiltHall, iceLodge`; entity fields `burrowed, ambushUntil, restUntil`; `Task.TAME`; path modes (`Sim.modeOf`: 2 tunnel under walls/not water, 3 glide over everything, max `glideTiles` per hop then rest); fungus layer `sim.fungus`; commands `craft, equip, burrow, tame`; settings `races[]`, `victory.tech` (F-133). Save format v5. Phase 5 state is hashed only when `sim.p5` is set, so Baseline matches keep their old hashes (checked: F-010 hashes unchanged).
+- **Bug fixed on the way:** units with a gold cost (rider, spy, saboteur, warship) never had their gold charged although the HUD showed and required it. `train` now charges `d.gold` (and `cancelTrain` refunds it). This changes Baseline bot matches slightly.
+- Models for all new units/buildings in `src/render/models.ts`; names/help in `src/ui/names.ts`; TUNING.md documents every new constant.
+
+**Left to do (in this order):**
+1. Menu: race choice for the player (and per bot: random or by `bot_hints`) → `settings.races`; HUD: research panel at the capital (`research` command), craft buttons at the forge, equip button for selected units, burrow toggle (Delvers), race info and point breakdown. F-095 tech screen. F-112 builder UI (running total, block saving at ≠ 0) is still open.
+2. Bots (`src/ai`, fog-safe): research in order (smithing + own tree), train unique units when unlocked, craft/equip gear, Wildbond scouts tame nearby animals, Delvers burrow before attacking, Deepkin settle at night. `BotView` must expose own research/gear state.
+3. Render: fungus tint on terrain, burrowed units hidden/dimmed for the owner, glider flight height.
+4. Browser tests for the new UI; harness: bot matches with random races (distinct profiles, F-096).
+5. Ledger rows F-058, F-081, F-082, F-090–F-096, F-100–F-107, F-112, F-133, F-044 with the evidence printed by `tests/races.test.ts` (run with `--silent=false`).
 
 ### Key facts and gotchas
 - Stack: TypeScript 7 strict, Vite 8 (worker inlined), Three.js 0.186, Preact, Vitest 5, Playwright 1.64. The sim is integer-only and deterministic (`tools/check-sim-purity.mjs` bans Math.random/Date/trig/`**` in `src/sim`). Sim runs in a Web Worker. 10 Hz tick.

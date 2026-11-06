@@ -9,15 +9,14 @@ import type { GoalRect } from './path/astar';
 import type { Command } from './commands';
 import {
   BUILDING_TYPES, DEFENSIVE, Kind, Res, RES_NONE, TOWN_CENTERS, Task, UNIT_TYPES, buildingDef, buildingTypeOfKind, isBuildingKind, isUnitKind,
-  unitDef, unitTypeOfKind, type BuildingTypeName, type UnitDef,
+  unitDef, unitTypeOfKind, isMilitaryType, type BuildingTypeName, type UnitDef,
 } from './defs';
 import { NO_OWNER, TestOpt, costOf, type Sim } from './sim';
 import { wdelta } from './core/topo';
 
 const C = TUNING.combat, M = TUNING.morale, T = TUNING.terrainEdit, F = TUNING.fire, GRP = TUNING.groups;
 const CELL = 8;
-const MILITARY: ReadonlySet<number> = new Set([Kind.SPEARMAN, Kind.ARCHER, Kind.RIDER, Kind.RAM, Kind.SABOTEUR, Kind.WARSHIP]);
-export const isMilitaryKind = (k: number): boolean => MILITARY.has(k);
+export const isMilitaryKind = (k: number): boolean => isUnitKind(k) && isMilitaryType(unitTypeOfKind(k));
 
 export class Military {
   /** Spatial hash of targetable entities, rebuilt each tick. */
@@ -41,7 +40,7 @@ export class Military {
   }
   private targetable(id: number): boolean {
     const e = this.s.ents;
-    return e.alive[id] === 1 && e.owner[id] < this.s.players && e.carrier[id] < 0 && (isUnitKind(e.kind[id]) || isBuildingKind(e.kind[id]));
+    return e.alive[id] === 1 && e.owner[id] < this.s.players && e.carrier[id] < 0 && !e.burrowed[id] && (isUnitKind(e.kind[id]) || isBuildingKind(e.kind[id]));
   }
   /** Squared fixed-point distance from entity a's centre to entity b (unit centre or building footprint). */
   dist2(a: number, b: number): number {
@@ -124,7 +123,7 @@ export class Military {
         const d = this.dist2(id, t);
         if (d > r2) continue;
         if (isUnitKind(e.kind[t])) {
-          if (this.udef(t).stealth && d > stealthR2) continue;
+          if ((this.udef(t).stealth || this.s.rules.stealthy(t)) && d > stealthR2) continue;
           if (bestU < 0 || d < bdU || (d === bdU && t < bestU)) { bestU = t; bdU = d; }
         } else if (bestB < 0 || d < bdB || (d === bdB && t < bestB)) { bestB = t; bdB = d; }
       }
@@ -163,6 +162,8 @@ export class Military {
       base = d.attack; ranged = d.range > 20; vsU = d.vsUnits; vsB = d.vsBuildings;
     }
     let dmg = base * 100;                                         // ×100 fixed point
+    const rp = this.s.rules.damagePct(a);                         // race: stats, terrain abilities, ambush (Phase 5)
+    if (rp !== 100) dmg = Math.floor((dmg * rp) / 100);
     dmg = Math.floor((dmg * (tBuilding ? vsB : vsU)) / 100);
     dmg = Math.floor((dmg * (100 + e.weaponTier[a] * C.weaponTierPct)) / 100);
     const ha = this.tileH(a), ht = this.tileH(t);
@@ -233,6 +234,7 @@ export class Military {
         }
       } else continue;
       if (this.inRange(id, tgt)) {
+        if (e.burrowed[id] && !s.rules.surface(id)) continue; // strike from below: surface first
         if (e.moving[id] && e.task[id] === Task.ATTACK) { e.moving[id] = 0; e.paths[id] = null; e.flowGoal[id] = -1; }
         if (e.cooldown[id] === 0) { this.hit(id, tgt); e.cooldown[id] = d.cooldown; }
       } else if (e.task[id] === Task.ATTACK && !e.waitPath[id]) {

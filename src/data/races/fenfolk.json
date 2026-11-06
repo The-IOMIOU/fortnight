@@ -1,0 +1,20 @@
+{
+  "id": "fenfolk",
+  "name": "Fenfolk",
+  "description": "Marsh people who glide through bogs as if on dry land and vanish among the reeds. Out on open plains and dunes they fight poorly.",
+  "biome_preference": ["swamp", "river"],
+  "stat_modifiers": { "gather_speed": 100, "build_speed": 100, "unit_health": 100, "unit_damage": 100, "vision": 100, "movement": 100 },
+  "special_ability": "swampStalkers",
+  "weakness": "openGroundWeak",
+  "starting_units": { "worker": 3, "scout": 1 },
+  "starting_buildings": ["capital"],
+  "starting_resources": { "food": 200, "wood": 200, "stone": 100, "gold": 0, "carbon": 0, "adamite": 0 },
+  "evolution_tree": [
+    { "id": "stilts", "name": "Stilt houses", "cost": { "wood": 150, "food": 80 }, "ticks": 600, "requires": [], "unlocks": { "buildings": ["stiltHall"], "units": ["bogStalker"] } },
+    { "id": "mireLore", "name": "Mire lore", "cost": { "food": 150, "gold": 60 }, "ticks": 900, "requires": ["stilts"], "unlocks": { "stats": { "gather_speed": 10 } } },
+    { "id": "mireHorrors", "name": "Mire horrors", "cost": { "food": 300, "gold": 180, "carbon": 40 }, "ticks": 1800, "requires": ["mireLore"], "unlocks": { "units": ["mireHorror"] }, "capstone": true }
+  ],
+  "unique_units": ["bogStalker", "mireHorror"],
+  "unique_building": "stiltHall",
+  "bot_hints": { "personalities": ["schemer", "defender"], "strategy": "Fight in swamps and forests, ambush from hiding, never meet an army on open ground." }
+}

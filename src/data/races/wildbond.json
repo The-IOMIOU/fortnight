@@ -1,0 +1,20 @@
+{
+  "id": "wildbond",
+  "name": "Wildbond",
+  "description": "Herders who can tame any wild animal into a fighting beast. In time they learn to raise beasts from the dead and, after long study, to wake giant reptiles of old. Their timber halls burn and break easily.",
+  "biome_preference": ["plains", "forest"],
+  "stat_modifiers": { "gather_speed": 105, "build_speed": 95, "unit_health": 100, "unit_damage": 100, "vision": 100, "movement": 100 },
+  "special_ability": "tameAnimals",
+  "weakness": "frailBuildings",
+  "starting_units": { "worker": 3, "scout": 1 },
+  "starting_buildings": ["capital"],
+  "starting_resources": { "food": 200, "wood": 200, "stone": 100, "gold": 0, "carbon": 0, "adamite": 0 },
+  "evolution_tree": [
+    { "id": "warTraining", "name": "War training", "cost": { "food": 150, "wood": 100 }, "ticks": 600, "requires": [], "unlocks": { "buildings": ["beastPen"], "units": ["warbeast"] } },
+    { "id": "revival", "name": "Revival", "cost": { "food": 200, "gold": 80 }, "ticks": 1200, "requires": ["warTraining"], "unlocks": { "units": ["beast"] } },
+    { "id": "ancientRevival", "name": "Ancient revival", "cost": { "food": 400, "gold": 200, "adamite": 60 }, "ticks": 3000, "requires": ["revival"], "unlocks": { "units": ["thunderlizard"] }, "capstone": true }
+  ],
+  "unique_units": ["beast", "warbeast", "thunderlizard"],
+  "unique_building": "beastPen",
+  "bot_hints": { "personalities": ["berserker", "raider"], "strategy": "Tame every animal near home early; rush with beasts before the enemy walls up." }
+}

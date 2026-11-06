@@ -88,7 +88,24 @@
     "spy":       { "food": 40,  "wood": 0,   "gold": 40, "trainTicks": 150, "pop": 1, "speed": 320, "vision": 9, "hp": 40,  "attack": 0,  "range": 0,  "cooldown": 0,  "armor": 0, "vsUnits": 0,   "vsBuildings": 0,   "water": 0, "stealth": 1, "capacity": 0 },
     "saboteur":  { "food": 40,  "wood": 0,   "gold": 50, "trainTicks": 180, "pop": 1, "speed": 300, "vision": 6, "hp": 50,  "attack": 12, "range": 12, "cooldown": 20, "armor": 0, "vsUnits": 30,  "vsBuildings": 300, "water": 0, "stealth": 1, "capacity": 0 },
     "warship":   { "food": 0,   "wood": 150, "gold": 20, "trainTicks": 300, "pop": 3, "speed": 300, "vision": 9, "hp": 220, "attack": 12, "range": 55, "cooldown": 18, "armor": 2, "vsUnits": 100, "vsBuildings": 60,  "water": 1, "stealth": 0, "capacity": 0 },
-    "transport": { "food": 0,   "wood": 100, "gold": 0,  "trainTicks": 220, "pop": 1, "speed": 320, "vision": 6, "hp": 160, "attack": 0,  "range": 0,  "cooldown": 0,  "armor": 1, "vsUnits": 0,   "vsBuildings": 0,   "water": 1, "stealth": 0, "capacity": 8 }
+    "transport": { "food": 0,   "wood": 100, "gold": 0,  "trainTicks": 220, "pop": 1, "speed": 320, "vision": 6, "hp": 160, "attack": 0,  "range": 0,  "cooldown": 0,  "armor": 1, "vsUnits": 0,   "vsBuildings": 0,   "water": 1, "stealth": 0, "capacity": 8 },
+    "beast": { "food": 60, "wood": 0, "gold": 0, "trainTicks": 150, "pop": 1, "speed": 300, "vision": 6, "hp": 120, "attack": 10, "range": 12, "cooldown": 11, "armor": 1, "vsUnits": 100, "vsBuildings": 40, "water": 0, "stealth": 0, "capacity": 0 },
+    "warbeast": { "food": 90, "wood": 0, "gold": 20, "trainTicks": 220, "pop": 2, "speed": 340, "vision": 7, "hp": 220, "attack": 16, "range": 13, "cooldown": 12, "armor": 2, "vsUnits": 110, "vsBuildings": 60, "water": 0, "stealth": 0, "capacity": 0 },
+    "thunderlizard": { "food": 300, "wood": 0, "gold": 120, "trainTicks": 600, "pop": 6, "speed": 220, "vision": 9, "hp": 900, "attack": 40, "range": 15, "cooldown": 18, "armor": 5, "vsUnits": 120, "vsBuildings": 250, "water": 0, "stealth": 0, "capacity": 0 },
+    "tideguard": { "food": 60, "wood": 20, "gold": 0, "trainTicks": 160, "pop": 1, "speed": 270, "vision": 6, "hp": 120, "attack": 11, "range": 12, "cooldown": 10, "armor": 2, "vsUnits": 100, "vsBuildings": 40, "water": 0, "stealth": 0, "capacity": 0 },
+    "leviathan": { "food": 250, "wood": 0, "gold": 100, "trainTicks": 600, "pop": 6, "speed": 260, "vision": 9, "hp": 850, "attack": 34, "range": 14, "cooldown": 16, "armor": 4, "vsUnits": 110, "vsBuildings": 200, "water": 0, "stealth": 0, "capacity": 0 },
+    "burrower": { "food": 55, "wood": 15, "gold": 0, "trainTicks": 160, "pop": 1, "speed": 250, "vision": 5, "hp": 125, "attack": 12, "range": 12, "cooldown": 10, "armor": 2, "vsUnits": 100, "vsBuildings": 40, "water": 0, "stealth": 0, "capacity": 0 },
+    "deepDrill": { "food": 0, "wood": 200, "gold": 80, "trainTicks": 500, "pop": 4, "speed": 160, "vision": 4, "hp": 500, "attack": 45, "range": 13, "cooldown": 22, "armor": 6, "vsUnits": 30, "vsBuildings": 600, "water": 0, "stealth": 0, "capacity": 0 },
+    "sporeling": { "food": 30, "wood": 0, "gold": 0, "trainTicks": 90, "pop": 1, "speed": 270, "vision": 5, "hp": 50, "attack": 7, "range": 12, "cooldown": 9, "armor": 0, "vsUnits": 100, "vsBuildings": 40, "water": 0, "stealth": 0, "capacity": 0 },
+    "bloomHulk": { "food": 250, "wood": 100, "gold": 60, "trainTicks": 550, "pop": 5, "speed": 180, "vision": 6, "hp": 800, "attack": 30, "range": 14, "cooldown": 18, "armor": 3, "vsUnits": 100, "vsBuildings": 150, "water": 0, "stealth": 0, "capacity": 0 },
+    "glider": { "food": 50, "wood": 40, "gold": 0, "trainTicks": 170, "pop": 1, "speed": 420, "vision": 10, "hp": 60, "attack": 8, "range": 40, "cooldown": 14, "armor": 0, "vsUnits": 100, "vsBuildings": 20, "water": 0, "stealth": 0, "capacity": 0 },
+    "skyLancer": { "food": 120, "wood": 60, "gold": 60, "trainTicks": 350, "pop": 3, "speed": 440, "vision": 10, "hp": 200, "attack": 24, "range": 14, "cooldown": 14, "armor": 1, "vsUnits": 110, "vsBuildings": 40, "water": 0, "stealth": 0, "capacity": 0 },
+    "ironguard": { "food": 60, "wood": 10, "gold": 20, "trainTicks": 180, "pop": 1, "speed": 240, "vision": 6, "hp": 150, "attack": 13, "range": 12, "cooldown": 10, "armor": 4, "vsUnits": 100, "vsBuildings": 40, "water": 0, "stealth": 0, "capacity": 0 },
+    "steamGolem": { "food": 0, "wood": 150, "gold": 150, "trainTicks": 600, "pop": 6, "speed": 170, "vision": 6, "hp": 1000, "attack": 38, "range": 14, "cooldown": 18, "armor": 8, "vsUnits": 100, "vsBuildings": 200, "water": 0, "stealth": 0, "capacity": 0 },
+    "bogStalker": { "food": 50, "wood": 20, "gold": 0, "trainTicks": 150, "pop": 1, "speed": 300, "vision": 7, "hp": 90, "attack": 12, "range": 12, "cooldown": 10, "armor": 1, "vsUnits": 100, "vsBuildings": 40, "water": 0, "stealth": 0, "capacity": 0 },
+    "mireHorror": { "food": 260, "wood": 0, "gold": 90, "trainTicks": 550, "pop": 5, "speed": 230, "vision": 7, "hp": 750, "attack": 32, "range": 14, "cooldown": 16, "armor": 3, "vsUnits": 100, "vsBuildings": 150, "water": 0, "stealth": 0, "capacity": 0 },
+    "frostWarden": { "food": 60, "wood": 20, "gold": 0, "trainTicks": 170, "pop": 1, "speed": 260, "vision": 6, "hp": 130, "attack": 12, "range": 12, "cooldown": 10, "armor": 3, "vsUnits": 100, "vsBuildings": 40, "water": 0, "stealth": 0, "capacity": 0 },
+    "mammoth": { "food": 300, "wood": 0, "gold": 80, "trainTicks": 600, "pop": 6, "speed": 230, "vision": 7, "hp": 950, "attack": 36, "range": 15, "cooldown": 18, "armor": 4, "vsUnits": 110, "vsBuildings": 220, "water": 0, "stealth": 0, "capacity": 0 }
   },
   "buildingTypes": {
     "capital":    { "size": 3, "wood": 0,   "stone": 0,  "buildPoints": 0,   "housing": 10, "territory": 7, "vision": 9, "hp": 2200, "attack": 6, "range": 70, "cooldown": 15, "garrison": 10 },
@@ -105,7 +122,17 @@
     "dock":       { "size": 2, "wood": 120, "stone": 0,  "buildPoints": 350, "housing": 0,  "territory": 0, "vision": 6, "hp": 700,  "attack": 0, "range": 0,  "cooldown": 0,  "garrison": 0 },
     "wall":       { "size": 1, "wood": 0,   "stone": 8,  "buildPoints": 50,  "housing": 0,  "territory": 0, "vision": 3, "hp": 500,  "attack": 0, "range": 0,  "cooldown": 0,  "garrison": 0 },
     "gate":       { "size": 1, "wood": 10,  "stone": 20, "buildPoints": 80,  "housing": 0,  "territory": 0, "vision": 3, "hp": 600,  "attack": 0, "range": 0,  "cooldown": 0,  "garrison": 0 },
-    "tower":      { "size": 1, "wood": 40,  "stone": 60, "buildPoints": 300, "housing": 0,  "territory": 0, "vision": 9, "hp": 800,  "attack": 9, "range": 70, "cooldown": 15, "garrison": 4 }
+    "tower":      { "size": 1, "wood": 40,  "stone": 60, "buildPoints": 300, "housing": 0,  "territory": 0, "vision": 9, "hp": 800,  "attack": 9, "range": 70, "cooldown": 15, "garrison": 4 },
+    "forge": { "size": 2, "wood": 120, "stone": 80, "buildPoints": 350, "housing": 0, "territory": 0, "vision": 4, "hp": 900, "attack": 0, "range": 0, "cooldown": 0, "garrison": 0 },
+    "pier": { "size": 2, "wood": 60, "stone": 0, "buildPoints": 200, "housing": 0, "territory": 0, "vision": 5, "hp": 400, "attack": 0, "range": 0, "cooldown": 0, "garrison": 0 },
+    "tidepool": { "size": 2, "wood": 100, "stone": 40, "buildPoints": 350, "housing": 0, "territory": 0, "vision": 4, "hp": 900, "attack": 0, "range": 0, "cooldown": 0, "garrison": 0 },
+    "beastPen": { "size": 2, "wood": 120, "stone": 20, "buildPoints": 300, "housing": 0, "territory": 0, "vision": 4, "hp": 800, "attack": 0, "range": 0, "cooldown": 0, "garrison": 0 },
+    "tunnelHall": { "size": 2, "wood": 80, "stone": 120, "buildPoints": 400, "housing": 0, "territory": 0, "vision": 4, "hp": 1100, "attack": 0, "range": 0, "cooldown": 0, "garrison": 0 },
+    "sporeTower": { "size": 1, "wood": 60, "stone": 40, "buildPoints": 250, "housing": 0, "territory": 0, "vision": 6, "hp": 500, "attack": 0, "range": 0, "cooldown": 0, "garrison": 0 },
+    "aerie": { "size": 2, "wood": 140, "stone": 20, "buildPoints": 350, "housing": 0, "territory": 0, "vision": 7, "hp": 700, "attack": 0, "range": 0, "cooldown": 0, "garrison": 0 },
+    "greatForge": { "size": 2, "wood": 100, "stone": 140, "buildPoints": 450, "housing": 0, "territory": 0, "vision": 4, "hp": 1200, "attack": 0, "range": 0, "cooldown": 0, "garrison": 0 },
+    "stiltHall": { "size": 2, "wood": 140, "stone": 0, "buildPoints": 300, "housing": 0, "territory": 0, "vision": 4, "hp": 800, "attack": 0, "range": 0, "cooldown": 0, "garrison": 0 },
+    "iceLodge": { "size": 2, "wood": 120, "stone": 20, "buildPoints": 300, "housing": 0, "territory": 0, "vision": 5, "hp": 800, "attack": 0, "range": 0, "cooldown": 0, "garrison": 0, "maxWorkers": 3 }
   },
   "combat": {
     "heightBonusPct": 25,
@@ -164,5 +191,53 @@
     "short": { "sizes": ["small"], "defaultSize": "small", "maxBots": 3, "defaultBots": 2, "globe": 1, "sea": "close", "continents": 2, "targetMin": 20 },
     "long": { "sizes": ["medium", "large"], "defaultSize": "medium", "maxBots": 15, "defaultBots": 5, "globe": 1, "sea": "mixed", "continents": 4, "targetMin": 45 },
     "continental": { "sizes": ["large", "huge"], "defaultSize": "huge", "maxBots": 31, "defaultBots": 9, "globe": 1, "sea": "mixed", "continents": 7, "targetMin": 120 }
+  },
+  "races": {
+    "statPctPerPoint": 5,
+    "statMin": 50,
+    "statMax": 150,
+    "abilities": {
+      "amphibious": { "points": 8, "waterMoveCost": 14, "waterSpeedPct": 130 },
+      "sunburn": { "points": -8, "everyTicks": 20, "damage": 2 },
+      "tameAnimals": { "points": 6, "tameTicks": 50, "range": 2 },
+      "frailBuildings": { "points": -6, "hpPct": 70 },
+      "tunneling": { "points": 8, "speedPct": 60, "ambushPct": 150, "ambushTicks": 30, "surfaceTicks": 10 },
+      "poorSailors": { "points": -6, "navalHpPct": 60, "navalAttackPct": 70 },
+      "fungalSpread": { "points": 8, "spreadEveryTicks": 30, "spreadTries": 3, "towerTries": 4, "poisonEveryTicks": 20, "poisonDamage": 2, "farmYieldPct": 50, "ownTerritoryOnlyStart": 1 },
+      "slowGrowth": { "points": -4, "trainTimePct": 140 },
+      "gliders": { "points": 6, "scoutSpeedPct": 130, "glideTiles": 16, "restTicks": 50 },
+      "poorDefense": { "points": -6, "defenceHpPct": 60, "towerAttackPct": 60 },
+      "masterSmiths": { "points": 6, "gearCostPct": 60, "gearTierBonus": 1 },
+      "heavyFooted": { "points": -6, "militarySpeedPct": 80 },
+      "swampStalkers": { "points": 5, "swampCostPct": 40, "swampStealth": 1 },
+      "openGroundWeak": { "points": -5, "damagePct": 70 },
+      "frostAdapted": { "points": 6, "coldDamagePct": 125, "coldGatherPct": 130, "iceFishPct": 150 },
+      "heatWeak": { "points": -6, "hotOutputPct": 60, "hotDamagePct": 80 }
+    }
+  },
+  "tech": {
+    "researchAt": "capital",
+    "nodes": {
+      "smithing": { "wood": 100, "stone": 100, "gold": 0, "carbon": 0, "adamite": 0, "ticks": 600, "requires": [], "buildings": ["forge"], "gear": ["ironWeapons", "ironArmor"] },
+      "toolmaking": { "wood": 80, "stone": 40, "gold": 20, "carbon": 0, "adamite": 0, "ticks": 450, "requires": ["smithing"], "buildings": [], "gear": ["tools"] },
+      "alloys": { "wood": 0, "stone": 60, "gold": 60, "carbon": 40, "adamite": 20, "ticks": 900, "requires": ["smithing"], "buildings": [], "gear": ["alloy", "alloyWeapons", "alloyArmor"] },
+      "firearms": { "wood": 0, "stone": 0, "gold": 150, "carbon": 80, "adamite": 40, "ticks": 1500, "requires": ["alloys"], "buildings": [], "gear": ["firearms"] },
+      "piers": { "wood": 150, "stone": 0, "gold": 20, "carbon": 0, "adamite": 0, "ticks": 450, "requires": [], "buildings": ["pier"], "gear": [] }
+    },
+    "victoryCapstonePlusPct": 60
+  },
+  "gear": {
+    "craftAt": "forge",
+    "assignRange": 6,
+    "toolsGatherPct": 120,
+    "items": {
+      "alloy": { "food": 0, "wood": 0, "stone": 0, "gold": 0, "carbon": 2, "adamite": 1, "alloy": 0, "ticks": 80, "slot": 0, "tier": 0 },
+      "tools": { "food": 0, "wood": 15, "stone": 10, "gold": 0, "carbon": 0, "adamite": 0, "alloy": 0, "ticks": 60, "slot": 3, "tier": 1 },
+      "ironWeapons": { "food": 0, "wood": 5, "stone": 20, "gold": 10, "carbon": 0, "adamite": 0, "alloy": 0, "ticks": 80, "slot": 1, "tier": 1 },
+      "ironArmor": { "food": 0, "wood": 0, "stone": 30, "gold": 10, "carbon": 0, "adamite": 0, "alloy": 0, "ticks": 90, "slot": 2, "tier": 1 },
+      "alloyWeapons": { "food": 0, "wood": 0, "stone": 0, "gold": 15, "carbon": 0, "adamite": 0, "alloy": 1, "ticks": 100, "slot": 1, "tier": 2 },
+      "alloyArmor": { "food": 0, "wood": 0, "stone": 0, "gold": 15, "carbon": 0, "adamite": 0, "alloy": 2, "ticks": 110, "slot": 2, "tier": 2 },
+      "firearms": { "food": 0, "wood": 0, "stone": 0, "gold": 30, "carbon": 2, "adamite": 0, "alloy": 2, "ticks": 140, "slot": 1, "tier": 3 }
+    }
   }
 }

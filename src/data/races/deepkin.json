@@ -1,0 +1,20 @@
+{
+  "id": "deepkin",
+  "name": "Deepkin",
+  "description": "A people of the shallows. They breathe and walk underwater and swim faster than they run, but sunlight burns them on open land, so they push into new land by night.",
+  "biome_preference": ["coast", "swamp"],
+  "stat_modifiers": { "gather_speed": 100, "build_speed": 100, "unit_health": 100, "unit_damage": 100, "vision": 100, "movement": 100 },
+  "special_ability": "amphibious",
+  "weakness": "sunburn",
+  "starting_units": { "worker": 3, "scout": 1 },
+  "starting_buildings": ["capital"],
+  "starting_resources": { "food": 200, "wood": 200, "stone": 100, "gold": 0, "carbon": 0, "adamite": 0 },
+  "evolution_tree": [
+    { "id": "tidecraft", "name": "Tidecraft", "cost": { "wood": 120, "food": 100 }, "ticks": 600, "requires": [], "unlocks": { "buildings": ["tidepool"], "units": ["tideguard"] } },
+    { "id": "deepCurrents", "name": "Deep currents", "cost": { "food": 150, "gold": 60 }, "ticks": 900, "requires": ["tidecraft"], "unlocks": { "stats": { "movement": 10 } } },
+    { "id": "leviathanCall", "name": "Call of the leviathan", "cost": { "food": 300, "gold": 200, "adamite": 40 }, "ticks": 1800, "requires": ["deepCurrents"], "unlocks": { "units": ["leviathan"] }, "capstone": true }
+  ],
+  "unique_units": ["tideguard", "leviathan"],
+  "unique_building": "tidepool",
+  "bot_hints": { "personalities": ["raider", "expansionist"], "strategy": "Walk armies across straits instead of building transports; settle at night." }
+}

@@ -1,0 +1,20 @@
+{
+  "id": "delvers",
+  "name": "Delvers",
+  "description": "Stone-dwelling clans. Their soldiers burrow, travel unseen beneath walls and moats, and burst out of the ground. They are tough but short-sighted and slow, and their ships are poor.",
+  "biome_preference": ["mountain", "tundra"],
+  "stat_modifiers": { "gather_speed": 100, "build_speed": 90, "unit_health": 110, "unit_damage": 100, "vision": 90, "movement": 100 },
+  "special_ability": "tunneling",
+  "weakness": "poorSailors",
+  "starting_units": { "worker": 3, "scout": 1 },
+  "starting_buildings": ["capital"],
+  "starting_resources": { "food": 200, "wood": 200, "stone": 150, "gold": 0, "carbon": 0, "adamite": 0 },
+  "evolution_tree": [
+    { "id": "deepHalls", "name": "Deep halls", "cost": { "stone": 150, "wood": 60 }, "ticks": 600, "requires": [], "unlocks": { "buildings": ["tunnelHall"], "units": ["burrower"] } },
+    { "id": "stoneSkin", "name": "Stone skin", "cost": { "stone": 200, "gold": 60 }, "ticks": 900, "requires": ["deepHalls"], "unlocks": { "stats": { "unit_health": 10 } } },
+    { "id": "greatDrill", "name": "The great drill", "cost": { "wood": 200, "gold": 200, "carbon": 60 }, "ticks": 1800, "requires": ["stoneSkin"], "unlocks": { "units": ["deepDrill"] }, "capstone": true }
+  ],
+  "unique_units": ["burrower", "deepDrill"],
+  "unique_building": "tunnelHall",
+  "bot_hints": { "personalities": ["schemer", "defender"], "strategy": "Burrow the army, walk under the enemy wall line, surface next to the town." }
+}
