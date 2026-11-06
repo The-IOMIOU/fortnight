@@ -24,6 +24,12 @@ export type ToWorker =
   | { type: 'speed'; speed: SpeedName }
   | { type: 'pause'; paused: boolean }
   | { type: 'stall'; ms: number }            // debug: block the worker (F-011 test)
+  // ---- Phase 7 multiplayer ----
+  | { type: 'hostNet'; humans: number[]; pauseMode: 'host' | 'vote' }
+  | { type: 'joinNet'; token: string; name: string }
+  | { type: 'netIn'; peer: number; msg: unknown }
+  | { type: 'netGone'; peer: number }
+  | { type: 'netVote'; id: number; yes: boolean }
   | { type: 'hash'; reqId: number }
   | { type: 'save'; reqId: number }
   | { type: 'dump'; reqId: number };         // debug: stats straight from the sim (F-059 test)
@@ -47,6 +53,8 @@ export interface Snapshot {
   me: { race: string; researched: string[]; researching: string; researchPermille: number; gear: number[] } | null;
   /** Phase 6: the viewer's diplomacy (relations, reputations, offers and chat that concern the viewer). */
   dip: { rel: number[]; reputation: number[]; ceasefireUntil: number[]; offers: import('../sim/diplomacy').Offer[]; chat: import('../sim/diplomacy').ChatMsg[]; races: string[] } | null;
+  /** Phase 7: multiplayer status for the viewer. */
+  net: { role: 'host' | 'client'; seats: import('../net/lockstep').Seat[]; vote: import('../net/lockstep').VoteInfo | null; paused: boolean; desyncAt: number; hostLeft: boolean; lag: number } | null;
   /** A test option was used in this run (F-198), and the viewer's active test options. */
   modified: boolean;
   opts: number;
@@ -75,4 +83,5 @@ export type FromWorker =
   | { type: 'hash'; reqId: number; tick: number; hash: number }
   | { type: 'save'; reqId: number; save: SaveData }
   | { type: 'dump'; reqId: number; stats: PlayerStats }
-  | { type: 'error'; message: string };
+  | { type: 'error'; message: string }
+  | { type: 'netOut'; peer: number; msg: unknown };

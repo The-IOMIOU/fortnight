@@ -18,7 +18,8 @@ A browser real-time 2.5D strategy game on a world of continents (TypeScript, Thr
 | 4b Modes, Earth-like continents, globe, settings, test options | done (committed "Phase 4b: …"), waiting for owner review; Short-mode length target unmet, Firefox and FPS not re-measured (see below) |
 | 5 Tech, equipment, first 6–8 races | done (committed "Phase 5: …"), waiting for owner review; race builder UI and some render work left (see below) |
 | 6 Diplomacy, trade, chat, covert actions | done (committed "Phase 6: …") |
-| 7–9 | in progress, see below |
+| 7 Multiplayer | done (committed "Phase 7: …"); signaling server / TURN need owner accounts |
+| 8–9 | in progress, see below |
 
 Last updated: 2026-11-06.
 
@@ -74,6 +75,11 @@ Last updated: 2026-11-06.
 - **UI:** `src/ui/DiploPanel.tsx` (top-bar "Diplomacy": relations, reputation, treaty buttons, give/ask, incoming offers, chat with recipient choice, mute), covert-act buttons for selected spies/saboteurs (pick, then right-click the target), menu victory options Technology and Economy. Scouts-only right-click on an animal now sends them (Wildbond taming).
 - **Tests:** `tests/diplomacy.test.ts` (11), `tests/e2e/diplomacy.spec.ts`. Unit suite 121/121. Short-mode bot suite with diplomacy: 7/10 finished, median 38.2 min (before 6/10, 37.1): bots still end matches.
 - **Not done:** human-to-human chat and offers between browsers (needs Phase 7 networking; the command path is the same). Block (as opposed to mute) only matters with humans, so also Phase 7.
+
+### Phase 7 (built 2026-11-06; PLAN amendment 13)
+- **Core:** `src/net/lockstep.ts` (`HostLockstep`, `ClientLockstep`, wire messages, votes, seats, replays `recordReplay/playReplay`). `Sim.lastApplied` = commands of the last tick. Tests: `tests/multiplayer.test.ts` (9, includes a 20-min 4-human + 4-bot run, about 1.5 min).
+- **Browser:** `src/net/peer.ts` (WebRTC, invite/answer codes gzip+base64url, chunked JSON over the data channel), `src/net/session.ts` (links ↔ worker), worker messages `hostNet / joinNet / netIn / netGone / netVote / netOut`, UI `src/ui/NetPanels.tsx` (invites and seats, vote banner, host-left screen, desync notice, guest answer code), menu "Online" (seats, co-op / free-for-all, vote pause, join box), link `?join=<code>`. Test: `tests/e2e/multiplayer.spec.ts` (project `multiplayer`: two contexts, real WebRTC; run with `npx playwright test --project=multiplayer`).
+- **Not done:** the signaling server and TURN relay (owner accounts needed), a test across two real networks, a test for "block", replay download in the UI.
 
 ### Key facts and gotchas
 - Stack: TypeScript 7 strict, Vite 8 (worker inlined), Three.js 0.186, Preact, Vitest 5, Playwright 1.64. The sim is integer-only and deterministic (`tools/check-sim-purity.mjs` bans Math.random/Date/trig/`**` in `src/sim`). Sim runs in a Web Worker. 10 Hz tick.

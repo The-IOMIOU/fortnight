@@ -31,7 +31,7 @@ export function DiploButton() {
 }
 
 export function DiploPanel({ game }: { game: Game }) {
-  const s = useStore((st) => ({ open: st.dipOpen, dip: st.dip, players: st.players, tick: st.tick, muted: st.muted }));
+  const s = useStore((st) => ({ open: st.dipOpen, dip: st.dip, players: st.players, tick: st.tick, muted: st.muted, blocked: st.blocked }));
   const [to, setTo] = useState(-1);
   const [text, setText] = useState('');
   const [amount, setAmount] = useState(100);
@@ -42,7 +42,10 @@ export function DiploPanel({ game }: { game: Game }) {
   const res = (n: number): number[] => Array.from({ length: NUM_RES }, (_, i) => (i === resIdx ? n : 0));
   const treaty = (q: number, t: Treaty): void => game.offer(q, {}, {}, t);
   const mute = (q: number): void => store.set({ muted: s.muted.includes(q) ? s.muted.filter((x) => x !== q) : [...s.muted, q] });
-  const chat = d.chat.filter((m) => !s.muted.includes(m.from));
+  const block = (q: number): void => store.set({ blocked: s.blocked.includes(q) ? s.blocked.filter((x) => x !== q) : [...s.blocked, q] });
+  // mute hides a player's chat; block also hides their offers (both only for you, F-154)
+  const chat = d.chat.filter((m) => !s.muted.includes(m.from) && !s.blocked.includes(m.from));
+  const offers = d.offers.filter((o) => !(o.to === me && s.blocked.includes(o.from)));
   return (
     <div class="modal" data-testid="dip-panel"><div class="panel dip-panel">
       <div class="sel-title">Diplomacy <button onClick={() => store.set({ dipOpen: false })} aria-label="Close">✕</button></div>
@@ -64,6 +67,7 @@ export function DiploPanel({ game }: { game: Game }) {
                 <button onClick={() => game.offer(q, { res: res(amount) }, {}, null)} data-testid={'gift-' + q}>Give</button>
                 <button onClick={() => game.offer(q, {}, { res: res(amount) }, null)} data-testid={'ask-' + q}>Ask</button>
                 <button onClick={() => mute(q)} data-testid={'mute-' + q}>{s.muted.includes(q) ? 'Unmute' : 'Mute'}</button>
+                <button onClick={() => block(q)} data-testid={'block-' + q}>{s.blocked.includes(q) ? 'Unblock' : 'Block'}</button>
               </td>
             </tr>
           ))}
@@ -74,8 +78,8 @@ export function DiploPanel({ game }: { game: Game }) {
         <select value={resIdx} onChange={(e) => setResIdx(+(e.target as HTMLSelectElement).value)} data-testid="deal-res">{RES_LABELS.map((r, i) => <option value={i}>{r}</option>)}</select>
       </div>
       <h3>Offers</h3>
-      {d.offers.length === 0 && <div class="sel-sub">No open offers.</div>}
-      {d.offers.map((o) => (
+      {offers.length === 0 && <div class="sel-sub">No open offers.</div>}
+      {offers.map((o) => (
         <div class="tech-row" data-testid={'offer-' + o.id}>
           <div><b>{o.from === me ? `To ${playerLabel(o.to)}` : `From ${playerLabel(o.from)}`}</b> <small>{offerText(o, me)}</small></div>
           {o.to === me ? <span><button onClick={() => game.respond(o.id, true)} data-testid={'accept-' + o.id}>Accept</button> <button onClick={() => game.respond(o.id, false)} data-testid={'decline-' + o.id}>Decline</button></span> : <small>waiting</small>}

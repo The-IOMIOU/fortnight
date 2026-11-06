@@ -152,3 +152,9 @@ details.more > * + * { margin-top: 0.5rem; }
 .dip-actions button { padding: 0.1rem 0.35rem; font-size: 0.78rem; }
 .chat-log { max-height: 180px; overflow-y: auto; font-size: 0.85rem; background: #0003; padding: 0.3rem; border-radius: 4px; }
 .chat-line { padding: 0.1rem 0; }
+
+/* Phase 7: multiplayer */
+.vote-banner { position: absolute; top: 3.2rem; left: 50%; transform: translateX(-50%); background: #1d2533ee; border: 1px solid #ffffff22; padding: 0.4rem 0.8rem; border-radius: 6px; z-index: 9; font-size: 0.9rem; }
+.vote-banner.warn { border-color: #e8705f; }
+.join-wait { display: grid; gap: 0.5rem; max-width: min(560px, calc(100vw - 2rem)); margin: auto; }
+.join-wait textarea { width: 100%; font-family: monospace; font-size: 0.75rem; }

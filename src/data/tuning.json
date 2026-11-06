@@ -253,5 +253,9 @@
     "stealAmount": 60, "revealRadius": 10, "revealTicks": 600, "sabotageTicks": 450,
     "unitPoisonTicks": 300, "unitPoisonEveryTicks": 20, "unitPoisonDamage": 3, "cropPoisonTicks": 900, "wellPoisonTicks": 900, "wellUpkeepPct": 200,
     "cooldownTicks": 300
+  },
+  "multiplayer": {
+    "maxHumans": 8, "hashEvery": 50, "keepTurns": 600, "voteMs": 20000, "maxCatchUpPerCall": 40,
+    "iceServers": ["stun:stun.l.google.com:19302", "stun:stun.cloudflare.com:3478"]
   }
 }

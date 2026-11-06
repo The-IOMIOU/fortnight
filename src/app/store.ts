@@ -67,6 +67,12 @@ export interface GameState {
   /** Covert act waiting for a right-click target. */
   covertAct: string | null;
   muted: number[];
+  /** Phase 7: multiplayer status, the host's invites, the guest's answer code. */
+  net: import('../worker/protocol').Snapshot['net'];
+  netOpen: boolean;
+  invites: { peer: number; code: string; state: string }[];
+  netAnswer: string;
+  blocked: number[];
   opts: number;
 }
 
@@ -78,7 +84,7 @@ export class Store {
     speed: 'normal', paused: false, pendingOrders: 0, selected: 0, selection: { units: {}, building: null, unit: null },
     ownerOverlay: true, showPerf: false, showStats: false, settingsOpen: false,
     perf: { fps: 0, p95Ms: 0, simMs: 0, tps: 0, drawCalls: 0, triangles: 0, entities: 0, dropped: 0 },
-    stats: null, feed: [], placing: null, winner: -1, players: 1, toast: '', error: '', box: null, settings: loadSettings(), formation: 'box', spectating: false, keysOpen: false, winnerTeam: -1, myTeam: 0, bots: [], showBots: false, impossibleBonusOn: false, modified: false, opts: 0, me: null, techOpen: false, dip: null, dipOpen: false, covertAct: null, muted: [],
+    stats: null, feed: [], placing: null, winner: -1, players: 1, toast: '', error: '', box: null, settings: loadSettings(), formation: 'box', spectating: false, keysOpen: false, winnerTeam: -1, myTeam: 0, bots: [], showBots: false, impossibleBonusOn: false, modified: false, opts: 0, me: null, techOpen: false, dip: null, dipOpen: false, covertAct: null, muted: [], net: null, netOpen: false, invites: [], netAnswer: '', blocked: [],
   };
   private listeners = new Set<Listener>();
   set(patch: Partial<GameState>): void { this.state = { ...this.state, ...patch }; for (const l of this.listeners) l(); }

@@ -1,5 +1,6 @@
 // Game controller: owns the sim worker, Three.js renderer, camera, controls, minimap and HUD state.
 import * as THREE from 'three';
+import { NetSession, netToken } from '../net/session';
 import SimWorker from '../worker/sim.worker.ts?worker&inline';
 import { TUNING, SPEED_NAMES, type MapSize, type SpeedName } from '../sim/core/tuning';
 import { FP_ONE } from '../sim/core/fixed';
@@ -53,8 +54,11 @@ export interface NewGameOptions {
   // ---- Phase 5 ----
   /** Race id per player (you are player 0). */
   races?: string[];
+  // ---- Phase 7 ----
+  /** Host an online game: player slots kept for human guests (no bot there) and the pause rule. */
+  online?: { seats: number[]; pauseMode: 'host' | 'vote' };
 }
-export type StartOptions = { kind: 'new'; opts: NewGameOptions } | { kind: 'load'; save: SaveData };
+export type StartOptions = { kind: 'new'; opts: NewGameOptions } | { kind: 'load'; save: SaveData; online?: NewGameOptions['online']; viewer?: number } | { kind: 'join'; code: string; name: string };
 
 export class Game {
   readonly renderer: THREE.WebGLRenderer;
@@ -127,11 +131,21 @@ export class Game {
       if (o.races && o.races.some((r) => r !== 'baseline')) settings.races = o.races;
       if (o.testOptions) settings.testOptions = [o.testOptions];
       this.send({ type: 'init', settings, viewer: this.viewer, speed: o.speed, paused: false, bots: o.bots ?? [] });
+      if (o.online) { this.setupNet('host'); this.send({ type: 'hostNet', humans: [0, ...o.online.seats], pauseMode: o.online.pauseMode }); }
       store.set({ myTeam: o.teams?.[0] ?? 0, impossibleBonusOn: !!o.impossibleBonus && !!o.bots?.some((b) => b.difficulty === 'impossible') });
       store.set({ screen: 'loading', seed: o.seed, size: o.size, speed: o.speed, paused: false, winner: -1, feed: [], stats: null, error: '' });
+    } else if (start.kind === 'join') {
+      this.viewer = -1;
+      const n = this.setupNet('guest');
+      store.set({ screen: 'loading', paused: false, winner: -1, feed: [], stats: null, error: '', netAnswer: '' });
+      void n.join(start.code).then(({ answer, open }) => {
+        store.set({ netAnswer: answer });
+        void open.then(() => this.send({ type: 'joinNet', token: netToken(), name: start.name }));
+      }).catch(() => store.set({ screen: 'menu', error: 'That invite code could not be read.' }));
     } else {
-      this.viewer = 0;
-      this.send({ type: 'load', save: start.save, viewer: 0, speed: 'normal' });
+      this.viewer = start.viewer ?? 0;
+      this.send({ type: 'load', save: start.save, viewer: this.viewer, speed: 'normal' });
+      if (start.online) { this.setupNet('host'); this.send({ type: 'hostNet', humans: [this.viewer, ...start.online.seats.filter((p) => p !== this.viewer)], pauseMode: start.online.pauseMode }); }
       store.set({ screen: 'loading', seed: start.save.settings.seed, size: start.save.settings.size, paused: true, winner: -1, feed: [], stats: null, error: '' });
     }
     window.addEventListener('resize', this.onResize);
@@ -140,6 +154,19 @@ export class Game {
   whenReady(): Promise<void> { return this.ready; }
   private send(m: ToWorker): void { this.worker.postMessage(m); }
   cmd(body: CommandBody): void { this.send({ type: 'cmd', body }); }
+  // ---- Phase 7: multiplayer session (null in single-player)
+  net: NetSession | null = null;
+  private setupNet(role: 'host' | 'guest'): NetSession {
+    const n = new NetSession(role);
+    n.onMessage = (peer, msg) => this.send({ type: 'netIn', peer, msg });
+    n.onGone = (peer) => this.send({ type: 'netGone', peer });
+    n.onChange = () => store.set({ invites: n.invites.map((i) => ({ peer: i.peer, code: i.code, state: i.state })) });
+    this.net = n;
+    return n;
+  }
+  async invite(): Promise<string> { const inv = await this.net!.invite(); return inv.code; }
+  async completeInvite(peer: number, answer: string): Promise<void> { const inv = this.net?.invites.find((i) => i.peer === peer); if (inv) await inv.complete(answer); }
+  vote(id: number, yes: boolean): void { this.send({ type: 'netVote', id, yes }); }
 
   private request<T>(make: (id: number) => ToWorker): Promise<T> {
     const id = ++this.reqId;
@@ -148,9 +175,10 @@ export class Game {
 
   private onWorker(m: FromWorker): void {
     if (this.disposed) return;
-    if (m.type === 'map') this.onMap(m.map, m.startTile, m.players);
+    if (m.type === 'map') { this.viewer = m.viewer; this.onMap(m.map, m.startTile, m.players); }
     else if (m.type === 'snap') this.onSnap(m);
     else if (m.type === 'error') { store.set({ screen: 'menu', error: m.message }); this.dispose(); }
+    else if (m.type === 'netOut') this.net?.send(m.peer, m.msg);
     else {
       const w = this.waiters.get(m.reqId);
       this.waiters.delete(m.reqId);
@@ -211,7 +239,7 @@ export class Game {
     const perf = store.state.perf;
     store.set({
       tick: s.tick, isNight: s.isNight, dayPhase: s.dayPhase, dayLength: s.dayLength, speed: s.speed, paused: s.paused,
-      pendingOrders: s.pending.length, stats: s.stats, winner: s.winner, winnerTeam: s.winnerTeam, bots: s.bots, modified: s.modified, opts: s.opts, me: s.me, dip: s.dip,
+      pendingOrders: s.pending.length, stats: s.stats, winner: s.winner, winnerTeam: s.winnerTeam, bots: s.bots, modified: s.modified, opts: s.opts, me: s.me, dip: s.dip, net: s.net,
       perf: { ...perf, simMs: s.simMsPerTick, tps: s.ticksPerSec, dropped: s.droppedTicks, entities: s.ents.length / 9 },
     });
   }
@@ -796,6 +824,7 @@ export class Game {
   }
 
   dispose(): void {
+    this.net?.close(); this.net = null;
     this.disposed = true;
     cancelAnimationFrame(this.raf);
     window.removeEventListener('resize', this.onResize);

@@ -66,6 +66,13 @@ Status: **approved 2026-11-05** ("okay do phase 1") with these owner amendments:
    - **Bots** answer offers by a value model + relationship + personality, keep threats, lie (Schemer), betray weak allies (warlike personalities, late), ask allies for help, and declare war when bored with nobody left to fight, so matches still end. Dialogue is templated per personality (`src/data/dialogue.json`).
    - **Economic victory** (§7-C): ≥ 50 % of all adamite income for 5 minutes. Off by default, like the tech victory.
 
+13. **Phase 7 decisions (2026-11-06, to confirm).**
+   - **Lockstep as planned (§4):** the host runs the sim and all bots; after every tick it sends the commands applied in that tick; guests replay them a few ticks behind, so no rollback is needed. Guests' orders go to the host, which stamps them for its next tick. Hash check every 5 s.
+   - **Signaling:** only the no-server fallback is built: the host's invite link carries a WebRTC offer, the guest sends back an answer code, the host pastes it. The Cloudflare signaling worker (§5 option A) and a TURN relay need the owner's accounts, so they are not built yet.
+   - **Seats:** "Online" in the menu turns the first rival slots into seats for friends (no bot there). Co-op puts them on your team; free-for-all gives each their own. A guest who returns with the same browser gets their seat back.
+   - **Pause:** host-controlled by default; optional vote mode (majority). **Test options:** every human must vote yes within 20 s; the option then turns on for all humans at the same tick.
+   - **Host left:** guests keep the whole state, can download it or "Host from here"; the others rejoin with new invites. Bot memories restart from the moment the guest joined (bots still work).
+
 Items in §7 that weren't commented on are taken as accepted. Proposals P-001…P-005 stay open until answered.
 
 Companion files: [FEATURES.md](FEATURES.md) (feature ledger), [CONTINENT_STRATEGY_GAME.md](CONTINENT_STRATEGY_GAME.md) (master spec).

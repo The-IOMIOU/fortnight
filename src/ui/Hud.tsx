@@ -13,6 +13,7 @@ import { BUILDING_HELP, BUILDING_NAMES, RES_COLORS, RES_LABELS, UNIT_HELP, UNIT_
 import { DEFAULT_KEYS, keyFor, keyLabel, resetKeys, setKey } from '../app/keymap';
 import { ForgePanel, TechButton, TechPanel, UnitRaceBar, buildingAllowed, unitAllowed } from './RacePanels';
 import { CovertBar, DiploButton, DiploPanel } from './DiploPanel';
+import { NetButton, NetNotices, NetPanel, VoteBanner } from './NetPanels';
 import { raceById } from '../sim/races';
 
 const SPEED_LABEL: Record<SpeedName, string> = { slow: '0.5×', normal: '1×', fast: '2×', veryFast: '4×', x8: '8×', x16: '16×' };
@@ -31,7 +32,7 @@ function Cost({ c }: { c: Partial<Record<string, number>> }) {
   return <span class="cost">{parts.map(([k, v]) => <span key={k}><i class="dot" style={{ background: RES_COLORS[['food', 'wood', 'stone', 'gold', 'carbon', 'adamite'].indexOf(k)] }} />{v}</span>)}</span>;
 }
 
-export function Hud({ game, onQuit, onSave }: { game: Game; onQuit: () => void; onSave: () => void }) {
+export function Hud({ game, onQuit, onSave, onRehost }: { game: Game; onQuit: () => void; onSave: () => void; onRehost?: () => void }) {
   return (
     <>
       <TopBar game={game} onQuit={onQuit} onSave={onSave} />
@@ -40,6 +41,9 @@ export function Hud({ game, onQuit, onSave }: { game: Game; onQuit: () => void; 
       <SelectionPanel game={game} />
       <TechPanel game={game} />
       <DiploPanel game={game} />
+      <NetPanel game={game} />
+      <VoteBanner game={game} />
+      <NetNotices onSave={onSave} onRehost={() => onRehost?.()} />
       <StatsPanel />
       <SettingsModal />
       <BoxRect />
@@ -91,6 +95,7 @@ function TopBar({ game, onQuit, onSave }: { game: Game; onQuit: () => void; onSa
       {bonusOn && <span class="res warn" title="Impossible bots receive extra income" data-testid="bonus-badge">Impossible bonus +{TUNING.bots.impossibleIncomeBonusPct} %</span>}
       <TechButton />
       <DiploButton />
+      <NetButton />
       <button onClick={() => store.set({ showBots: !store.state.showBots })} data-testid="bots-btn" title="Bot goals (F4)">Bots</button>
       <button onClick={() => store.set({ showStats: !store.state.showStats })} data-testid="stats-btn" title="Continent stats (Tab)">Stats</button>
       <button onClick={onSave} data-testid="save" title="Download a save file">Save</button>

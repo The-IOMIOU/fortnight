@@ -150,6 +150,8 @@ export class Sim {
   /** Phase 6: diplomacy, chat, covert-action state. */
   dip!: Diplomacy;
   rngCovert!: Rng;
+  /** Commands applied in the last step (Phase 7 lockstep and replays). */
+  lastApplied: Command[] = [];
   /** Movement class used by the current path search: 0 land, 2 tunnel, 3 glide. */
   private pathMode = 0;
 
@@ -963,6 +965,7 @@ export class Sim {
     let n = 0;
     while (n < this.pending.length && this.pending[n].tick === this.tick) n++;
     const now = this.pending.splice(0, n);
+    this.lastApplied = now; // the commands of this tick (lockstep turns, replays)
     for (const c of now) this.apply(c);
     if (this.tick % 10 === 0) { const b = Math.floor(this.tick / 10) % RING; for (const ps of this.ps) for (let r = 0; r < NUM_RES; r++) ps.ring[r * RING + b] = 0; }
     this.processPaths();

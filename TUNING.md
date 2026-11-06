@@ -1395,3 +1395,17 @@ Spies steal, spy on and poison; saboteurs sabotage and poison. Agents must stand
 | `tech.nodes.toxins.carbon` | 30 | Cost in carbon. |
 | `tech.nodes.toxins.adamite` | 0 | Cost in adamite. |
 | `tech.nodes.toxins.ticks` | 600 | Research time in ticks. |
+
+## Multiplayer (Phase 7, F-160–F-168)
+
+Host-ordered lockstep (PLAN §4): the host runs the sim and all bots and sends every tick's commands; guests replay them a few ticks behind.
+
+| Constant | Value | Why |
+|---|---|---|
+| `multiplayer.maxHumans` | 8 | Spec: about 4–8 humans over peer-to-peer; the rest are bots. A 9th join is refused. |
+| `multiplayer.hashEvery` | 50 | The host adds its state hash every 5 s; a guest that differs reports a desync within that time. |
+| `multiplayer.keepTurns` | 600 | Host keeps the last minute of turns to check guests' hash reports against. |
+| `multiplayer.voteMs` | 20000 | Votes (test options, pauses in vote mode) close after 20 s; no answer counts as no. |
+| `multiplayer.maxCatchUpPerCall` | 40 | A guest that fell behind plays at most 40 turns per worker loop, so its screen keeps updating while it catches up. |
+| `multiplayer.iceServers.0` | stun:stun.l.google.com:19302 | Free public STUN server (no SLA) to find a public address. |
+| `multiplayer.iceServers.1` | stun:stun.cloudflare.com:3478 | Second free STUN server in case the first is down. No TURN relay is configured yet (needs the owner's account). |

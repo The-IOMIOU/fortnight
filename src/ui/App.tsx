@@ -9,6 +9,7 @@ import { generateMap } from '../sim/world/mapgen';
 import { hex } from '../sim/core/hash';
 import { RACES, PLAYABLE_RACES } from '../sim/races';
 import { RaceSummary } from './RacePanels';
+import { JoinWaiting } from './NetPanels';
 import { Hud, SettingsModal } from './Hud';
 import { DIFFICULTIES, PERSONALITIES, type Difficulty } from '../ai/utility';
 import { Rng } from '../sim/core/prng';
@@ -29,7 +30,7 @@ export function randomSeed(): string {
   return `${WORDS_A[r(WORDS_A.length)]}-${WORDS_B[r(WORDS_B.length)]}-${100 + r(900)}`;
 }
 
-function readUrl(): Partial<NewGameOptions> & { play: boolean; botCount?: number; difficulty?: Difficulty; personality?: string; allies?: number } {
+function readUrl(): Partial<NewGameOptions> & { join?: string; play: boolean; botCount?: number; difficulty?: Difficulty; personality?: string; allies?: number } {
   const q = new URLSearchParams(location.search);
   const size = q.get('size') as MapSize | null;
   const rivals = q.get('rivals'), bots = q.get('bots');
@@ -44,6 +45,7 @@ function readUrl(): Partial<NewGameOptions> & { play: boolean; botCount?: number
     world: q.get('world') ? { globe: q.get('world') === 'globe', sea: (q.get('sea') ?? 'mixed') as SeaWidth, continents: q.get('continents') ? +q.get('continents')! : TUNING.map.sizes[size && MAP_SIZES.includes(size) ? size : 'small'].continents } : undefined,
     testOptions: q.get('opts') ? +q.get('opts')! : undefined,
     play: q.get('play') === '1',
+    join: q.get('join') ?? undefined,
     spectator: q.get('reveal') === '1',
   };
 }
@@ -87,6 +89,8 @@ export function App() {
   const autosave = useRef(0);
 
   useEffect(() => { applyUiScale(store.state.settings.uiScale); }, []);
+  // closing the tab as host tells the guests right away (F-165); otherwise they'd wait for a network timeout
+  useEffect(() => { const bye = (): void => gameRef.current?.net?.close(); window.addEventListener('pagehide', bye); return () => window.removeEventListener('pagehide', bye); }, []);
 
   const start = (s: StartOptions): void => {
     gameRef.current?.dispose();
@@ -134,8 +138,19 @@ export function App() {
     }
   };
 
+  /** A guest whose host left takes over: their state becomes a hosted game the others can rejoin (F-165). */
+  const rehost = async (): Promise<void> => {
+    const g = gameRef.current;
+    if (!g) return;
+    const data = await g.save();
+    const bots = new Set(((data.extra as { bots?: { state: { player: number } }[] } | undefined)?.bots ?? []).map((b) => b.state.player));
+    const seats = Array.from({ length: data.settings.players }, (_, p) => p).filter((p) => !bots.has(p) && p !== g.viewer);
+    start({ kind: 'load', save: data, viewer: g.viewer, online: { seats, pauseMode: 'host' } });
+  };
+
   useEffect(() => {
     const u = url.current;
+    if (u.join) { start({ kind: 'join', code: u.join, name: 'Guest' }); return; }
     if (u.play && u.seed) {
       const size = u.size ?? 'small';
       const m = u.botCount !== undefined ? makeMatch(u.seed, size, u.botCount, u.difficulty ?? 'hard', u.personality ?? 'random', u.allies ?? 0) : { players: u.players ?? defaultPlayers(size) };
@@ -147,8 +162,8 @@ export function App() {
     <div class="app">
       <div class="game-host" ref={hostRef} />
       {screen === 'menu' && <Menu initial={url.current} onStart={start} />}
-      {screen === 'loading' && <div class="loading">Generating continents…</div>}
-      {screen === 'game' && gameRef.current && <Hud game={gameRef.current} onQuit={quit} onSave={() => void doSave(true)} />}
+      {screen === 'loading' && (gameRef.current?.net?.role === 'guest' ? <JoinWaiting /> : <div class="loading">Generating continents…</div>)}
+      {screen === 'game' && gameRef.current && <Hud game={gameRef.current} onQuit={quit} onSave={() => void doSave(true)} onRehost={() => void rehost()} />}
     </div>
   );
 }
@@ -180,6 +195,11 @@ function Menu({ initial, onStart }: { initial: Partial<NewGameOptions>; onStart:
   const [domination, setDomination] = useState(saved.domination ?? true);
   const [vTech, setVTech] = useState(saved.vTech ?? false);
   const [vEcon, setVEcon] = useState(saved.vEcon ?? false);
+  const [online, setOnline] = useState(false);
+  const [seats, setSeats] = useState(1);
+  const [coop, setCoop] = useState(true);
+  const [voteP, setVoteP] = useState(false);
+  const [joinCode, setJoinCode] = useState('');
   const [domPct, setDomPct] = useState(saved.domPct ?? TUNING.economy.dominationPct);
   const [bonus, setBonus] = useState(saved.bonus ?? false);
   const [globe, setGlobe] = useState(saved.globe ?? true);
@@ -227,11 +247,15 @@ function Menu({ initial, onStart }: { initial: Partial<NewGameOptions>; onStart:
     store.set({ error: '' });
     saveMenuPrefs({ mode, size, speed, rivals, difficulty, pers, allies, conquest, domination, domPct, bonus, globe, continents, sea, wildlife, dayLen, popLimit, perBot, botRows: rows, testOpts, race, botRace, vTech, vEcon });
     const m = makeMatch(seed.trim(), size, rivals, difficulty, pers, Math.min(allies, Math.max(0, rivals - 1)));
+    // online: the first `seats` rival slots are for human guests (no bot), co-op puts every human on your team
+    const nSeats = online ? Math.max(1, Math.min(seats, rivals, TUNING.multiplayer.maxHumans - 1)) : 0;
+    if (nSeats) { m.bots = (m.bots ?? []).filter((b) => b.player > nSeats); m.teams = m.teams?.map((t, p) => (p > 0 && p <= nSeats ? (coop ? 0 : p) : t)); }
     if (perBot && m.bots) m.bots = m.bots.map((b, k) => ({ ...b, difficulty: rows[k].difficulty, personality: rows[k].personality === 'random' ? b.personality : rows[k].personality }));
     onStart({ kind: 'new', opts: {
       seed: seed.trim(), size, speed, ...m, victory: { conquest, domination, dominationPct: domPct, tech: vTech, economic: vEcon }, impossibleBonus: bonus && (m.bots ?? []).some((b) => b.difficulty === 'impossible'),
       world: { globe, sea, continents }, wildlifePct: wildlife, dayLengthTicks: dayLen, popLimit, testOptions: testOpts, mode,
       races: matchRaces(seed.trim(), race, botRace, m.players),
+      online: nSeats ? { seats: Array.from({ length: nSeats }, (_, k) => k + 1), pauseMode: voteP ? 'vote' : 'host' } : undefined,
     } });
   };
 
@@ -368,6 +392,21 @@ function Menu({ initial, onStart }: { initial: Partial<NewGameOptions>; onStart:
           <TestOptionList mask={testOpts} onChange={setTestOpts} modified={false} />
         </details>
         {testOpts !== 0 && <p class="warn" data-testid="menu-modified">Test options are on: this run will be marked as Modified.</p>}
+        <details class="more" data-testid="online">
+          <summary>Online (play with friends)</summary>
+          <label class="row"><input type="checkbox" checked={online} onChange={(e) => setOnline((e.target as HTMLInputElement).checked)} data-testid="online-host" /> Host this game online</label>
+          {online && <>
+            <label>Seats for friends <input type="number" min="1" max={Math.min(TUNING.multiplayer.maxHumans - 1, Math.max(1, rivals))} value={seats} onInput={(e) => setSeats(Math.max(1, +(e.target as HTMLInputElement).value || 1))} data-testid="online-seats" /></label>
+            <small class="later">They take the first rival slots; the other rivals stay bots. At most {TUNING.multiplayer.maxHumans} humans.</small>
+            <label class="row"><input type="radio" checked={coop} onChange={() => setCoop(true)} data-testid="online-coop" /> Co-op: friends on your team against the bots</label>
+            <label class="row"><input type="radio" checked={!coop} onChange={() => setCoop(false)} data-testid="online-ffa" /> Free-for-all</label>
+            <label class="row"><input type="checkbox" checked={voteP} onChange={(e) => setVoteP((e.target as HTMLInputElement).checked)} data-testid="online-votepause" /> Players vote on pausing (else only you pause)</label>
+          </>}
+          <label>Join a friend's game: paste their invite link or code
+            <input value={joinCode} onInput={(e) => setJoinCode((e.target as HTMLInputElement).value)} data-testid="join-code" />
+          </label>
+          <button type="button" disabled={!joinCode.trim()} onClick={() => { const c = joinCode.trim(); const code = c.includes('join=') ? new URL(c).searchParams.get('join') ?? c : c; onStart({ kind: 'join', code, name: 'Guest' }); }} data-testid="join-btn">Join</button>
+        </details>
         <button class="primary" data-testid="start" onClick={start} disabled={!seed.trim() || (!conquest && !domination)}>Start</button>
       </section>
       <section class="panel">

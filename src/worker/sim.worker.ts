@@ -10,6 +10,14 @@ import { FOG_VISIBLE } from '../sim/world/fog';
 import type { Command } from '../sim/commands';
 import type { BuildingInfo, FromWorker, Snapshot, ToWorker } from './protocol';
 import { BotManager, type BotSave } from '../ai/manager';
+import { ClientLockstep, HostLockstep, type ClientMsg, type HostMsg } from '../net/lockstep';
+
+// ---- Phase 7: multiplayer roles (null = single-player)
+let host: HostLockstep | null = null;
+let client: ClientLockstep | null = null;
+const peerOf = new Map<number, number>(); // player → peer (host side)
+const playerOf = new Map<number, number>(); // peer → player
+let lastNet = '';
 
 declare const self: DedicatedWorkerGlobalScope;
 
@@ -107,7 +115,7 @@ function snapshot(): void {
     ents, fog, owner, tiles, pending, stats: viewer >= 0 ? computeStats(sim, viewer) : spectating ? computeStats(sim, 0) : null, events: ev, buildings: buildingInfo(sim),
     bots: bots ? bots.debug().map((d) => ({ player: d.player, personality: d.personality, difficulty: d.difficulty, goal: d.goal, scores: d.scores, naval: d.naval })) : [], winnerTeam: sim.winnerTeam,
     shots: shotsArr, fires: E < 0 ? sim.burningList.slice() : sim.burningList.filter((t) => sim!.fog[E].data[t] === FOG_VISIBLE), spectating,
-    modified: sim.modified, opts: viewer >= 0 ? sim.ps[viewer].opts : 0, me: viewer >= 0 ? meOf(sim, viewer) : null, dip: viewer >= 0 ? dipOf(sim, viewer) : null,
+    modified: sim.modified, opts: viewer >= 0 ? sim.ps[viewer].opts : 0, me: viewer >= 0 ? meOf(sim, viewer) : null, dip: viewer >= 0 ? dipOf(sim, viewer) : null, net: netOf(),
     winner: sim.winner, simMsPerTick: stepMsAvg, ticksPerSec: sched.paused ? 0 : tps,
     droppedTicks: sched.droppedTicks, paused: sched.paused, speed: speedName,
   }, transfer);
@@ -126,15 +134,31 @@ function dipOf(s: Sim, p: number): Snapshot['dip'] {
   };
 }
 
+function netOf(): Snapshot['net'] {
+  if (host) return { role: 'host', seats: host.seats.map((s) => ({ ...s, token: s.token ? 'x' : '' })), vote: host.vote, paused: host.paused, desyncAt: -1, hostLeft: false, lag: 0 };
+  if (client) return { role: 'client', seats: [], vote: client.vote, paused: client.paused, desyncAt: client.desyncAt, hostLeft: client.hostLeft, lag: client.lag };
+  return null;
+}
+
 function loop(): void {
   const now = performance.now();
-  const n = sched.advance(now - last);
+  if (client) {
+    // a client plays the host's turns as they arrive (the host sets the pace)
+    const t0 = performance.now();
+    const n = client.play();
+    if (n) { stepMsAvg = stepMsAvg * 0.9 + ((performance.now() - t0) / n) * 0.1; for (let k = 0; k < n; k++) tickTimes.push(performance.now()); collectAfterStep(); snapshot(); }
+    const st = JSON.stringify(netOf());
+    if (st !== lastNet) { lastNet = st; if (sim) snapshot(); }
+    last = now;
+    setTimeout(loop, 4);
+    return;
+  }
+  const n = host?.paused ? 0 : sched.advance(now - last);
   last = now;
   if (sim && n > 0) {
     for (let k = 0; k < n; k++) {
       const t0 = performance.now();
-      bots?.tick();
-      sim.step();
+      if (host) host.step(); else { bots?.tick(); sim.step(); }
       const t1 = performance.now();
       stepMsAvg = stepMsAvg * 0.9 + (t1 - t0) * 0.1;
       tickTimes.push(t1);
@@ -185,6 +209,8 @@ self.onmessage = (ev: MessageEvent<ToWorker>) => {
       break;
     }
     case 'cmd': {
+      if (client) { client.command(m.body); return; }
+      if (host && sim && viewer >= 0) { host.command(viewer, m.body); snapshot(); return; }
       if (!sim || viewer < 0) return;
       // Executes on the next tick. While paused the sim does not advance, so the order waits as "pending".
       const cmd = { ...m.body, tick: sim.tick, player: viewer, seq: seq++ } as Command;
@@ -194,7 +220,63 @@ self.onmessage = (ev: MessageEvent<ToWorker>) => {
       break;
     }
     case 'speed': speedName = allowedSpeed(m.speed); sched.speed = TUNING.sim.speeds[speedName]; snapshot(); break;
-    case 'pause': sched.paused = m.paused; last = performance.now(); snapshot(); break;
+    case 'pause':
+      if (client) { client.send({ t: 'pauseRequest', paused: m.paused }); break; }
+      if (host) host.setPaused(m.paused, viewer);
+      sched.paused = host ? false : m.paused; last = performance.now(); snapshot(); break;
+    case 'hostNet': {
+      if (!sim) return;
+      host = new HostLockstep(sim, bots, viewer, m.humans, m.pauseMode);
+      host.send = (to, msg) => { if (to < 0) post({ type: 'netOut', peer: -1, msg }); else { const pe = peerOf.get(to); if (pe !== undefined) post({ type: 'netOut', peer: pe, msg }); } };
+      sched.paused = false;
+      snapshot();
+      break;
+    }
+    case 'joinNet': {
+      client = new ClientLockstep();
+      client.send = (msg) => post({ type: 'netOut', peer: 0, msg });
+      client.send({ t: 'hello', token: m.token, name: m.name });
+      break;
+    }
+    case 'netIn': {
+      if (host) {
+        const msg = m.msg as ClientMsg;
+        if (msg.t === 'hello') {
+          const seat = host.join(msg.token, msg.name);
+          if (!seat) { post({ type: 'netOut', peer: m.peer, msg: { t: 'full', reason: 'This game has no free seat.' } }); return; }
+          peerOf.set(seat.player, m.peer); playerOf.set(m.peer, seat.player);
+          post({ type: 'netOut', peer: m.peer, msg: host.welcome(seat, { bots: bots?.save() ?? [] }) });
+          snapshot();
+          return;
+        }
+        const p = playerOf.get(m.peer);
+        if (p === undefined) return;
+        if (msg.t === 'cmd') host.command(p, msg.body);
+        else if (msg.t === 'hash') host.clientHash(p, msg.tick, msg.hash);
+        else if (msg.t === 'voteYes') host.castVote(p, msg.id, msg.yes);
+        else if (msg.t === 'pauseRequest') host.pauseRequest(p, msg.paused);
+        snapshot();
+      } else if (client) {
+        const msg = m.msg as HostMsg;
+        client.receive(msg, (s, w) => {
+          sim = s; bots = BotManager.restore(s, ((w.save.extra as { bots?: BotSave[] } | undefined)?.bots) ?? []); viewer = client!.player; spectating = false;
+          lastEye = viewer; fogSentOnce = false; s.ownerDirty = true; seq = 0;
+          sendMap(s); collectAfterStep(); snapshot();
+        });
+        if (msg.t === 'full') post({ type: 'error', message: msg.reason });
+      }
+      break;
+    }
+    case 'netGone': {
+      if (host) { const p = playerOf.get(m.peer); if (p !== undefined) { host.leave(p); playerOf.delete(m.peer); snapshot(); } }
+      else if (client) { client.receive({ t: 'hostLeft' }); if (sim) snapshot(); }
+      break;
+    }
+    case 'netVote': {
+      if (host) host.castVote(viewer, m.id, m.yes); else if (client) client.send({ t: 'voteYes', id: m.id, yes: m.yes });
+      if (sim) snapshot();
+      break;
+    }
     case 'stall': { const end = performance.now() + m.ms; while (performance.now() < end) { /* busy */ } break; }
     case 'hash': if (sim) post({ type: 'hash', reqId: m.reqId, tick: sim.tick, hash: sim.hash() }); break;
     case 'save': if (sim) { const sv = saveSim(sim); sv.extra = { bots: bots?.save() ?? [] }; post({ type: 'save', reqId: m.reqId, save: sv }); } break;
