@@ -187,9 +187,9 @@
   },
   "groups": { "flowFieldMinUnits": 6, "flowFieldCache": 12, "transportBoardRange": 2 },
   "bots": {
-    "easy":       { "thinkEvery": 40, "actionChancePct": 55,  "workerTarget": 11, "armyAttackSize": 10, "maxBarracks": 1, "useDefences": 0, "sizeWaves": 0, "retreatWounded": 0, "maxTowns": 2, "peaceMin": 20, "maxArmy": 14, "heavyUnits": 0, "researchFromMin": 12, "gear": 0 },
-    "hard":       { "thinkEvery": 10, "actionChancePct": 100, "workerTarget": 20, "armyAttackSize": 12, "maxBarracks": 2, "useDefences": 1, "sizeWaves": 1, "retreatWounded": 0, "maxTowns": 3, "peaceMin": 0, "maxArmy": 0, "heavyUnits": 1, "researchFromMin": 3, "gear": 1 },
-    "impossible": { "thinkEvery": 5,  "actionChancePct": 100, "workerTarget": 26, "armyAttackSize": 16, "maxBarracks": 3, "useDefences": 1, "sizeWaves": 1, "retreatWounded": 1, "maxTowns": 4, "peaceMin": 0, "maxArmy": 0, "heavyUnits": 1, "researchFromMin": 2, "gear": 1 },
+    "easy":       { "thinkEvery": 40, "actionChancePct": 55,  "workerTarget": 11, "armyAttackSize": 10, "maxBarracks": 1, "useDefences": 0, "sizeWaves": 0, "retreatWounded": 0, "maxTowns": 2, "peaceMin": 20, "workPct": 70, "maxArmy": 14, "heavyUnits": 0, "researchFromMin": 12, "gear": 0 },
+    "hard":       { "thinkEvery": 10, "actionChancePct": 100, "workerTarget": 20, "armyAttackSize": 12, "maxBarracks": 2, "useDefences": 1, "sizeWaves": 1, "retreatWounded": 0, "maxTowns": 3, "peaceMin": 0, "workPct": 100, "maxArmy": 0, "heavyUnits": 1, "researchFromMin": 3, "gear": 1 },
+    "impossible": { "thinkEvery": 5,  "actionChancePct": 100, "workerTarget": 26, "armyAttackSize": 16, "maxBarracks": 3, "useDefences": 1, "sizeWaves": 1, "retreatWounded": 1, "maxTowns": 4, "peaceMin": 0, "workPct": 100, "maxArmy": 0, "heavyUnits": 1, "researchFromMin": 2, "gear": 1 },
     "impossibleIncomeBonusPct": 25,
     "boredomStartMin": 8,
     "boredomFullMin": 25,
@@ -211,6 +211,7 @@
     "statPctPerPoint": 5,
     "statMin": 50,
     "statMax": 150,
+    "custom": { "maxBuffs": 3, "slots": 6 },
     "abilities": {
       "amphibious": { "points": 8, "waterMoveCost": 14, "waterSpeedPct": 130 },
       "sunburn": { "points": -8, "everyTicks": 20, "damage": 2 },
@@ -240,14 +241,6 @@
   },
   "tech": {
     "researchAt": "capital",
-    "nodes": {
-      "smithing": { "wood": 100, "stone": 100, "gold": 0, "carbon": 0, "adamite": 0, "ticks": 600, "requires": [], "buildings": ["forge"], "gear": ["ironWeapons", "ironArmor"] },
-      "toolmaking": { "wood": 80, "stone": 40, "gold": 20, "carbon": 0, "adamite": 0, "ticks": 450, "requires": ["smithing"], "buildings": [], "gear": ["tools"] },
-      "alloys": { "wood": 0, "stone": 60, "gold": 60, "carbon": 40, "adamite": 20, "ticks": 900, "requires": ["smithing"], "buildings": [], "gear": ["alloy", "alloyWeapons", "alloyArmor"] },
-      "firearms": { "wood": 0, "stone": 0, "gold": 150, "carbon": 80, "adamite": 40, "ticks": 1500, "requires": ["alloys"], "buildings": [], "gear": ["firearms"] },
-    "toxins": { "wood": 0, "stone": 0, "gold": 80, "carbon": 30, "adamite": 0, "ticks": 600, "requires": [], "buildings": [], "gear": [] },
-    "piers": { "wood": 150, "stone": 0, "gold": 20, "carbon": 0, "adamite": 0, "ticks": 450, "requires": [], "buildings": ["pier"], "gear": [] }
-    },
     "victoryCapstonePlusPct": 60
   },
   "gear": {

@@ -1,5 +1,6 @@
 // Messages between the main thread and the simulation worker.
 import type { SimSettings, SimEvent } from '../sim/sim';
+import type { RaceDef } from '../sim/races';
 import type { SpeedName } from '../sim/core/tuning';
 import type { CommandBody } from '../sim/commands';
 import type { PlayerStats } from '../sim/stats';
@@ -80,7 +81,7 @@ export interface Snapshot {
 }
 
 export type FromWorker =
-  | { type: 'map'; map: MapPayload; players: number; viewer: number; startTile: number }
+  | { type: 'map'; map: MapPayload; players: number; viewer: number; startTile: number; customRaces?: RaceDef[] }
   | Snapshot
   | { type: 'hash'; reqId: number; tick: number; hash: number }
   | { type: 'save'; reqId: number; save: SaveData }

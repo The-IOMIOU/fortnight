@@ -2,7 +2,7 @@
 // BotView and static data (races, tech, gear tables), never the sim state.
 import { TUNING } from '../sim/core/tuning';
 import { BUILDING_TYPES, Kind, Res, Task, UNIT_TYPES, unitDef, type BuildingTypeName, type UnitTypeName } from '../sim/defs';
-import { GEAR_IDS, raceNode, sharedTech, type GearId, type ResearchDef } from '../sim/abilities';
+import { GEAR_IDS, TECH_IDS, raceNode, sharedTech, techNode, type GearId, type ResearchDef } from '../sim/abilities';
 import { raceById, type RaceDef } from '../sim/races';
 import { BotView, type UnitInfo } from './view';
 import type { CommandBody } from '../sim/commands';
@@ -11,10 +11,24 @@ const B = (b: BuildingTypeName): number => BUILDING_TYPES.indexOf(b);
 const U = (u: UnitTypeName): number => UNIT_TYPES.indexOf(u);
 const gi = (g: GearId): number => GEAR_IDS.indexOf(g);
 
-/** Research order: the race's own tree first, smithing early, the capstone before the late shared tech. */
+/** Research order: the race's own steps woven between the shared techs a bot needs most (each preceded by
+ *  its prerequisites, F-205), then the rest of the era tree, era by era. One evolution branch only (F-207). */
 export function researchOrder(race: RaceDef): string[] {
-  const t = race.evolution_tree.map((n) => n.id);
-  return race.reference ? ['smithing', 'toolmaking', 'alloys', 'firearms'] : [t[0], 'smithing', t[1], 'toolmaking', t[2], 'alloys', 'firearms'].filter(Boolean);
+  const branch = race.evolution_tree.find((n) => n.branch)?.branch;
+  const t = race.evolution_tree.filter((n) => !n.branch || n.branch === branch).map((n) => n.id);
+  const out: string[] = [];
+  const add = (id: string | undefined): void => {
+    if (!id || out.includes(id)) return;
+    const n = techNode(id);
+    if (n) n.requires.forEach(add); // prerequisites first
+    else race.evolution_tree.find((x) => x.id === id)?.requires.forEach(add);
+    out.push(id);
+  };
+  const key = race.reference ? ['agriculture', 'smithing', 'toolmaking', 'alloys', 'firearms'] : [t[0], 'agriculture', 'smithing', t[1], 'toolmaking', t[2], t[3], 'alloys', t[4], t[5], 'firearms'];
+  key.forEach(add);
+  t.forEach(add);
+  [...TECH_IDS].sort((x, y) => (techNode(x)!.era - techNode(y)!.era)).forEach(add);
+  return out;
 }
 
 export interface RaceCtx {
@@ -83,12 +97,13 @@ export function racePlan(c: RaceCtx): void {
     if (who.length) c.cmd({ type: 'equip', ids: who.map((u) => u.id), item: gi(g) });
   }
   // 5. abilities
-  if (race.special_ability === 'tameAnimals') {
+  const mods = [race.special_ability, ...(race.extra_abilities ?? [])];
+  if (mods.includes('tameAnimals')) {
     const idle = c.scouts.filter((s) => s.task === Task.IDLE || s.task === Task.MOVE);
     const prey = v.animals.filter((a) => a.kind === Kind.ANIMAL && c.dist(a.tile, c.home) <= 18);
     if (idle.length && prey.length) c.cmd({ type: 'tame', ids: [idle[0].id], target: prey[0].id });
   }
-  if (race.special_ability === 'tunneling') {
+  if (mods.includes('tunneling')) {
     const away = c.army.filter((u) => !u.burrowed && (u.task === Task.ATTACK || u.task === Task.MOVE) && c.dist(u.tile, c.home) > 10);
     if (away.length) c.cmd({ type: 'burrow', ids: away.map((u) => u.id), on: true });
     const back = c.army.filter((u) => u.burrowed && u.task === Task.IDLE && c.dist(u.tile, c.home) <= 6);

@@ -21,6 +21,10 @@ import reefbuilders from '../data/races/reefbuilders.json' with { type: 'json' }
 export const STAT_KEYS = ['gather_speed', 'build_speed', 'unit_health', 'unit_damage', 'vision', 'movement'] as const;
 export type StatKey = (typeof STAT_KEYS)[number];
 
+/** Effects a tech or evolution step can add (summed per player; percent points or flat). F-205. */
+export const EFFECT_KEYS = ['farmYieldPct', 'housingPct', 'carryPlus', 'researchTimePct', 'trainTimePct', 'buildingHpPct', 'towerDamagePct', 'navalSpeedPct'] as const;
+export type EffectKey = (typeof EFFECT_KEYS)[number];
+
 export type AbilityId = keyof typeof TUNING.races.abilities;
 export const ABILITY_IDS = Object.keys(TUNING.races.abilities) as AbilityId[];
 
@@ -32,7 +36,9 @@ export interface EvolutionNode {
   ticks: number;
   requires: string[];
   /** Units and buildings it unlocks, extra ability modules, and permanent stat bonuses (+ percent points). */
-  unlocks: { units?: string[]; buildings?: string[]; abilities?: AbilityId[]; stats?: Partial<Record<StatKey, number>> };
+  unlocks: { units?: string[]; buildings?: string[]; abilities?: AbilityId[]; stats?: Partial<Record<StatKey, number>>; effects?: Partial<Record<EffectKey, number>> };
+  /** Evolution branch (F-207): starting a node of one branch locks the other. Nodes without a branch are open to all. */
+  branch?: string;
   capstone?: boolean;
 }
 
@@ -46,6 +52,12 @@ export interface RaceDef {
   stat_modifiers: Record<StatKey, number>;
   special_ability: AbilityId | null;
   weakness: AbilityId | null;
+  /** More ability modules, buffs or debuffs (made-up peoples, F-208). */
+  extra_abilities?: AbilityId[];
+  /** Made with the people builder (F-208): total may be below 0, at most races.custom.maxBuffs buffs. */
+  custom?: boolean;
+  /** Builder: the shipped people whose troops, building and evolution tree it uses. */
+  base?: string;
   starting_units: Record<string, number>;
   starting_buildings: string[];
   starting_resources: Record<string, number>;
@@ -61,13 +73,22 @@ const BIOMES = Object.keys(TUNING.biomes);
 const isInt = (v: unknown): v is number => typeof v === 'number' && Number.isInteger(v);
 
 /** Point value of a race (F-112): stats score 1 point per `statPctPerPoint` % away from 100, abilities by data. */
-export function racePoints(r: Pick<RaceDef, 'stat_modifiers' | 'special_ability' | 'weakness'>): number {
+export function racePoints(r: Pick<RaceDef, 'stat_modifiers' | 'special_ability' | 'weakness'> & { extra_abilities?: AbilityId[] }): number {
   const R = TUNING.races;
   let total = 0;
   for (const k of STAT_KEYS) total += Math.trunc(((r.stat_modifiers?.[k] ?? 100) - 100) / R.statPctPerPoint);
   if (r.special_ability && R.abilities[r.special_ability]) total += R.abilities[r.special_ability].points;
   if (r.weakness && R.abilities[r.weakness]) total += R.abilities[r.weakness].points;
+  for (const a of r.extra_abilities ?? []) if (R.abilities[a]) total += R.abilities[a].points;
   return total;
+}
+
+/** Buffs of a people: raised stats and positive ability modules (F-208 caps this for made-up peoples). */
+export function raceBuffs(r: Pick<RaceDef, 'stat_modifiers' | 'special_ability' | 'weakness'> & { extra_abilities?: AbilityId[] }): number {
+  const A = TUNING.races.abilities;
+  let n = STAT_KEYS.filter((k) => (r.stat_modifiers?.[k] ?? 100) > 100).length;
+  for (const a of [r.special_ability, r.weakness, ...(r.extra_abilities ?? [])]) if (a && A[a] && A[a].points > 0) n++;
+  return n;
 }
 
 /** Validate one race object. Every error names the race id and the field path. */
@@ -80,7 +101,7 @@ export function validateRace(raw: unknown, unitNames: readonly string[] = UNIT_T
   const str = (f: string): void => { if (typeof r[f] !== 'string' || !(r[f] as string).length) err(f, 'must be a non-empty string'); };
   str('id'); str('name'); str('description');
   if (typeof r.id === 'string' && !/^[a-z][a-z0-9_]*$/.test(r.id)) err('id', 'must be lower-case letters, digits or _');
-  const ref = r.reference === true;
+  const ref = r.reference === true, custom = r.custom === true;
 
   if (!Array.isArray(r.biome_preference) || !r.biome_preference.length) err('biome_preference', 'must be a non-empty list');
   else r.biome_preference.forEach((b, i) => { if (!BIOMES.includes(b as string)) err(`biome_preference[${i}]`, `unknown biome "${b}"`); });
@@ -99,13 +120,20 @@ export function validateRace(raw: unknown, unitNames: readonly string[] = UNIT_T
 
   const abil = (f: 'special_ability' | 'weakness', sign: 1 | -1): void => {
     const v = r[f];
-    if (v === null || v === undefined) { if (!ref) err(f, 'required (only reference races may leave it empty)'); return; }
+    if (v === null || v === undefined) { if (!ref && !custom) err(f, 'required (only reference races may leave it empty)'); return; }
     if (typeof v !== 'string' || !(ABILITY_IDS as string[]).includes(v)) { err(f, `unknown ability module "${String(v)}"`); return; }
     const pts = R.abilities[v as AbilityId].points;
     if (sign > 0 && pts <= 0) err(f, `"${v}" is a weakness module (points ${pts}), not an ability`);
     if (sign < 0 && pts >= 0) err(f, `"${v}" is an ability module (points ${pts}), not a weakness`);
   };
   abil('special_ability', 1); abil('weakness', -1);
+  if (r.extra_abilities !== undefined) {
+    if (!Array.isArray(r.extra_abilities)) err('extra_abilities', 'must be a list');
+    else r.extra_abilities.forEach((a, i) => {
+      if (!(ABILITY_IDS as string[]).includes(a)) err(`extra_abilities[${i}]`, `unknown ability module "${a}"`);
+      else if ([r.special_ability, r.weakness, ...(r.extra_abilities as string[]).slice(0, i)].includes(a)) err(`extra_abilities[${i}]`, `"${a}" is listed twice`);
+    });
+  }
 
   const su = r.starting_units as Record<string, unknown> | undefined;
   if (!su || typeof su !== 'object') err('starting_units', 'missing');
@@ -151,11 +179,24 @@ export function validateRace(raw: unknown, unitNames: readonly string[] = UNIT_T
           if (!(STAT_KEYS as readonly string[]).includes(k)) err(`${f}.unlocks.stats.${k}`, 'unknown stat');
           else if (!isInt(v) || v < -50 || v > 50) err(`${f}.unlocks.stats.${k}`, 'must be a whole number −50…50');
         }
-        for (const k of Object.keys(un)) if (!['units', 'buildings', 'abilities', 'stats'].includes(k)) err(`${f}.unlocks.${k}`, 'unknown unlock kind');
+        for (const [k, v] of Object.entries(un.effects ?? {})) {
+          if (!(EFFECT_KEYS as readonly string[]).includes(k)) err(`${f}.unlocks.effects.${k}`, 'unknown effect');
+          else if (!isInt(v) || v < -50 || v > 50) err(`${f}.unlocks.effects.${k}`, 'must be a whole number −50…50');
+        }
+        for (const k of Object.keys(un)) if (!['units', 'buildings', 'abilities', 'stats', 'effects'].includes(k)) err(`${f}.unlocks.${k}`, 'unknown unlock kind');
+      }
+      if (n.branch !== undefined) {
+        if (typeof n.branch !== 'string' || !n.branch) err(`${f}.branch`, 'must be a non-empty string');
+        else for (const q of (n.requires as string[]) ?? []) {
+          const pb = (tree as Record<string, unknown>[]).find((x) => x?.id === q)?.branch;
+          if (pb !== undefined && pb !== n.branch) err(`${f}.requires`, `"${q}" is in another branch`);
+        }
       }
       ids.add(n.id);
     });
     if (!ref && !tree.some((n: Record<string, unknown>) => n?.capstone === true)) err('evolution_tree', 'needs one node with "capstone": true');
+    const branches = [...new Set(tree.map((n: Record<string, unknown>) => n?.branch).filter((b) => typeof b === 'string'))];
+    if (branches.length && branches.length !== 2) err('evolution_tree', `needs exactly two branches or none, found ${branches.length}`);
   }
 
   const uu = r.unique_units;
@@ -176,7 +217,11 @@ export function validateRace(raw: unknown, unitNames: readonly string[] = UNIT_T
 
   if (!errs.length) {
     const total = racePoints(r as unknown as RaceDef);
-    if (total !== 0) err('points', `power-ups and power-downs must total exactly 0, this race totals ${total > 0 ? '+' : ''}${total}`);
+    if (custom) {
+      if (total > 0) err('points', `too strong: buffs and debuffs must add up to 0 or less, this people totals +${total}`);
+      const buffs = raceBuffs(r as unknown as RaceDef);
+      if (buffs > R.custom.maxBuffs) err('buffs', `at most ${R.custom.maxBuffs} buffs, this people has ${buffs}`);
+    } else if (total !== 0) err('points', `power-ups and power-downs must total exactly 0, this race totals ${total > 0 ? '+' : ''}${total}`);
   }
   return errs;
 }
@@ -201,6 +246,13 @@ export const RACES: RaceDef[] = loaded.races;
 export const raceById = (id: string | undefined): RaceDef => RACES.find((r) => r.id === id) ?? RACES[0];
 /** Playable races (not the reference race). */
 export const PLAYABLE_RACES = RACES.filter((r) => !r.reference);
+
+/** Make sure these peoples exist here (made-up peoples travel inside the match settings: saves and multiplayer, F-208). */
+export function ensureRaces(list: readonly RaceDef[] | undefined): RaceError[] {
+  const errs: RaceError[] = [];
+  for (const r of list ?? []) if (!RACES.some((x) => x.id === r.id)) errs.push(...registerRace(r));
+  return errs;
+}
 
 /** Add a race at runtime (mods, tests, the future race builder). Returns the validation errors; on success the race can be chosen like a shipped one. */
 export function registerRace(raw: unknown): RaceError[] {

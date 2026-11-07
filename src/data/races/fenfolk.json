@@ -12,9 +12,18 @@
   "evolution_tree": [
     { "id": "stilts", "name": "Stilt houses", "cost": { "wood": 150, "food": 80 }, "ticks": 600, "requires": [], "unlocks": { "buildings": ["stiltHall"], "units": ["bogStalker"] } },
     { "id": "mireLore", "name": "Mire lore", "cost": { "food": 150, "gold": 60 }, "ticks": 900, "requires": ["stilts"], "unlocks": { "stats": { "gather_speed": 10 } } },
-    { "id": "mireHorrors", "name": "Mire horrors", "cost": { "food": 300, "gold": 180, "carbon": 40 }, "ticks": 1800, "requires": ["mireLore"], "unlocks": { "units": ["mireHorror"] }, "capstone": true }
+    { "id": "mireHorrors", "name": "Mire horrors", "cost": { "food": 300, "gold": 180, "carbon": 40 }, "ticks": 1800, "requires": ["mireLore"], "unlocks": { "units": ["mireHorror"] }, "capstone": true },
+    { "id": "peatFields", "name": "Peat fields", "branch": "Bog farmers", "cost": { "food": 150, "gold": 50 }, "ticks": 700, "requires": ["stilts"], "unlocks": { "effects": { "farmYieldPct": 25 } } },
+    { "id": "reedHouses", "name": "Reed houses", "branch": "Bog farmers", "cost": { "food": 200, "wood": 100, "gold": 100 }, "ticks": 1000, "requires": ["peatFields"], "unlocks": { "effects": { "housingPct": 15 } } },
+    { "id": "mireBounty", "name": "Mire bounty", "branch": "Bog farmers", "cost": { "food": 250, "gold": 200, "adamite": 30 }, "ticks": 1400, "requires": ["reedHouses"], "unlocks": { "stats": { "gather_speed": 10 } } },
+    { "id": "poisonDarts", "name": "Poison darts", "branch": "Marsh hunters", "cost": { "food": 150, "gold": 50 }, "ticks": 700, "requires": ["stilts"], "unlocks": { "stats": { "unit_damage": 10 } } },
+    { "id": "leechHealing", "name": "Leech healing", "branch": "Marsh hunters", "cost": { "food": 200, "wood": 100, "gold": 100 }, "ticks": 1000, "requires": ["poisonDarts"], "unlocks": { "stats": { "unit_health": 10 } } },
+    { "id": "fogWalkers", "name": "Fog walkers", "branch": "Marsh hunters", "cost": { "food": 250, "gold": 200, "adamite": 30 }, "ticks": 1400, "requires": ["leechHealing"], "unlocks": { "stats": { "movement": 10, "vision": 5 } } }
   ],
   "unique_units": ["bogStalker", "mireHorror"],
   "unique_building": "stiltHall",
-  "bot_hints": { "personalities": ["schemer", "defender"], "strategy": "Fight in swamps and forests, ambush from hiding, never meet an army on open ground." }
+  "bot_hints": {
+    "personalities": ["schemer", "defender"],
+    "strategy": "Fight in swamps and forests, ambush from hiding, never meet an army on open ground."
+  }
 }

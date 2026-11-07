@@ -12,9 +12,18 @@
   "evolution_tree": [
     { "id": "warTraining", "name": "War training", "cost": { "food": 150, "wood": 100 }, "ticks": 600, "requires": [], "unlocks": { "buildings": ["beastPen"], "units": ["warbeast"] } },
     { "id": "revival", "name": "Revival", "cost": { "food": 200, "gold": 80 }, "ticks": 1200, "requires": ["warTraining"], "unlocks": { "units": ["beast"] } },
-    { "id": "ancientRevival", "name": "Ancient revival", "cost": { "food": 400, "gold": 200, "adamite": 60 }, "ticks": 3000, "requires": ["revival"], "unlocks": { "units": ["thunderlizard"] }, "capstone": true }
+    { "id": "ancientRevival", "name": "Ancient revival", "cost": { "food": 400, "gold": 200, "adamite": 60 }, "ticks": 3000, "requires": ["revival"], "unlocks": { "units": ["thunderlizard"] }, "capstone": true },
+    { "id": "milkWool", "name": "Milk and wool", "branch": "Herders", "cost": { "food": 150, "gold": 50 }, "ticks": 700, "requires": ["warTraining"], "unlocks": { "effects": { "farmYieldPct": 20 } } },
+    { "id": "packBeasts", "name": "Pack beasts", "branch": "Herders", "cost": { "food": 200, "wood": 100, "gold": 100 }, "ticks": 1000, "requires": ["milkWool"], "unlocks": { "effects": { "carryPlus": 3 } } },
+    { "id": "bigHerds", "name": "Big herds", "branch": "Herders", "cost": { "food": 250, "gold": 200, "adamite": 30 }, "ticks": 1400, "requires": ["packBeasts"], "unlocks": { "effects": { "housingPct": 15 } } },
+    { "id": "feralTraining", "name": "Feral training", "branch": "Pack masters", "cost": { "food": 150, "gold": 50 }, "ticks": 700, "requires": ["warTraining"], "unlocks": { "stats": { "unit_damage": 10 } } },
+    { "id": "thickHides", "name": "Thick hides", "branch": "Pack masters", "cost": { "food": 200, "wood": 100, "gold": 100 }, "ticks": 1000, "requires": ["feralTraining"], "unlocks": { "stats": { "unit_health": 10 } } },
+    { "id": "stampede", "name": "Stampede", "branch": "Pack masters", "cost": { "food": 250, "gold": 200, "adamite": 30 }, "ticks": 1400, "requires": ["thickHides"], "unlocks": { "stats": { "movement": 10 } } }
   ],
   "unique_units": ["beast", "warbeast", "thunderlizard"],
   "unique_building": "beastPen",
-  "bot_hints": { "personalities": ["berserker", "raider"], "strategy": "Tame every animal near home early; rush with beasts before the enemy walls up." }
+  "bot_hints": {
+    "personalities": ["berserker", "raider"],
+    "strategy": "Tame every animal near home early; rush with beasts before the enemy walls up."
+  }
 }

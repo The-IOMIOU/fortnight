@@ -12,9 +12,18 @@
   "evolution_tree": [
     { "id": "sporeCulture", "name": "Spore culture", "cost": { "food": 120, "wood": 80 }, "ticks": 600, "requires": [], "unlocks": { "buildings": ["sporeTower"], "units": ["sporeling"] } },
     { "id": "toxicBloom", "name": "Toxic bloom", "cost": { "food": 200, "gold": 60 }, "ticks": 900, "requires": ["sporeCulture"], "unlocks": { "stats": { "unit_damage": 10 } } },
-    { "id": "bloomHulks", "name": "Bloom hulks", "cost": { "food": 350, "wood": 150, "gold": 150 }, "ticks": 1800, "requires": ["toxicBloom"], "unlocks": { "units": ["bloomHulk"] }, "capstone": true }
+    { "id": "bloomHulks", "name": "Bloom hulks", "cost": { "food": 350, "wood": 150, "gold": 150 }, "ticks": 1800, "requires": ["toxicBloom"], "unlocks": { "units": ["bloomHulk"] }, "capstone": true },
+    { "id": "compost", "name": "Compost", "branch": "Rot gardens", "cost": { "food": 150, "gold": 50 }, "ticks": 700, "requires": ["sporeCulture"], "unlocks": { "effects": { "farmYieldPct": 25 } } },
+    { "id": "fastSpores", "name": "Fast spores", "branch": "Rot gardens", "cost": { "food": 200, "wood": 100, "gold": 100 }, "ticks": 1000, "requires": ["compost"], "unlocks": { "effects": { "trainTimePct": -20 } } },
+    { "id": "hiveMind", "name": "Hive mind", "branch": "Rot gardens", "cost": { "food": 250, "gold": 200, "adamite": 30 }, "ticks": 1400, "requires": ["fastSpores"], "unlocks": { "effects": { "researchTimePct": -20 } } },
+    { "id": "sporeArmour", "name": "Spore armour", "branch": "Blight", "cost": { "food": 150, "gold": 50 }, "ticks": 700, "requires": ["sporeCulture"], "unlocks": { "stats": { "unit_health": 15 } } },
+    { "id": "chokingClouds", "name": "Choking clouds", "branch": "Blight", "cost": { "food": 200, "wood": 100, "gold": 100 }, "ticks": 1000, "requires": ["sporeArmour"], "unlocks": { "stats": { "unit_damage": 5 }, "effects": { "towerDamagePct": 25 } } },
+    { "id": "plagueBloom", "name": "Plague bloom", "branch": "Blight", "cost": { "food": 250, "gold": 200, "adamite": 30 }, "ticks": 1400, "requires": ["chokingClouds"], "unlocks": { "stats": { "unit_damage": 10 } } }
   ],
   "unique_units": ["sporeling", "bloomHulk"],
   "unique_building": "sporeTower",
-  "bot_hints": { "personalities": ["defender", "pacifist"], "strategy": "Plant spore towers on the border and let the fungus wear the enemy down before attacking." }
+  "bot_hints": {
+    "personalities": ["defender", "pacifist"],
+    "strategy": "Plant spore towers on the border and let the fungus wear the enemy down before attacking."
+  }
 }

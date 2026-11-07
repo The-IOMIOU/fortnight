@@ -172,7 +172,7 @@ function loop(): void {
 function sendMap(s: Sim): void {
   const map = s.map;
   post({
-    type: 'map', players: s.players, viewer, startTile: s.startTiles[Math.max(0, viewer)] ?? map.starts[0],
+    type: 'map', players: s.players, viewer, customRaces: s.settings.customRaces, startTile: s.startTiles[Math.max(0, viewer)] ?? map.starts[0],
     map: { seed: map.seed, size: map.size, w: map.w, h: map.h, hash: map.hash, height: map.height.slice(), biome: map.biome.slice(),
       temp: map.temp.slice(), starts: map.starts.slice(), resType: s.res.type.slice(), continent: map.continent.slice(),
       riverCount: map.riverCount, lakeCount: map.lakeCount, wrap: map.wrap },

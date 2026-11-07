@@ -31,13 +31,13 @@ A browser real-time 2.5D strategy game on a world of continents (TypeScript, Thr
 | 3 Combat, naval, conquest | done, approved |
 | 4 Bots (utility AI, personalities, difficulty) | done, approved (3 targets unmet, see below) |
 | 4b Modes, Earth-like continents, globe, settings, test options | done (committed "Phase 4b: …"), waiting for owner review; Short-mode length target unmet, Firefox and FPS not re-measured (see below) |
-| 5 Tech, equipment, first 6–8 races | done (committed "Phase 5: …"), waiting for owner review; race builder UI and some render work left (see below) |
+| 5 Tech, equipment, first 6–8 races | done (committed "Phase 5: …"), waiting for owner review; people builder done 2026-11-07, some render work left (see below) |
 | 6 Diplomacy, trade, chat, covert actions | done (committed "Phase 6: …") |
 | 7 Multiplayer | done (committed "Phase 7: …"); signaling server / TURN need owner accounts |
 | 8 Scale, harness, peoples 9–12 | done (committed "Phases 8–9: …"); harness flags 9 peoples for balancing |
 | 9 Polish, tutorial, release prep | done; open items listed below |
 
-Last updated: 2026-11-06.
+Last updated: 2026-11-07.
 
 ### Owner and rules
 - Repo: `E:\fortnight` (first machine), `C:\Users\sergi\OneDrive\Desktop\Programme\MeineProjekte\fortnight` (second machine), GitHub `The-IOMIOU/fortnight`, branch `main`. **Commit directly to `main` and push after every phase.** End commit messages with `Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>` (or whatever attribution your session gives).
@@ -56,6 +56,16 @@ Last updated: 2026-11-06.
 - **Room-code invites** (owner: "do the invite system like this repo from my friend", sxrg1u/cracked-globe-play): `src/net/rooms.ts` (PeerJS 1.5.5: open a room with a 5-character code, join by code, public PeerJS TURN relay), `src/net/session.ts` (rooms for host and guest; manual invites kept), `src/net/peer.ts` (the message wire works over either kind of connection), Online panel shows the code + copy link, Multiplayer → Join takes code or link, `?room=` links join directly. PLAN amendment 16, ledger F-162, P-005 adopted. Tests: multiplayer project 4/4 over the real PeerJS server (room join, `?room=` link, wrong-code message, old manual flows); F-006 offline still passes; unit 139/139 (the timing benchmark failed once under load, passes alone at 1.09 ms). Not verified: the TURN relay with the direct path blocked.
 
 - **Owner playtest fixes (PLAN amendment 17, ledger F-200–F-203):** peace at the start (no attacks for N minutes; Auto = Easy 20 min, Hard/Impossible none; HUD countdown; menu setting), Easy bots nerfed (no rams/heavy units, army ≤ 14, waves of 10, research from minute 12, no gear; all bots grow during peace), co-op allies start 14–32 tiles from their team leader, workers look 18 tiles (was 8) for the next tree/rock and say so if they must stop. Tests: tests/peace.test.ts 4/4, unit 143/143, checks 5/5.
+
+- **Expansion (owner 2026-11-07, PLAN amendment 18, ledger F-204–F-209):**
+  - Easy bots work at 70 % speed (gather, build, train: `bots.easy.workPct`, `settings.workPct`).
+  - Era tech tree like Civilization IV: `src/data/techtree.json`, 34 techs in 5 eras (Ancient → Industrial). Guns (Gunpowder) need 15 earlier techs. Tech effects (`EFFECT_KEYS` in `src/sim/races.ts`: farm yield, housing, carry, research/train time, building HP, tower damage, ship speed) are summed in `RaceRules.fx` and used through `rules.eff()` / `rules.scale()`. Bots research prerequisites first (`researchOrder` in `src/ai/race.ts`).
+  - Research screen (`TechPanel` in `src/ui/RacePanels.tsx`): era columns, prerequisite lines in an SVG (hover lights the path), locked/ready/busy/done/closed cards, the people's own path and two branches.
+  - Evolution branches: every playable people has its own path plus two branches of 3 steps (`"branch"` field in `src/data/races/*.json`). Starting one closes the other (`RaceRules.branchOf`, `canResearch`).
+  - People builder (`PeopleBuilder` in `src/ui/Peoples.tsx`, slots in `src/app/peoples.ts`, localStorage `fortnight.peoples.v1`, 6 slots): stats ±5 % = ±1 point, every ability module has its number. Save and play only when the total ≤ 0 and buffs ≤ 3 (`races.custom.maxBuffs`). Made-up peoples are `custom: true` with `extra_abilities`; troops, building and tree come from a base people. They travel in `SimSettings.customRaces` (saves, multiplayer welcome) and are registered by `ensureRaces`.
+  - People picker gallery (`PeoplePicker`): plain-language buffs/debuffs with numbers (`src/ui/describe.ts`), an animated canvas preview for each of the 24 abilities (`src/ui/previews.ts`), own troops, branches. Menu: "Browse peoples" and "Make your own" next to the People select.
+  - Tests: unit 153/153; headless Chromium suite 35/35. New: `tests/techtree.test.ts` (6), `tests/evolution.test.ts` (4), `tests/e2e/peoples.spec.ts` (3, headless), `races.spec.ts` F-095 now researches Guild halls (Smithing needs Mining → Bronze first). Results are in the ledger.
+  - Not done / ideas: bots always take the first branch of their people; previews are 2D sketches, not in-game footage; made-up peoples can't pick their own unique troops (they borrow a base people's).
 
 ### State
 - Commits: `8750cb1 Phase 4: bots …` (approved), `7ba7d3d Phase 4b (WIP)`, `074b66c Phase 4b: …`, `6698256 Phase 5 (WIP)`, then the "Phase 5: …" commit.

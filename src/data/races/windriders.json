@@ -12,9 +12,18 @@
   "evolution_tree": [
     { "id": "aerieCraft", "name": "Aerie craft", "cost": { "wood": 150, "food": 80 }, "ticks": 600, "requires": [], "unlocks": { "buildings": ["aerie"], "units": ["glider"] } },
     { "id": "thermals", "name": "Riding the thermals", "cost": { "food": 150, "gold": 60 }, "ticks": 900, "requires": ["aerieCraft"], "unlocks": { "stats": { "movement": 10 } } },
-    { "id": "skyLancers", "name": "Sky lancers", "cost": { "food": 250, "wood": 150, "gold": 180 }, "ticks": 1800, "requires": ["thermals"], "unlocks": { "units": ["skyLancer"] }, "capstone": true }
+    { "id": "skyLancers", "name": "Sky lancers", "cost": { "food": 250, "wood": 150, "gold": 180 }, "ticks": 1800, "requires": ["thermals"], "unlocks": { "units": ["skyLancer"] }, "capstone": true },
+    { "id": "windMills", "name": "Wind mills", "branch": "Sky traders", "cost": { "food": 150, "gold": 50 }, "ticks": 700, "requires": ["aerieCraft"], "unlocks": { "stats": { "gather_speed": 10 } } },
+    { "id": "cloudWatch", "name": "Cloud watch", "branch": "Sky traders", "cost": { "food": 200, "wood": 100, "gold": 100 }, "ticks": 1000, "requires": ["windMills"], "unlocks": { "stats": { "vision": 10 } } },
+    { "id": "highRoosts", "name": "High roosts", "branch": "Sky traders", "cost": { "food": 250, "gold": 200, "adamite": 30 }, "ticks": 1400, "requires": ["cloudWatch"], "unlocks": { "effects": { "buildingHpPct": 20, "towerDamagePct": 15 } } },
+    { "id": "diveStrikes", "name": "Dive strikes", "branch": "Storm lancers", "cost": { "food": 150, "gold": 50 }, "ticks": 700, "requires": ["aerieCraft"], "unlocks": { "stats": { "unit_damage": 10 } } },
+    { "id": "lightArmour", "name": "Light armour", "branch": "Storm lancers", "cost": { "food": 200, "wood": 100, "gold": 100 }, "ticks": 1000, "requires": ["diveStrikes"], "unlocks": { "stats": { "unit_health": 10 } } },
+    { "id": "tailwinds", "name": "Tailwinds", "branch": "Storm lancers", "cost": { "food": 250, "gold": 200, "adamite": 30 }, "ticks": 1400, "requires": ["lightArmour"], "unlocks": { "stats": { "movement": 10 } } }
   ],
   "unique_units": ["glider", "skyLancer"],
   "unique_building": "aerie",
-  "bot_hints": { "personalities": ["raider", "expansionist"], "strategy": "Scout everything early, raid workers with gliders, avoid long sieges at home." }
+  "bot_hints": {
+    "personalities": ["raider", "expansionist"],
+    "strategy": "Scout everything early, raid workers with gliders, avoid long sieges at home."
+  }
 }

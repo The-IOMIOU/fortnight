@@ -12,9 +12,18 @@
   "evolution_tree": [
     { "id": "guildHalls", "name": "Guild halls", "cost": { "stone": 150, "wood": 80 }, "ticks": 600, "requires": [], "unlocks": { "buildings": ["greatForge"], "units": ["ironguard"] } },
     { "id": "steamworks", "name": "Steamworks", "cost": { "stone": 150, "carbon": 60 }, "ticks": 900, "requires": ["guildHalls"], "unlocks": { "stats": { "build_speed": 10 } } },
-    { "id": "golemcraft", "name": "Golemcraft", "cost": { "wood": 200, "gold": 200, "adamite": 60 }, "ticks": 1800, "requires": ["steamworks"], "unlocks": { "units": ["steamGolem"] }, "capstone": true }
+    { "id": "golemcraft", "name": "Golemcraft", "cost": { "wood": 200, "gold": 200, "adamite": 60 }, "ticks": 1800, "requires": ["steamworks"], "unlocks": { "units": ["steamGolem"] }, "capstone": true },
+    { "id": "emberHearths", "name": "Ember hearths", "branch": "Forgefire", "cost": { "food": 150, "gold": 50 }, "ticks": 700, "requires": ["guildHalls"], "unlocks": { "stats": { "build_speed": 10 } } },
+    { "id": "bellows", "name": "Great bellows", "branch": "Forgefire", "cost": { "food": 200, "wood": 100, "gold": 100 }, "ticks": 1000, "requires": ["emberHearths"], "unlocks": { "stats": { "gather_speed": 5 }, "effects": { "carryPlus": 2 } } },
+    { "id": "everflame", "name": "Everflame", "branch": "Forgefire", "cost": { "food": 250, "gold": 200, "adamite": 30 }, "ticks": 1400, "requires": ["bellows"], "unlocks": { "effects": { "trainTimePct": -15 } } },
+    { "id": "rivetMail", "name": "Rivet mail", "branch": "Ironclad", "cost": { "food": 150, "gold": 50 }, "ticks": 700, "requires": ["guildHalls"], "unlocks": { "stats": { "unit_health": 10 } } },
+    { "id": "hammerDrills", "name": "Hammer drills", "branch": "Ironclad", "cost": { "food": 200, "wood": 100, "gold": 100 }, "ticks": 1000, "requires": ["rivetMail"], "unlocks": { "stats": { "unit_damage": 10 } } },
+    { "id": "bastions", "name": "Iron bastions", "branch": "Ironclad", "cost": { "food": 250, "gold": 200, "adamite": 30 }, "ticks": 1400, "requires": ["hammerDrills"], "unlocks": { "effects": { "buildingHpPct": 20, "towerDamagePct": 20 } } }
   ],
   "unique_units": ["ironguard", "steamGolem"],
   "unique_building": "greatForge",
-  "bot_hints": { "personalities": ["defender", "merchant"], "strategy": "Research smithing first, gear every soldier, then push slowly with an unbeatable army." }
+  "bot_hints": {
+    "personalities": ["defender", "merchant"],
+    "strategy": "Research smithing first, gear every soldier, then push slowly with an unbeatable army."
+  }
 }

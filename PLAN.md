@@ -90,6 +90,12 @@ Status: **approved 2026-11-05** ("okay do phase 1") with these owner amendments:
    - **Easy bots:** basic soldiers only (no workshop, rams or special heavy units), army capped at 14, attack waves of 10 (was 5), research from minute 12, no gear. All bots grow during peace and their "war clock" starts when peace ends.
    - **Co-op:** players on the same team start on the same continent 14–32 tiles from their team leader (players without allies keep the map's spread-out starts).
    - **Gathering:** a worker whose tree or rock runs out now looks 18 tiles around (was 8) for the next one, and the game says so if it has to stop.
+18. **Expansion (2026-11-07, owner: "easy bots collect resources slower", "u dont directly unlock guns, i want a whole tree of evolution like civilisation iv", "special evolution branches that are diff on each population", "make your own populations … save slots … buffs positive, debuffs negative … only play IF you balance it out to 0 … can add more debuffs … cant start with too many buffs", "a better civilisation picker … short vid … easier vocabulary").**
+   - **Easy economy:** Easy bots gather, build and train slower (tunable %).
+   - **Era tech tree:** about 32 shared techs in 5 eras (Ancient, Classical, Medieval, Gunpowder, Industrial) with prerequisites like Civilization IV; guns (firearms gear) need Gunpowder deep in era 4. Techs give stat bonuses and new effects (farm yield, housing, carry, research time, training time, building health, tower damage, ship speed) and unlock the forge, pier and gear as before. The research panel becomes a tree by era with prerequisite lines.
+   - **Evolution branches:** every people gets two branches of three steps; starting one locks the other.
+   - **People builder (changes amendment 3 / F-112 for player-made peoples):** stats (5 % = 1 point) and abilities (each with its point value) add up; a people can be saved and played only if the total is 0 or below (more debuffs are fine, more buffs are not), with at most 3 buffs. Several save slots in the browser. Custom peoples travel inside the match settings, so saves and multiplayer work. Shipped peoples stay exactly 0.
+   - **People picker:** a gallery with plain-language buffs and debuffs, numbers, units and branches, and a short looping animation of each special ability and weakness (drawn in the page, no video files).
 
 Items in §7 that weren't commented on are taken as accepted. Proposals P-001…P-005 stay open until answered.
 

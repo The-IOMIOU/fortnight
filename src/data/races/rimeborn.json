@@ -12,9 +12,18 @@
   "evolution_tree": [
     { "id": "iceLodges", "name": "Ice lodges", "cost": { "wood": 150, "food": 80 }, "ticks": 600, "requires": [], "unlocks": { "buildings": ["iceLodge"], "units": ["frostWarden"] } },
     { "id": "deepWinter", "name": "Deep winter", "cost": { "food": 150, "stone": 100 }, "ticks": 900, "requires": ["iceLodges"], "unlocks": { "stats": { "unit_health": 10 } } },
-    { "id": "mammothHerds", "name": "Mammoth herds", "cost": { "food": 400, "gold": 150 }, "ticks": 1800, "requires": ["deepWinter"], "unlocks": { "units": ["mammoth"] }, "capstone": true }
+    { "id": "mammothHerds", "name": "Mammoth herds", "cost": { "food": 400, "gold": 150 }, "ticks": 1800, "requires": ["deepWinter"], "unlocks": { "units": ["mammoth"] }, "capstone": true },
+    { "id": "furTrade", "name": "Fur trade", "branch": "Hearthkeepers", "cost": { "food": 150, "gold": 50 }, "ticks": 700, "requires": ["iceLodges"], "unlocks": { "effects": { "carryPlus": 2 } } },
+    { "id": "iceCellars", "name": "Ice cellars", "branch": "Hearthkeepers", "cost": { "food": 200, "wood": 100, "gold": 100 }, "ticks": 1000, "requires": ["furTrade"], "unlocks": { "effects": { "farmYieldPct": 20 } } },
+    { "id": "longNight", "name": "Long night", "branch": "Hearthkeepers", "cost": { "food": 250, "gold": 200, "adamite": 30 }, "ticks": 1400, "requires": ["iceCellars"], "unlocks": { "effects": { "housingPct": 15, "buildingHpPct": 10 } } },
+    { "id": "iceSpears", "name": "Ice spears", "branch": "Frost raiders", "cost": { "food": 150, "gold": 50 }, "ticks": 700, "requires": ["iceLodges"], "unlocks": { "stats": { "unit_damage": 10 } } },
+    { "id": "blizzardMarch", "name": "Blizzard march", "branch": "Frost raiders", "cost": { "food": 200, "wood": 100, "gold": 100 }, "ticks": 1000, "requires": ["iceSpears"], "unlocks": { "stats": { "movement": 10 } } },
+    { "id": "winterWolves", "name": "Winter wolves", "branch": "Frost raiders", "cost": { "food": 250, "gold": 200, "adamite": 30 }, "ticks": 1400, "requires": ["blizzardMarch"], "unlocks": { "stats": { "unit_health": 10, "unit_damage": 5 } } }
   ],
   "unique_units": ["frostWarden", "mammoth"],
   "unique_building": "iceLodge",
-  "bot_hints": { "personalities": ["defender", "expansionist"], "strategy": "Hold the cold lands, feed the army from ice fishing, and let enemies come to you." }
+  "bot_hints": {
+    "personalities": ["defender", "expansionist"],
+    "strategy": "Hold the cold lands, feed the army from ice fishing, and let enemies come to you."
+  }
 }

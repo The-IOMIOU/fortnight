@@ -6,14 +6,22 @@ import { TUNING } from './core/tuning';
 import { FP_ONE, FP_SHIFT } from './core/fixed';
 import { Biome, isWaterBiome } from './world/mapgen';
 import { RES_NAMES, NUM_RES, UNIT_TYPES, isBuildingKind, isUnitKind, buildingTypeOfKind, isMilitaryType, unitDef, unitTypeOfKind, type BuildingTypeName, type UnitTypeName } from './defs';
-import { ABILITY_IDS, STAT_KEYS, raceById, type AbilityId, type RaceDef, type StatKey } from './races';
+import { ABILITY_IDS, EFFECT_KEYS, STAT_KEYS, raceById, type AbilityId, type EffectKey, type RaceDef, type StatKey } from './races';
 import type { Sim } from './sim';
+import techTree from '../data/techtree.json' with { type: 'json' };
 
 export const AB = TUNING.races.abilities;
 export const abilityBit = (a: AbilityId): number => 1 << ABILITY_IDS.indexOf(a);
 
-export type TechId = keyof typeof TUNING.tech.nodes;
-export const TECH_IDS = Object.keys(TUNING.tech.nodes) as TechId[];
+export { EFFECT_KEYS, type EffectKey };
+/** The shared era tech tree (Civilization-style, src/data/techtree.json). */
+export interface TechNode { id: string; name: string; era: number; cost: Partial<Record<string, number>>; ticks: number; requires: string[]; buildings?: string[]; gear?: string[]; stats?: Partial<Record<StatKey, number>>; effects?: Partial<Record<EffectKey, number>>; text: string }
+export const TECH_TREE = techTree as { eras: string[]; nodes: TechNode[] };
+export const ERAS = TECH_TREE.eras;
+export type TechId = string;
+export const TECH_IDS: TechId[] = TECH_TREE.nodes.map((n) => n.id);
+const TECH_BY_ID = new Map(TECH_TREE.nodes.map((n) => [n.id, n]));
+export const techNode = (id: string): TechNode | undefined => TECH_BY_ID.get(id);
 export type GearId = keyof typeof TUNING.gear.items;
 export const GEAR_IDS = Object.keys(TUNING.gear.items) as GearId[];
 export const gearIndex = (g: GearId): number => GEAR_IDS.indexOf(g);
@@ -27,14 +35,14 @@ const HOT = new Set<number>([Biome.DESERT]);
 const OPEN = new Set<number>([Biome.PLAINS, Biome.DESERT]);
 
 /** A research option: a shared tech node or a node of the player's race tree. */
-export interface ResearchDef { id: string; cost: number[]; ticks: number; requires: string[]; units: string[]; buildings: string[]; gear: string[]; abilities: string[]; stats: Partial<Record<StatKey, number>>; capstone: boolean; shared: boolean }
+export interface ResearchDef { id: string; cost: number[]; ticks: number; requires: string[]; units: string[]; buildings: string[]; gear: string[]; abilities: string[]; stats: Partial<Record<StatKey, number>>; effects: Partial<Record<EffectKey, number>>; capstone: boolean; shared: boolean; era: number; branch?: string }
 
 export function sharedTech(id: string): ResearchDef | null {
-  const n = (TUNING.tech.nodes as unknown as Record<string, { ticks: number; requires: string[]; buildings: string[]; gear: string[] } | undefined>)[id];
+  const n = TECH_BY_ID.get(id);
   if (!n) return null;
   const cost = new Array(NUM_RES).fill(0);
-  RES_NAMES.forEach((r, i) => { cost[i] = (n as unknown as Record<string, number>)[r] ?? 0; });
-  return { id, cost, ticks: n.ticks, requires: n.requires as string[], units: [], buildings: n.buildings as string[], gear: n.gear as string[], abilities: [], stats: {}, capstone: false, shared: true };
+  RES_NAMES.forEach((r, i) => { cost[i] = n.cost[r] ?? 0; });
+  return { id, cost, ticks: n.ticks, requires: n.requires, units: [], buildings: n.buildings ?? [], gear: n.gear ?? [], abilities: [], stats: n.stats ?? {}, effects: n.effects ?? {}, capstone: false, shared: true, era: n.era };
 }
 
 export function raceNode(race: RaceDef, id: string): ResearchDef | null {
@@ -42,7 +50,7 @@ export function raceNode(race: RaceDef, id: string): ResearchDef | null {
   if (!n) return null;
   const cost = new Array(NUM_RES).fill(0);
   RES_NAMES.forEach((r, i) => { cost[i] = n.cost[r] ?? 0; });
-  return { id, cost, ticks: n.ticks, requires: n.requires, units: n.unlocks.units ?? [], buildings: n.unlocks.buildings ?? [], gear: [], abilities: n.unlocks.abilities ?? [], stats: n.unlocks.stats ?? {}, capstone: !!n.capstone, shared: false };
+  return { id, cost, ticks: n.ticks, requires: n.requires, units: n.unlocks.units ?? [], buildings: n.unlocks.buildings ?? [], gear: [], abilities: n.unlocks.abilities ?? [], stats: n.unlocks.stats ?? {}, effects: n.unlocks.effects ?? {}, capstone: !!n.capstone, shared: false, era: 0, branch: n.branch };
 }
 
 /** Per-player race state derived from the race and what was researched (recomputed, never saved). */
@@ -55,6 +63,8 @@ export class RaceRules {
   unitsOk: Set<string>[] = [];
   buildingsOk: Set<string>[] = [];
   gearOk: Set<string>[] = [];
+  /** Summed tech/evolution effects per player (EFFECT_KEYS order). */
+  fx: number[][] = [];
 
   constructor(private s: Sim) {}
 
@@ -64,20 +74,27 @@ export class RaceRules {
     let bits = 0;
     if (race.special_ability) bits |= abilityBit(race.special_ability);
     if (race.weakness) bits |= abilityBit(race.weakness);
+    for (const a of race.extra_abilities ?? []) bits |= abilityBit(a);
     const st = STAT_KEYS.map((k) => race.stat_modifiers[k]);
     const units = new Set<string>(), buildings = new Set<string>(), gear = new Set<string>();
+    const fx = EFFECT_KEYS.map(() => 0);
     for (const id of ps.researched) {
       const n = this.node(p, id);
       if (!n) continue;
       n.units.forEach((u) => units.add(u)); n.buildings.forEach((b) => buildings.add(b)); n.gear.forEach((g) => gear.add(g));
       for (const a of n.abilities) bits |= abilityBit(a as AbilityId);
       for (const [k, v] of Object.entries(n.stats)) st[STAT_KEYS.indexOf(k as StatKey)] += v ?? 0;
+      for (const [k, v] of Object.entries(n.effects)) fx[EFFECT_KEYS.indexOf(k as EffectKey)] += v ?? 0;
     }
-    this.abil[p] = bits; this.stat[p] = st; this.unitsOk[p] = units; this.buildingsOk[p] = buildings; this.gearOk[p] = gear;
+    this.abil[p] = bits; this.stat[p] = st; this.fx[p] = fx; this.unitsOk[p] = units; this.buildingsOk[p] = buildings; this.gearOk[p] = gear;
   }
 
   has(p: number, a: AbilityId): boolean { return p >= 0 && p < this.s.players && (this.abil[p] & abilityBit(a)) !== 0; }
   pct(p: number, k: StatKey): number { return p >= 0 && p < this.s.players ? this.stat[p][STAT_KEYS.indexOf(k)] : 100; }
+  /** Summed effect value for player p (0 when none). */
+  eff(p: number, k: EffectKey): number { return p >= 0 && p < this.s.players ? this.fx[p]?.[EFFECT_KEYS.indexOf(k)] ?? 0 : 0; }
+  /** Scale v by (100 + effect) %; unchanged when the effect is 0 (old matches keep their exact numbers). */
+  scale(p: number, k: EffectKey, v: number): number { const e = this.eff(p, k); return e ? Math.floor((v * Math.max(10, 100 + e)) / 100) : v; }
 
   /** A research option for player p (shared tech or own race node). */
   node(p: number, id: string): ResearchDef | null { return sharedTech(id) ?? raceNode(raceById(this.s.ps[p].race), id); }
@@ -88,7 +105,15 @@ export class RaceRules {
     if (ps.researched.includes(id)) return 'already researched';
     if (ps.researching) return 'already researching';
     if (!n.requires.every((q) => ps.researched.includes(q))) return 'needs earlier research';
+    if (n.branch && this.branchOf(p) && this.branchOf(p) !== n.branch) return 'you chose the other branch';
     return null;
+  }
+
+  /** The evolution branch player p has started (F-207), or '' when none yet. */
+  branchOf(p: number): string {
+    const ps = this.s.ps[p], race = raceById(ps.race);
+    for (const n of race.evolution_tree) if (n.branch && (ps.researched.includes(n.id) || ps.researching === n.id)) return n.branch;
+    return '';
   }
 
   /** Can player p build this building type at all (tech and race)? */
@@ -113,6 +138,7 @@ export class RaceRules {
     let speed = Math.floor((d.speed * this.pct(p, 'movement')) / 100);
     const vision = Math.max(1, Math.floor((d.vision * this.pct(p, 'vision') + 50) / 100));
     if (d.water && this.has(p, 'poorSailors')) hp = Math.floor((hp * AB.poorSailors.navalHpPct) / 100);
+    if (d.water) speed = this.scale(p, 'navalSpeedPct', speed);
     if (u === 'scout' && this.has(p, 'gliders')) speed = Math.floor((speed * AB.gliders.scoutSpeedPct) / 100);
     if (this.has(p, 'heavyFooted') && isMilitaryType(u)) speed = Math.floor((speed * AB.heavyFooted.militarySpeedPct) / 100);
     if (this.has(p, 'fragileArmy') && isMilitaryType(u)) hp = Math.floor((hp * AB.fragileArmy.militaryHpPct) / 100);
@@ -123,6 +149,7 @@ export class RaceRules {
     let hp = base;
     if (p < this.s.players && this.has(p, 'frailBuildings')) hp = Math.floor((hp * AB.frailBuildings.hpPct) / 100);
     if (p < this.s.players && this.has(p, 'poorDefense') && (bt === 'wall' || bt === 'gate' || bt === 'tower')) hp = Math.floor((hp * AB.poorDefense.defenceHpPct) / 100);
+    if (p < this.s.players) hp = this.scale(p, 'buildingHpPct', hp);
     return Math.max(1, hp);
   }
 
@@ -137,8 +164,11 @@ export class RaceRules {
   }
 
   trainTicks(p: number, u: UnitTypeName): number {
-    const t = unitDef(u).trainTicks;
-    return this.has(p, 'slowGrowth') ? Math.floor((t * AB.slowGrowth.trainTimePct) / 100) : t;
+    let t = unitDef(u).trainTicks;
+    if (this.has(p, 'slowGrowth')) t = Math.floor((t * AB.slowGrowth.trainTimePct) / 100);
+    const w = this.s.settings.workPct?.[p] ?? 100; // Easy bots train slower (F-204)
+    t = this.scale(p, 'trainTimePct', t);
+    return w === 100 ? t : Math.floor((t * 100) / Math.max(10, w));
   }
 
   /** Damage percent from the attacker's race (stat, terrain abilities, naval weakness, ambush). */
@@ -149,6 +179,7 @@ export class RaceRules {
     const b = s.map.biome[s.tileOf(a)];
     if (isBuildingKind(e.kind[a])) {
       if (this.has(p, 'poorDefense') && buildingTypeOfKind(e.kind[a]) === 'tower') pct = AB.poorDefense.towerAttackPct;
+      if (buildingTypeOfKind(e.kind[a]) === 'tower') pct = this.scale(p, 'towerDamagePct', pct);
       return pct;
     }
     pct = this.pct(p, 'unit_damage');
@@ -214,7 +245,7 @@ export class RaceRules {
         ps.researching = ''; ps.researchProgress = 0;
         this.refresh(p);
         this.restatUnits(p);
-        s.emit(p, 'researched', TECH_IDS.indexOf(done as TechId), n.capstone ? 1 : 0);
+        s.emit(p, 'researched', TECH_IDS.indexOf(done), n.capstone ? 1 : 0);
       }
     }
     // sunburn: own units on land outside own territory take damage by day
@@ -237,7 +268,7 @@ export class RaceRules {
   }
 
   /** Research time for player p (Scholars study faster). */
-  researchTicks(p: number, ticks: number): number { return this.has(p, 'quickStudy') ? Math.max(1, Math.floor((ticks * AB.quickStudy.researchTimePct) / 100)) : ticks; }
+  researchTicks(p: number, ticks: number): number { const t = this.has(p, 'quickStudy') ? Math.max(1, Math.floor((ticks * AB.quickStudy.researchTimePct) / 100)) : ticks; return Math.max(1, this.scale(p, 'researchTimePct', t)); }
 
   private hasResearchSite(p: number): boolean {
     const e = this.s.ents;

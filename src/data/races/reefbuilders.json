@@ -2,100 +2,28 @@
   "id": "reefbuilders",
   "name": "Reefbuilders",
   "description": "Sea people who raise piers and water bases from the first day. On land their armies are weak.",
-  "biome_preference": [
-    "coast"
-  ],
-  "stat_modifiers": {
-    "gather_speed": 100,
-    "build_speed": 100,
-    "unit_health": 100,
-    "unit_damage": 100,
-    "vision": 100,
-    "movement": 100
-  },
+  "biome_preference": ["coast"],
+  "stat_modifiers": { "gather_speed": 100, "build_speed": 100, "unit_health": 100, "unit_damage": 100, "vision": 100, "movement": 100 },
   "special_ability": "reefBuilders",
   "weakness": "weakLandArmy",
-  "starting_units": {
-    "worker": 3,
-    "scout": 1
-  },
-  "starting_buildings": [
-    "capital"
-  ],
-  "starting_resources": {
-    "food": 200,
-    "wood": 200,
-    "stone": 100,
-    "gold": 0,
-    "carbon": 0,
-    "adamite": 0
-  },
+  "starting_units": { "worker": 3, "scout": 1 },
+  "starting_buildings": ["capital"],
+  "starting_resources": { "food": 200, "wood": 200, "stone": 100, "gold": 0, "carbon": 0, "adamite": 0 },
   "evolution_tree": [
-    {
-      "id": "reefDocks",
-      "name": "Reef docks",
-      "cost": {
-        "wood": 150,
-        "food": 60
-      },
-      "ticks": 600,
-      "requires": [],
-      "unlocks": {
-        "buildings": [
-          "reefDock"
-        ],
-        "units": [
-          "reefguard"
-        ]
-      }
-    },
-    {
-      "id": "tidecall",
-      "name": "Tide calling",
-      "cost": {
-        "food": 150,
-        "gold": 60
-      },
-      "ticks": 900,
-      "requires": [
-        "reefDocks"
-      ],
-      "unlocks": {
-        "stats": {
-          "gather_speed": 10
-        }
-      }
-    },
-    {
-      "id": "krakens",
-      "name": "Kraken pact",
-      "cost": {
-        "food": 300,
-        "gold": 200,
-        "adamite": 40
-      },
-      "ticks": 1800,
-      "requires": [
-        "tidecall"
-      ],
-      "unlocks": {
-        "units": [
-          "kraken"
-        ]
-      },
-      "capstone": true
-    }
+    { "id": "reefDocks", "name": "Reef docks", "cost": { "wood": 150, "food": 60 }, "ticks": 600, "requires": [], "unlocks": { "buildings": ["reefDock"], "units": ["reefguard"] } },
+    { "id": "tidecall", "name": "Tide calling", "cost": { "food": 150, "gold": 60 }, "ticks": 900, "requires": ["reefDocks"], "unlocks": { "stats": { "gather_speed": 10 } } },
+    { "id": "krakens", "name": "Kraken pact", "cost": { "food": 300, "gold": 200, "adamite": 40 }, "ticks": 1800, "requires": ["tidecall"], "unlocks": { "units": ["kraken"] }, "capstone": true },
+    { "id": "tideMills", "name": "Tide mills", "branch": "Harbour lords", "cost": { "food": 150, "gold": 50 }, "ticks": 700, "requires": ["reefDocks"], "unlocks": { "stats": { "gather_speed": 10 } } },
+    { "id": "shellHouses", "name": "Shell houses", "branch": "Harbour lords", "cost": { "food": 200, "wood": 100, "gold": 100 }, "ticks": 1000, "requires": ["tideMills"], "unlocks": { "effects": { "housingPct": 15 } } },
+    { "id": "pearlTrade", "name": "Pearl trade", "branch": "Harbour lords", "cost": { "food": 250, "gold": 200, "adamite": 30 }, "ticks": 1400, "requires": ["shellHouses"], "unlocks": { "effects": { "carryPlus": 3 } } },
+    { "id": "waveRiders", "name": "Wave riders", "branch": "Sea wolves", "cost": { "food": 150, "gold": 50 }, "ticks": 700, "requires": ["reefDocks"], "unlocks": { "effects": { "navalSpeedPct": 20 } } },
+    { "id": "coralBlades", "name": "Coral blades", "branch": "Sea wolves", "cost": { "food": 200, "wood": 100, "gold": 100 }, "ticks": 1000, "requires": ["waveRiders"], "unlocks": { "stats": { "unit_damage": 10 } } },
+    { "id": "stormFleet", "name": "Storm fleet", "branch": "Sea wolves", "cost": { "food": 250, "gold": 200, "adamite": 30 }, "ticks": 1400, "requires": ["coralBlades"], "unlocks": { "stats": { "unit_health": 10 }, "effects": { "navalSpeedPct": 10 } } }
   ],
-  "unique_units": [
-    "reefguard",
-    "kraken"
-  ],
+  "unique_units": ["reefguard", "kraken"],
   "unique_building": "reefDock",
   "bot_hints": {
-    "personalities": [
-      "expansionist",
-      "merchant"
-    ],
+    "personalities": ["expansionist", "merchant"],
     "strategy": "Expand along coasts, win at sea, defend land with towers."
   }
 }

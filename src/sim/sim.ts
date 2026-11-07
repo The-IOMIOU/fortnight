@@ -15,7 +15,7 @@ import { compareCommands, type Command } from './commands';
 import { FlowFields } from './path/flowfield';
 import { Military, formationSlots } from './military';
 import { RaceRules, AB, GLIDERS, GEAR_IDS, TECH_IDS, isRaceBuilding, type GearId } from './abilities';
-import { raceById } from './races';
+import { ensureRaces, raceById, type RaceDef } from './races';
 import { Diplomacy, newDiploState, doCovert, covertAllowed, covertInReach, poisonTick, COVERT_ACTS, CV, type CovertAct } from './diplomacy';
 import {
   BUILDABLE, BUILDING_TYPES, DROPOFF, FARM_YIELD, Kind, MOVE_COST, NATURE_OWNER, NUM_RES, Res, RES_NONE, TICKS_PER_MIN, TOWN_CENTERS,
@@ -47,9 +47,13 @@ export interface SimSettings {
   testOptions?: number[];
   /** Peace at the start (owner request 2026-11-06): nobody can attack anybody for this many ticks. */
   peaceTicks?: number;
+  /** Work speed % per player for gathering, building and training (Easy bots work slower, F-204). */
+  workPct?: number[];
   // ---- Phase 5 (F-090–F-112) ----
   /** Race id per player (default: the Baseline reference race). */
   races?: string[];
+  /** Made-up peoples used in this match (F-208): registered when the match is created, so saves and guests have them. */
+  customRaces?: RaceDef[];
 }
 
 /** Test options ("cheats", F-197): they change rules, never resources. */
@@ -158,6 +162,7 @@ export class Sim {
   private pathMode = 0;
 
   constructor(readonly settings: SimSettings, opts: { skipSetup?: boolean } = {}) {
+    ensureRaces(settings.customRaces);
     this.map = generateMap(settings.seed, settings.size, settings.world);
     const { w, h } = this.map;
     this.wrap = this.map.wrap;
@@ -1047,7 +1052,7 @@ export class Sim {
     }
   }
 
-  mult(p: number): number { return this.ps[p].starving ? ECO.starvingRatePct : 100; }
+  mult(p: number): number { const w = this.settings.workPct?.[p] ?? 100; return this.ps[p].starving ? Math.floor((w * ECO.starvingRatePct) / 100) : w; }
 
   teamOf(p: number): number { return this.settings.teams?.[p] ?? p; }
   allied(p: number, q: number): boolean { return p === q || (p < this.players && q < this.players && (this.teamOf(p) === this.teamOf(q) || (!!this.dip && this.dip.treatyAllied(p, q)))); }
@@ -1103,7 +1108,7 @@ export class Sim {
   private gatherTick(id: number): void {
     const e = this.ents, p = e.owner[id];
     const src = e.srcEnt[id], t = e.taskTile[id];
-    const cap = ECO.carryCapacity;
+    const cap = ECO.carryCapacity + this.rules.eff(p, 'carryPlus');
     let available: number;
     let rate: number;
     if (src >= 0) {
@@ -1236,6 +1241,7 @@ export class Sim {
     if (this.tick < e.poisonUntil[b] || this.tick < e.disabledUntil[b]) pct = 0; // poisoned crops / sabotage (F-142)
     if (bt === 'farm' && this.fungus) pct = Math.floor((pct * this.rules.farmPct(p, e.anchor[b], buildingDef(bt).size)) / 100);
     if (bt === 'farm' && this.rules.has(p, 'poorFarmers')) pct = Math.floor((pct * AB.poorFarmers.farmYieldPct) / 100);
+    if (bt === 'farm') pct = this.rules.scale(p, 'farmYieldPct', pct);
     if (bt === 'iceLodge' && this.rules.has(p, 'frostAdapted')) pct = Math.floor((pct * AB.frostAdapted.iceFishPct) / 100);
     if (this.p5) pct = Math.floor((pct * this.rules.workPct(p, this.tileOf(id), 'work', e.weaponTier[id] > 0)) / 100);
     // exact integer accumulator: food per minute × pct × mult, one food per TICKS_PER_MIN × 10000
@@ -1334,7 +1340,7 @@ export class Sim {
       if (p >= this.players) continue;
       const k = e.kind[id];
       if (isUnitKind(k)) this.ps[p].pop += unitDef(unitTypeOfKind(k)).pop;
-      else if (isBuildingKind(k) && e.complete[id]) this.ps[p].housing += this.housingOf(id);
+      else if (isBuildingKind(k) && e.complete[id]) this.ps[p].housing += this.rules.scale(p, 'housingPct', this.housingOf(id));
     }
   }
 

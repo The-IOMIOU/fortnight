@@ -669,6 +669,7 @@ The same bot code runs at every difficulty; only these numbers change. No diffic
 | `bots.easy.workerTarget` / `bots.hard.workerTarget` / `bots.impossible.workerTarget` | 11 | 20 | 26 | Workers the bot aims for. More workers = stronger economy. |
 | `bots.easy.armyAttackSize` / `bots.hard.armyAttackSize` / `bots.impossible.armyAttackSize` | 10 | 12 | 16 | Soldiers gathered before a land attack or an invasion wave. Easy raised from 5 (2026-11-06, owner: Easy bots attacked too early with tiny armies). |
 | `bots.easy.peaceMin` / `bots.hard.peaceMin` / `bots.impossible.peaceMin` | 20 | 0 | 0 | Default peace at the start when the menu says Auto (the gentlest bot decides). Owner 2026-11-06: on Easy you need time to settle; Hard keeps its pressure. |
+| `bots.easy.workPct` / `bots.hard.workPct` / `bots.impossible.workPct` | 70 | 100 | 100 | How fast the bot's workers gather and build, and how fast it trains (owner 2026-11-07: Easy bots collect resources slower). |
 | `bots.easy.maxArmy` / `bots.hard.maxArmy` / `bots.impossible.maxArmy` | 14 | 0 | 0 | Easy bots stop training soldiers at this many (0 = no cap). |
 | `bots.easy.heavyUnits` / `bots.hard.heavyUnits` / `bots.impossible.heavyUnits` | 0 | 1 | 1 | 1 = may build a workshop and rams and train its people's special heavy units (golems, mammoths, war beasts…). Owner 2026-11-06: Easy had "tanks" before you had a barracks. |
 | `bots.easy.researchFromMin` / `bots.hard.researchFromMin` / `bots.impossible.researchFromMin` | 12 | 3 | 2 | Game minute from which the bot starts researching. |
@@ -1153,6 +1154,8 @@ Point rule (owner amendment 3): stat changes score 1 point per `races.statPctPer
 | `races.statPctPerPoint` | 5 | Stats move in 5 % steps; each step is worth 1 point. |
 | `races.statMin` | 50 | No stat below half normal: a race must still be playable. |
 | `races.statMax` | 150 | No stat above 1.5× normal. |
+| `races.custom.maxBuffs` | 3 | Made-up peoples (F-208) may have at most this many buffs (raised stats or positive abilities), so nobody starts with a pile of power-ups paid for by many small debuffs. Owner: "u cant start with too many buffs". |
+| `races.custom.slots` | 6 | Save slots for made-up peoples in the browser (F-208). |
 | `races.abilities.amphibious.points` | 8 | Big: armies cross straits without transports. |
 | `races.abilities.amphibious.waterMoveCost` | 14 | Path cost of a water tile (land is 10) — slightly dearer than plains so paths prefer land when it is close. |
 | `races.abilities.amphibious.waterSpeedPct` | 130 | Speed in water: 30 % faster than on plains. |
@@ -1213,50 +1216,12 @@ Research happens at the capital (one at a time per player, paid up front, refund
 
 | Constant | Value | Why |
 |---|---|---|
+**The era tech tree itself is content data, like the peoples: `src/data/techtree.json`** (owner 2026-11-07, F-205). 34 techs in 5 eras (8/9/7/6/4) (Ancient, Classical, Medieval, Gunpowder, Industrial), each with a cost, a research time in ticks, prerequisites and its effects: stat bonuses (`gather_speed`, `build_speed`, `unit_health`, `unit_damage`, `vision`, `movement`, in percent points) and effects (`farmYieldPct`, `housingPct`, `carryPlus`, `researchTimePct`, `trainTimePct`, `buildingHpPct`, `towerDamagePct`, `navalSpeedPct`), plus the buildings and gear it unlocks. Costs grow by era, and later eras need gold, carbon and adamite, so they come later in a match. Guns (the firearms gear) need Gunpowder, which needs 15 earlier techs. `tests/techtree.test.ts` checks the file (prerequisites exist and come from the same or an earlier era, no loops, every effect does what it says).
+
+**Evolution branches (F-207)** live in each people file (`src/data/races/*.json`): nodes with a `"branch"` name. Every playable people has its own path (3 steps, the last one the capstone) plus two branches of 3 steps each that start after the first step. Starting any step of one branch closes the other for the rest of the match. Branch steps cost 150 food + 50 gold, then 200 food + 100 wood + 100 gold, then 250 food + 200 gold + 30 adamite (700 / 1000 / 1400 ticks): the same for every people, so no branch is cheaper than another; what differs is what they give (economy branch vs war branch).
+
 | `tech.researchAt` | capital | Research needs a completed capital; losing it pauses research. |
 | `tech.victoryCapstonePlusPct` | 60 | Optional tech victory: own capstone + at least 60 % of the shared nodes (PLAN §7-D). Off unless chosen. |
-| `tech.nodes.smithing.wood` | 100 | Unlocks the forge and iron gear: the entry point of the gear chain. Cost in wood. |
-| `tech.nodes.smithing.stone` | 100 | Cost in stone. |
-| `tech.nodes.smithing.gold` | 0 | Cost in gold. |
-| `tech.nodes.smithing.carbon` | 0 | Cost in carbon. |
-| `tech.nodes.smithing.adamite` | 0 | Cost in adamite. |
-| `tech.nodes.smithing.ticks` | 600 | Research time in ticks. |
-| `tech.nodes.smithing.buildings.0` | forge | Building unlocked. |
-| `tech.nodes.smithing.gear.0` | ironWeapons | Gear unlocked. |
-| `tech.nodes.smithing.gear.1` | ironArmor | Gear unlocked. |
-| `tech.nodes.toolmaking.wood` | 80 | Tools: workers gather 20 % faster. Cost in wood. |
-| `tech.nodes.toolmaking.stone` | 40 | Cost in stone. |
-| `tech.nodes.toolmaking.gold` | 20 | Cost in gold. |
-| `tech.nodes.toolmaking.carbon` | 0 | Cost in carbon. |
-| `tech.nodes.toolmaking.adamite` | 0 | Cost in adamite. |
-| `tech.nodes.toolmaking.ticks` | 450 | Research time in ticks. |
-| `tech.nodes.toolmaking.requires.0` | smithing | Must be researched first. |
-| `tech.nodes.toolmaking.gear.0` | tools | Gear unlocked. |
-| `tech.nodes.alloys.wood` | 0 | Carbon + adamite → alloy, and alloy weapons/armour. Cost in wood. |
-| `tech.nodes.alloys.stone` | 60 | Cost in stone. |
-| `tech.nodes.alloys.gold` | 60 | Cost in gold. |
-| `tech.nodes.alloys.carbon` | 40 | Cost in carbon. |
-| `tech.nodes.alloys.adamite` | 20 | Cost in adamite. |
-| `tech.nodes.alloys.ticks` | 900 | Research time in ticks. |
-| `tech.nodes.alloys.requires.0` | smithing | Must be researched first. |
-| `tech.nodes.alloys.gear.0` | alloy | Gear unlocked. |
-| `tech.nodes.alloys.gear.1` | alloyWeapons | Gear unlocked. |
-| `tech.nodes.alloys.gear.2` | alloyArmor | Gear unlocked. |
-| `tech.nodes.firearms.wood` | 0 | Late game: tier 3 weapons. Cost in wood. |
-| `tech.nodes.firearms.stone` | 0 | Cost in stone. |
-| `tech.nodes.firearms.gold` | 150 | Cost in gold. |
-| `tech.nodes.firearms.carbon` | 80 | Cost in carbon. |
-| `tech.nodes.firearms.adamite` | 40 | Cost in adamite. |
-| `tech.nodes.firearms.ticks` | 1500 | Research time in ticks. |
-| `tech.nodes.firearms.requires.0` | alloys | Must be researched first. |
-| `tech.nodes.firearms.gear.0` | firearms | Gear unlocked. |
-| `tech.nodes.piers.wood` | 150 | Build on water (F-044). Cost in wood. |
-| `tech.nodes.piers.stone` | 0 | Cost in stone. |
-| `tech.nodes.piers.gold` | 20 | Cost in gold. |
-| `tech.nodes.piers.carbon` | 0 | Cost in carbon. |
-| `tech.nodes.piers.adamite` | 0 | Cost in adamite. |
-| `tech.nodes.piers.ticks` | 450 | Research time in ticks. |
-| `tech.nodes.piers.buildings.0` | pier | Building unlocked. |
 
 ## Gear (F-058)
 
@@ -1397,12 +1362,6 @@ Spies steal, spy on and poison; saboteurs sabotage and poison. Agents must stand
 | `bots.allianceFeel` | 15 | Bots only offer or accept an alliance from this relationship up (about three good deals). |
 | `bots.allianceReputation` | 50 | Bots don't ally with players whose reputation is below this (known treaty breakers). |
 | `bots.counterMargin` | 120 | An offer this close to acceptable (in value points) gets a counter-offer instead of a plain no. |
-| `tech.nodes.toxins.wood` | 0 | Cost in wood. |
-| `tech.nodes.toxins.stone` | 0 | Cost in stone. |
-| `tech.nodes.toxins.gold` | 80 | Toxins (Phase 6): allows poisoning (Mycelids can without it). Cost in gold. |
-| `tech.nodes.toxins.carbon` | 30 | Cost in carbon. |
-| `tech.nodes.toxins.adamite` | 0 | Cost in adamite. |
-| `tech.nodes.toxins.ticks` | 600 | Research time in ticks. |
 
 ## Multiplayer (Phase 7, F-160–F-168)
 

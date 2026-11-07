@@ -10,7 +10,7 @@ import { Kind, RES_NONE, Res, type BuildingTypeName, type UnitTypeName } from '.
 import { issue } from '../src/sim/scripted';
 import { loadSim, saveSim } from '../src/sim/serialize';
 import { PLAYABLE_RACES, RACES, STAT_KEYS, loadRaces, racePoints, registerRace, validateRace } from '../src/sim/races';
-import { AB, GEAR_IDS, gearIndex } from '../src/sim/abilities';
+import { AB, GEAR_IDS, gearIndex, techNode, TECH_IDS } from '../src/sim/abilities';
 import deepkin from '../src/data/races/deepkin.json' with { type: 'json' };
 
 const run = (s: Sim, n: number): void => { for (let k = 0; k < n; k++) s.step(); };
@@ -128,15 +128,19 @@ describe('F-093 / F-094 research', () => {
     issue(s, 0, { type: 'research', node: 'toolmaking' }); // needs smithing first
     s.step();
     expect(s.ps[0].researching).toBe('');
+    issue(s, 0, { type: 'research', node: 'smithing' }); // needs bronze working (era tree, F-205)
+    s.step();
+    expect(s.ps[0].researching).toBe('');
+    s.ps[0].researched.push('mining', 'bronze'); s.rules.refresh(0);
     const before = s.ps[0].stock.slice();
     issue(s, 0, { type: 'research', node: 'smithing' });
     s.step();
     expect(s.ps[0].researching).toBe('smithing');
-    const n = TUNING.tech.nodes.smithing;
-    expect(before[Res.WOOD] - s.ps[0].stock[Res.WOOD]).toBe(n.wood);
-    expect(before[Res.STONE] - s.ps[0].stock[Res.STONE]).toBe(n.stone);
+    const n = techNode('smithing')!;
+    expect(before[Res.WOOD] - s.ps[0].stock[Res.WOOD]).toBe(n.cost.wood);
+    expect(before[Res.STONE] - s.ps[0].stock[Res.STONE]).toBe(n.cost.stone);
     run(s, n.ticks);
-    expect(s.ps[0].researched).toEqual(['smithing']);
+    expect(s.ps[0].researched).toEqual(['mining', 'bronze', 'smithing']);
     expect(s.canPlace(0, 'forge', placeable(s, 0, 'forge'))).toBeNull();
     expect(s.rules.gearOk[0].has('ironWeapons')).toBe(true);
   });
@@ -448,14 +452,15 @@ describe('F-044 piers and F-133 tech victory', () => {
 
   it('tech victory is off by default; when on, own capstone + 60 % of the shared tree wins', () => {
     const make = (tech: boolean): Sim => new Sim({ seed: 'techwin', size: 'small', players: 2, races: ['rimeborn', 'baseline'], victory: tech ? { tech: true } : undefined });
+    const need = Math.ceil((TUNING.tech.victoryCapstonePlusPct * TECH_IDS.length) / 100);
     for (const on of [false, true]) {
       const s = make(on);
-      unlock(s, 0, 'iceLodges', 'deepWinter', 'mammothHerds', 'smithing', 'toolmaking', 'alloys', 'piers'); // 4 of 6 shared
+      unlock(s, 0, 'iceLodges', 'deepWinter', 'mammothHerds', ...TECH_IDS.slice(0, need)); // 60 % of the shared tree
       s.step();
       expect(s.winner).toBe(on ? 0 : -1);
     }
     const s = make(true);
-    unlock(s, 0, 'iceLodges', 'deepWinter', 'mammothHerds', 'smithing', 'toolmaking', 'alloys'); // 3 of 6 = 50 %
+    unlock(s, 0, 'iceLodges', 'deepWinter', 'mammothHerds', ...TECH_IDS.slice(0, need - 1)); // just under
     s.step();
     expect(s.winner).toBe(-1);
   });
@@ -490,9 +495,9 @@ describe('F-108 – F-111 races 9–12', () => {
     expect(s.rules.researchTicks(0, 600)).toBe(Math.floor((600 * AB.quickStudy.researchTimePct) / 100));
     expect(s.rules.researchTicks(1, 600)).toBe(600);
     s.ps[0].stock = [9000, 9000, 9000, 9000, 9000, 9000];
-    issue(s, 0, { type: 'research', node: 'smithing' }); s.step();
-    run(s, 360);
-    expect(s.ps[0].researched).toContain('smithing');
+    issue(s, 0, { type: 'research', node: 'mining' }); s.step();
+    run(s, 200);
+    expect(s.ps[0].researched).toContain('mining');
     expect(s.rules.unitStats(0, 'spearman').hp).toBe(Math.floor((TUNING.unitTypes.spearman.hp * AB.fragileArmy.militaryHpPct) / 100));
     expect(s.rules.unitStats(0, 'worker').hp).toBe(TUNING.unitTypes.worker.hp);
   });

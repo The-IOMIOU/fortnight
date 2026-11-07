@@ -8,6 +8,7 @@ import { hex } from '../sim/core/hash';
 import type { CommandBody } from '../sim/commands';
 import type { SaveData } from '../sim/serialize';
 import type { SimSettings } from '../sim/sim';
+import { RACES, ensureRaces } from '../sim/races';
 import type { BotConfig } from '../ai/manager';
 import type { PlayerStats } from '../sim/stats';
 import {
@@ -134,12 +135,16 @@ export class Game {
       this.viewer = o.spectator ? -1 : 0;
       const bonus = Array.from({ length: o.players }, (_, p) => (o.impossibleBonus && o.bots?.find((b) => b.player === p)?.difficulty === 'impossible' ? TUNING.bots.impossibleIncomeBonusPct : 0));
       const settings: SimSettings = { seed: o.seed, size: o.size, players: o.players, teams: o.teams, victory: o.victory, incomeBonusPct: bonus };
+      const work = Array.from({ length: o.players }, (_, p) => { const b = o.bots?.find((x) => x.player === p); return b ? TUNING.bots[b.difficulty].workPct : 100; });
+      if (work.some((v) => v !== 100)) settings.workPct = work;
       if (o.world) settings.world = o.world;
       if (o.wildlifePct !== undefined && o.wildlifePct !== 100) settings.wildlifePct = o.wildlifePct;
       if (o.dayLengthTicks && o.dayLengthTicks !== TUNING.dayNight.dayLengthTicks) settings.dayLengthTicks = o.dayLengthTicks;
       if (o.popLimit) settings.popLimit = o.popLimit;
       if (o.peaceTicks) settings.peaceTicks = o.peaceTicks;
       if (o.races && o.races.some((r) => r !== 'baseline')) settings.races = o.races;
+      const custom = RACES.filter((r) => r.custom && o.races?.includes(r.id));
+      if (custom.length) settings.customRaces = custom;
       if (o.testOptions) settings.testOptions = [o.testOptions];
       this.send({ type: 'init', settings, viewer: this.viewer, speed: o.speed, paused: false, bots: o.bots ?? [] });
       if (o.online) { void this.setupNet('host').openRoom(); this.send({ type: 'hostNet', humans: [0, ...o.online.seats], pauseMode: o.online.pauseMode }); }
@@ -193,7 +198,7 @@ export class Game {
 
   private onWorker(m: FromWorker): void {
     if (this.disposed) return;
-    if (m.type === 'map') { this.viewer = m.viewer; this.onMap(m.map, m.startTile, m.players); }
+    if (m.type === 'map') { ensureRaces(m.customRaces); this.viewer = m.viewer; this.onMap(m.map, m.startTile, m.players); }
     else if (m.type === 'snap') this.onSnap(m);
     else if (m.type === 'error') { store.set({ screen: 'menu', error: m.message }); this.dispose(); }
     else if (m.type === 'netOut') this.net?.send(m.peer, m.msg);

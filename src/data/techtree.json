@@ -1,0 +1,43 @@
+{
+  "eras": ["Ancient", "Classical", "Medieval", "Gunpowder", "Industrial"],
+  "nodes": [
+    { "id": "agriculture", "name": "Agriculture", "era": 1, "cost": { "food": 50, "wood": 50 }, "ticks": 300, "requires": [], "effects": { "farmYieldPct": 15 }, "text": "Farms grow 15 % more food." },
+    { "id": "pottery", "name": "Pottery", "era": 1, "cost": { "food": 40, "wood": 60 }, "ticks": 300, "requires": [], "effects": { "housingPct": 10 }, "text": "Houses and towns hold 10 % more people." },
+    { "id": "mining", "name": "Mining", "era": 1, "cost": { "wood": 60, "stone": 40 }, "ticks": 300, "requires": [], "stats": { "gather_speed": 5 }, "text": "Workers gather 5 % faster." },
+    { "id": "husbandry", "name": "Animal husbandry", "era": 1, "cost": { "food": 80, "wood": 30 }, "ticks": 300, "requires": [], "effects": { "carryPlus": 2 }, "text": "Workers carry 2 more per trip." },
+    { "id": "sailing", "name": "Sailing", "era": 1, "cost": { "wood": 90 }, "ticks": 300, "requires": [], "effects": { "navalSpeedPct": 15 }, "text": "Ships sail 15 % faster." },
+    { "id": "masonry", "name": "Masonry", "era": 1, "cost": { "wood": 40, "stone": 80 }, "ticks": 400, "requires": ["mining"], "effects": { "buildingHpPct": 15 }, "text": "Buildings have 15 % more health." },
+    { "id": "bronze", "name": "Bronze working", "era": 1, "cost": { "wood": 60, "stone": 60 }, "ticks": 400, "requires": ["mining"], "stats": { "unit_damage": 5 }, "text": "Soldiers hit 5 % harder." },
+    { "id": "writing", "name": "Writing", "era": 1, "cost": { "food": 60, "wood": 60 }, "ticks": 400, "requires": ["pottery"], "effects": { "researchTimePct": -10 }, "text": "Research is 10 % faster." },
+
+    { "id": "smithing", "name": "Smithing", "era": 2, "cost": { "wood": 100, "stone": 100 }, "ticks": 600, "requires": ["bronze"], "buildings": ["forge"], "gear": ["ironWeapons", "ironArmor"], "text": "Build a forge and craft iron weapons and armour." },
+    { "id": "toolmaking", "name": "Toolmaking", "era": 2, "cost": { "wood": 80, "stone": 40, "gold": 20 }, "ticks": 450, "requires": ["smithing"], "gear": ["tools"], "text": "Craft tools: workers with tools work faster." },
+    { "id": "mathematics", "name": "Mathematics", "era": 2, "cost": { "food": 80, "stone": 60, "gold": 20 }, "ticks": 500, "requires": ["writing", "masonry"], "effects": { "towerDamagePct": 15 }, "text": "Towers shoot 15 % harder." },
+    { "id": "horseback", "name": "Horseback riding", "era": 2, "cost": { "food": 120, "wood": 40 }, "ticks": 500, "requires": ["husbandry"], "stats": { "movement": 5 }, "text": "Units move 5 % faster." },
+    { "id": "construction", "name": "Construction", "era": 2, "cost": { "wood": 120, "stone": 80 }, "ticks": 600, "requires": ["masonry", "mathematics"], "stats": { "build_speed": 10 }, "text": "Workers build 10 % faster." },
+    { "id": "currency", "name": "Currency", "era": 2, "cost": { "food": 60, "gold": 60 }, "ticks": 500, "requires": ["writing", "bronze"], "stats": { "gather_speed": 5 }, "text": "Workers gather 5 % faster." },
+    { "id": "piers", "name": "Piers", "era": 2, "cost": { "wood": 150, "gold": 20 }, "ticks": 450, "requires": ["sailing"], "buildings": ["pier"], "text": "Build piers on the water." },
+    { "id": "philosophy", "name": "Philosophy", "era": 2, "cost": { "food": 100, "gold": 50 }, "ticks": 600, "requires": ["writing", "mathematics"], "effects": { "researchTimePct": -10 }, "text": "Research is 10 % faster." },
+    { "id": "toxins", "name": "Toxins", "era": 2, "cost": { "gold": 80, "carbon": 30 }, "ticks": 600, "requires": ["philosophy"], "text": "Spies can poison enemy farms." },
+
+    { "id": "feudalism", "name": "Feudalism", "era": 3, "cost": { "food": 150, "stone": 100, "gold": 40 }, "ticks": 800, "requires": ["construction", "smithing"], "stats": { "unit_health": 5 }, "text": "Soldiers have 5 % more health." },
+    { "id": "alloys", "name": "Alloys", "era": 3, "cost": { "stone": 60, "gold": 60, "carbon": 40, "adamite": 20 }, "ticks": 900, "requires": ["smithing", "currency"], "gear": ["alloy", "alloyWeapons", "alloyArmor"], "text": "Make alloy for the strongest weapons and armour." },
+    { "id": "engineering", "name": "Engineering", "era": 3, "cost": { "wood": 150, "stone": 120 }, "ticks": 800, "requires": ["construction", "mathematics"], "stats": { "build_speed": 10 }, "effects": { "buildingHpPct": 10 }, "text": "Build 10 % faster; buildings have 10 % more health." },
+    { "id": "optics", "name": "Optics", "era": 3, "cost": { "wood": 80, "gold": 80 }, "ticks": 700, "requires": ["mathematics", "sailing"], "stats": { "vision": 10 }, "text": "Everyone sees 10 % further." },
+    { "id": "guilds", "name": "Guilds", "era": 3, "cost": { "food": 120, "gold": 80 }, "ticks": 800, "requires": ["currency", "toolmaking"], "stats": { "gather_speed": 5 }, "effects": { "carryPlus": 2 }, "text": "Gather 5 % faster and carry 2 more." },
+    { "id": "medicine", "name": "Medicine", "era": 3, "cost": { "food": 160, "gold": 60 }, "ticks": 800, "requires": ["philosophy"], "stats": { "unit_health": 5 }, "effects": { "trainTimePct": -10 }, "text": "Soldiers have 5 % more health; training is 10 % faster." },
+    { "id": "chivalry", "name": "Chivalry", "era": 3, "cost": { "food": 160, "gold": 100 }, "ticks": 900, "requires": ["feudalism", "horseback"], "stats": { "unit_damage": 5 }, "text": "Soldiers hit 5 % harder." },
+
+    { "id": "chemistry", "name": "Chemistry", "era": 4, "cost": { "gold": 120, "carbon": 60 }, "ticks": 1100, "requires": ["alloys", "medicine"], "effects": { "researchTimePct": -10 }, "text": "Research is 10 % faster." },
+    { "id": "metallurgy", "name": "Metallurgy", "era": 4, "cost": { "stone": 150, "gold": 100, "carbon": 40 }, "ticks": 1100, "requires": ["alloys", "engineering"], "stats": { "unit_damage": 5 }, "effects": { "towerDamagePct": 15 }, "text": "Soldiers hit 5 % harder; towers 15 % harder." },
+    { "id": "navigation", "name": "Navigation", "era": 4, "cost": { "wood": 200, "gold": 80 }, "ticks": 1000, "requires": ["optics", "piers"], "stats": { "vision": 5 }, "effects": { "navalSpeedPct": 15 }, "text": "Ships 15 % faster; see 5 % further." },
+    { "id": "banking", "name": "Banking", "era": 4, "cost": { "food": 150, "gold": 150 }, "ticks": 1100, "requires": ["guilds"], "stats": { "gather_speed": 5 }, "effects": { "housingPct": 10 }, "text": "Gather 5 % faster; 10 % more room for people." },
+    { "id": "firearms", "name": "Gunpowder", "era": 4, "cost": { "gold": 150, "carbon": 80, "adamite": 40 }, "ticks": 1500, "requires": ["chemistry", "metallurgy"], "gear": ["firearms"], "text": "Guns: craft firearms at the forge." },
+    { "id": "printing", "name": "Printing press", "era": 4, "cost": { "wood": 150, "gold": 120 }, "ticks": 1100, "requires": ["philosophy", "chemistry"], "effects": { "researchTimePct": -10 }, "text": "Research is 10 % faster." },
+
+    { "id": "steam", "name": "Steam power", "era": 5, "cost": { "wood": 250, "stone": 200, "carbon": 120 }, "ticks": 1500, "requires": ["firearms", "engineering"], "stats": { "build_speed": 15 }, "effects": { "navalSpeedPct": 20 }, "text": "Build 15 % faster; ships 20 % faster." },
+    { "id": "rifling", "name": "Rifling", "era": 5, "cost": { "gold": 200, "carbon": 120, "adamite": 60 }, "ticks": 1600, "requires": ["firearms", "metallurgy"], "stats": { "unit_damage": 10 }, "text": "Soldiers hit 10 % harder." },
+    { "id": "railroad", "name": "Railroad", "era": 5, "cost": { "wood": 300, "stone": 300, "carbon": 100 }, "ticks": 1600, "requires": ["steam"], "stats": { "movement": 10 }, "text": "Units move 10 % faster." },
+    { "id": "industry", "name": "Industrialization", "era": 5, "cost": { "food": 300, "gold": 200, "carbon": 150 }, "ticks": 1800, "requires": ["steam", "banking"], "stats": { "gather_speed": 10 }, "effects": { "carryPlus": 4, "trainTimePct": -15 }, "text": "Gather 10 % faster, carry 4 more, train 15 % faster." }
+  ]
+}

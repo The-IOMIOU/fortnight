@@ -34,7 +34,8 @@ export interface MatchResult {
 export function runMatch(spec: MatchSpec, onTick?: (sim: Sim, bots: BotManager) => void): MatchResult {
   const players = spec.bots.length;
   const bonus = spec.bots.map((b) => (spec.impossibleBonus && b.difficulty === 'impossible' ? TUNING.bots.impossibleIncomeBonusPct : 0));
-  const sim = new Sim({ seed: spec.seed, size: spec.size, players, teams: spec.teams, victory: spec.victory, incomeBonusPct: bonus, world: spec.world, races: spec.races });
+  const work = spec.bots.map((b) => TUNING.bots[b.difficulty].workPct);
+  const sim = new Sim({ seed: spec.seed, size: spec.size, players, teams: spec.teams, victory: spec.victory, incomeBonusPct: bonus, world: spec.world, races: spec.races, ...(work.some((v) => v !== 100) ? { workPct: work } : {}) });
   const bots = new BotManager(sim, spec.bots);
   const maxTicks = spec.maxTicks ?? TUNING.bots.matchLimitMin * 600;
   const metrics: BotMetrics[] = spec.bots.map((b) => ({ ...b, firstAttack: -1, settlementsFounded: 0, defencesBuilt: 0, towns: 1, peakArmy: 0, landPeak: 0, eliminatedAt: -1, walls: 0, towers: 0 }));

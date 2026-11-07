@@ -12,9 +12,18 @@
   "evolution_tree": [
     { "id": "tidecraft", "name": "Tidecraft", "cost": { "wood": 120, "food": 100 }, "ticks": 600, "requires": [], "unlocks": { "buildings": ["tidepool"], "units": ["tideguard"] } },
     { "id": "deepCurrents", "name": "Deep currents", "cost": { "food": 150, "gold": 60 }, "ticks": 900, "requires": ["tidecraft"], "unlocks": { "stats": { "movement": 10 } } },
-    { "id": "leviathanCall", "name": "Call of the leviathan", "cost": { "food": 300, "gold": 200, "adamite": 40 }, "ticks": 1800, "requires": ["deepCurrents"], "unlocks": { "units": ["leviathan"] }, "capstone": true }
+    { "id": "leviathanCall", "name": "Call of the leviathan", "cost": { "food": 300, "gold": 200, "adamite": 40 }, "ticks": 1800, "requires": ["deepCurrents"], "unlocks": { "units": ["leviathan"] }, "capstone": true },
+    { "id": "saltLungs", "name": "Salt lungs", "branch": "Tidewalkers", "cost": { "food": 150, "gold": 50 }, "ticks": 700, "requires": ["tidecraft"], "unlocks": { "stats": { "movement": 5 }, "effects": { "navalSpeedPct": 15 } } },
+    { "id": "pearlBeds", "name": "Pearl beds", "branch": "Tidewalkers", "cost": { "food": 200, "wood": 100, "gold": 100 }, "ticks": 1000, "requires": ["saltLungs"], "unlocks": { "stats": { "gather_speed": 10 } } },
+    { "id": "moonTides", "name": "Moon tides", "branch": "Tidewalkers", "cost": { "food": 250, "gold": 200, "adamite": 30 }, "ticks": 1400, "requires": ["pearlBeds"], "unlocks": { "effects": { "housingPct": 15, "farmYieldPct": 15 } } },
+    { "id": "coralPlate", "name": "Coral plate", "branch": "Abyssal", "cost": { "food": 150, "gold": 50 }, "ticks": 700, "requires": ["tidecraft"], "unlocks": { "stats": { "unit_health": 10 } } },
+    { "id": "pressureStrikes", "name": "Pressure strikes", "branch": "Abyssal", "cost": { "food": 200, "wood": 100, "gold": 100 }, "ticks": 1000, "requires": ["coralPlate"], "unlocks": { "stats": { "unit_damage": 10 } } },
+    { "id": "drownedFury", "name": "Drowned fury", "branch": "Abyssal", "cost": { "food": 250, "gold": 200, "adamite": 30 }, "ticks": 1400, "requires": ["pressureStrikes"], "unlocks": { "stats": { "unit_damage": 5, "unit_health": 10 } } }
   ],
   "unique_units": ["tideguard", "leviathan"],
   "unique_building": "tidepool",
-  "bot_hints": { "personalities": ["raider", "expansionist"], "strategy": "Walk armies across straits instead of building transports; settle at night." }
+  "bot_hints": {
+    "personalities": ["raider", "expansionist"],
+    "strategy": "Walk armies across straits instead of building transports; settle at night."
+  }
 }

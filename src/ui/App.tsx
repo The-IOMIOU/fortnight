@@ -9,6 +9,8 @@ import { generateMap } from '../sim/world/mapgen';
 import { hex } from '../sim/core/hash';
 import { RACES, PLAYABLE_RACES } from '../sim/races';
 import { RaceSummary } from './RacePanels';
+import { PeopleBuilder, PeoplePicker } from './Peoples';
+import type { RaceDef } from '../sim/races';
 import { JoinWaiting } from './NetPanels';
 import { Hud, SettingsModal } from './Hud';
 import { Backdrop, Home, MultiplayerScreen } from './Home';
@@ -72,8 +74,8 @@ const defaultPlayers = (size: MapSize): number => Math.min(4, TUNING.map.sizes[s
 /** Build the match: player 0 is you, players 1..n are bots; the first `allies` bots share your team. */
 /** Race per player: yours, then the bots' (one race for all, or seeded random over the playable races: same link → same peoples). */
 export function matchRaces(seed: string, mine: string, bots: string, players: number): string[] {
-  const rng = Rng.stream(seed, 'menu-races');
-  return Array.from({ length: players }, (_, p) => (p === 0 ? mine : bots === 'random' ? PLAYABLE_RACES[rng.int(PLAYABLE_RACES.length)].id : bots));
+  const rng = Rng.stream(seed, 'menu-races'), pool = PLAYABLE_RACES.filter((r) => !r.custom); // made-up peoples only when picked
+  return Array.from({ length: players }, (_, p) => (p === 0 ? mine : bots === 'random' ? pool[rng.int(pool.length)].id : bots));
 }
 
 export function makeMatch(seed: string, size: MapSize, botCount: number, difficulty: Difficulty, personality: string, allies: number): Pick<NewGameOptions, 'players' | 'bots' | 'teams'> {
@@ -233,6 +235,8 @@ function Menu({ initial, onStart, onBack, hostOnline = false }: { initial: Parti
   const [clampMsg, setClampMsg] = useState('');
   const [race, setRace] = useState(saved.race ?? RACES[0].id);
   const [botRace, setBotRace] = useState(saved.botRace ?? 'random');
+  const [picker, setPicker] = useState(false);
+  const [builder, setBuilder] = useState<{ edit?: RaceDef } | null>(null);
   const [cont, setCont] = useState<{ label: string; blob: Blob } | null>(null);
   const error = useStore((s) => s.error);
   const fileRef = useRef<HTMLInputElement>(null);
@@ -318,16 +322,22 @@ function Menu({ initial, onStart, onBack, hostOnline = false }: { initial: Parti
         </div>
         {hostOnline && onlineBlock}
         <label>People
-          <select value={race} onChange={(e) => setRace((e.target as HTMLSelectElement).value)} data-testid="race">
-            {RACES.map((r) => <option value={r.id}>{r.name}</option>)}
-          </select>
+          <span class="row">
+            <select value={race} onChange={(e) => setRace((e.target as HTMLSelectElement).value)} data-testid="race">
+              {RACES.map((r) => <option value={r.id}>{r.name}{r.custom ? ' (yours)' : ''}</option>)}
+            </select>
+            <button type="button" onClick={() => setPicker(true)} data-testid="people-open">Browse peoples</button>
+            <button type="button" onClick={() => setBuilder({})} data-testid="builder-open">Make your own</button>
+          </span>
           <small class="later">{chosen.description}</small>
         </label>
         <RaceSummary race={chosen} />
+        {picker && <PeoplePicker value={race} onClose={() => setPicker(false)} onPick={(id) => { setRace(id); setPicker(false); }} onBuild={(edit) => { setPicker(false); setBuilder({ edit }); }} />}
+        {builder && <PeopleBuilder edit={builder.edit} onClose={() => setBuilder(null)} onPlay={(id) => { setRace(id); setBuilder(null); }} />}
         <label>Rival peoples
           <select value={botRace} onChange={(e) => setBotRace((e.target as HTMLSelectElement).value)} data-testid="bot-race">
             <option value="random">Random</option>
-            {RACES.map((r) => <option value={r.id}>{r.name}</option>)}
+            {RACES.map((r) => <option value={r.id}>{r.name}{r.custom ? ' (yours)' : ''}</option>)}
           </select>
         </label>
         <label>Map size

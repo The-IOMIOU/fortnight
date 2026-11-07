@@ -12,9 +12,18 @@
   "evolution_tree": [
     { "id": "deepHalls", "name": "Deep halls", "cost": { "stone": 150, "wood": 60 }, "ticks": 600, "requires": [], "unlocks": { "buildings": ["tunnelHall"], "units": ["burrower"] } },
     { "id": "stoneSkin", "name": "Stone skin", "cost": { "stone": 200, "gold": 60 }, "ticks": 900, "requires": ["deepHalls"], "unlocks": { "stats": { "unit_health": 10 } } },
-    { "id": "greatDrill", "name": "The great drill", "cost": { "wood": 200, "gold": 200, "carbon": 60 }, "ticks": 1800, "requires": ["stoneSkin"], "unlocks": { "units": ["deepDrill"] }, "capstone": true }
+    { "id": "greatDrill", "name": "The great drill", "cost": { "wood": 200, "gold": 200, "carbon": 60 }, "ticks": 1800, "requires": ["stoneSkin"], "unlocks": { "units": ["deepDrill"] }, "capstone": true },
+    { "id": "lampMoss", "name": "Lamp moss", "branch": "Deep miners", "cost": { "food": 150, "gold": 50 }, "ticks": 700, "requires": ["deepHalls"], "unlocks": { "stats": { "vision": 10 } } },
+    { "id": "oreSense", "name": "Ore sense", "branch": "Deep miners", "cost": { "food": 200, "wood": 100, "gold": 100 }, "ticks": 1000, "requires": ["lampMoss"], "unlocks": { "stats": { "gather_speed": 10 } } },
+    { "id": "mountainHeart", "name": "Mountain heart", "branch": "Deep miners", "cost": { "food": 250, "gold": 200, "adamite": 30 }, "ticks": 1400, "requires": ["oreSense"], "unlocks": { "abilities": ["masterSmiths"] } },
+    { "id": "graniteHalls", "name": "Granite halls", "branch": "Stone wardens", "cost": { "food": 150, "gold": 50 }, "ticks": 700, "requires": ["deepHalls"], "unlocks": { "effects": { "buildingHpPct": 20 } } },
+    { "id": "tunnelTraps", "name": "Tunnel traps", "branch": "Stone wardens", "cost": { "food": 200, "wood": 100, "gold": 100 }, "ticks": 1000, "requires": ["graniteHalls"], "unlocks": { "effects": { "towerDamagePct": 25 } } },
+    { "id": "livingRock", "name": "Living rock", "branch": "Stone wardens", "cost": { "food": 250, "gold": 200, "adamite": 30 }, "ticks": 1400, "requires": ["tunnelTraps"], "unlocks": { "stats": { "unit_health": 15 } } }
   ],
   "unique_units": ["burrower", "deepDrill"],
   "unique_building": "tunnelHall",
-  "bot_hints": { "personalities": ["schemer", "defender"], "strategy": "Burrow the army, walk under the enemy wall line, surface next to the town." }
+  "bot_hints": {
+    "personalities": ["schemer", "defender"],
+    "strategy": "Burrow the army, walk under the enemy wall line, surface next to the town."
+  }
 }
