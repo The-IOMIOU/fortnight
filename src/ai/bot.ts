@@ -167,7 +167,8 @@ export class Bot {
     const sites = this.settlementSites(v, home, enemyTowns, towns).filter((t) => this.s.siteTries.filter((q) => this.dist(q, t, v.w) <= 2).length < 3);
 
     const sit: Situation = {
-      minutes, workers: workers.length, idleWorkers: workers.filter((u) => u.task === Task.IDLE).length,
+      // the war clock (boredom, late-game escalation) starts when the peace at the start ends
+      minutes: Math.max(0, minutes - v.peaceTicks / 600), workers: workers.length, idleWorkers: workers.filter((u) => u.task === Task.IDLE).length,
       workerTarget: d.workerTarget, pop: st.pop, housing: st.housing, foodBalance: st.foodBalancePerMin,
       towns: towns.length, maxTowns: d.maxTowns, settlers: settlers.length, expansionSites: sites.length,
       army: army.length, armyStrength: st.army, attackSize: Math.round(d.armyAttackSize * pers.armyFactor),
@@ -175,7 +176,7 @@ export class Bot {
       barracks: has('barracks').length,
     };
     let { goal, scores } = scoreGoals(sit, pers);
-    if (v.peaceful && (goal === 'attack' || goal === 'raid')) { goal = 'economy'; s.naval = 'none'; } // test option: bots never start fights
+    if ((v.peaceful || v.peaceLeft > 0) && (goal === 'attack' || goal === 'raid')) { goal = v.peaceLeft > 0 ? 'expand' : 'economy'; s.naval = 'none'; } // peace time / test option: grow, don't plan fights
     s.goal = goal; s.scores = scores;
 
     // ---- 0. Phase 6: diplomacy and chat (answers every think, proposals at most once a minute)
@@ -194,9 +195,10 @@ export class Bot {
     this.economy(v, home, capital, workers, units, spend, goal === 'economy');
     // ---- 3. military production when it matters
     const wantArmy = goal === 'attack' || goal === 'defense' || goal === 'raid' || threat > 0 || boredom(minutes) > 0.2;
-    if (wantArmy && this.chance()) this.militaryProduction(v, home, workers, army, spend, pers);
+    const capped = d.maxArmy > 0 && army.length >= d.maxArmy;
+    if (wantArmy && !capped && this.chance()) this.militaryProduction(v, home, workers, army, spend, pers);
     // ---- 3b. Phase 5: research, own troops, gear, race abilities
-    if (this.chance()) racePlan({ v, home, workers, army, scouts, stock, wantArmy, minutes, cmd: (c) => this.cmd(c), pick: (ws, t) => this.pickWorker(ws, t, w), spot: (bt, near, a, b) => this.spotNear(v, bt, near, a, b), dist: (a, b) => this.dist(a, b, w), roll: (n) => this.rng.int(n) });
+    if (this.chance()) racePlan({ v, home, workers, army, scouts, stock, wantArmy, minutes, researchFromMin: d.researchFromMin, heavyUnits: d.heavyUnits === 1, gear: d.gear === 1, cmd: (c) => this.cmd(c), pick: (ws, t) => this.pickWorker(ws, t, w), spot: (bt, near, a, b) => this.spotNear(v, bt, near, a, b), dist: (a, b) => this.dist(a, b, w), roll: (n) => this.rng.int(n) });
     // ---- 4. goal-specific
     if (goal === 'expand' && canExpandNow(v) && this.chance()) this.expand(v, capital, settlers, sites, stock, st.pop, st.housing);
     if (goal === 'defense' && d.useDefences && pers.defences >= 0.5 && this.chance()) this.fortify(v, home, workers, spend);
@@ -401,13 +403,13 @@ export class Bot {
       if (stock[Res.FOOD] < ud.food || stock[Res.WOOD] < ud.wood || stock[Res.GOLD] < ud.gold) continue;
       this.cmd({ type: 'train', building: b.id, utype: U(u) });
     }
-    if ((this.s.goal === 'attack' || this.s.naval !== 'none' || this.s.firstAttack >= 0) && barracks.some((b) => b.complete) && !v.myBuildings.some((b) => b.btype === 'workshop') && stock[Res.WOOD] >= 180 && stock[Res.STONE] >= 70 && workers.length >= 8) {
+    if (d.heavyUnits && (this.s.goal === 'attack' || this.s.naval !== 'none' || this.s.firstAttack >= 0) && barracks.some((b) => b.complete) && !v.myBuildings.some((b) => b.btype === 'workshop') && stock[Res.WOOD] >= 180 && stock[Res.STONE] >= 70 && workers.length >= 8) {
       const t = this.spotNear(v, 'workshop', home, 4, 12);
       if (t >= 0) this.cmd({ type: 'place', ids: [this.pickWorker(workers, t, w)], btype: B('workshop'), tile: t });
     }
     // rams for walls: one per few soldiers once a workshop exists
     const ws = v.myBuildings.find((b) => b.btype === 'workshop' && b.complete);
-    if (ws && ws.queue === 0 && stock[Res.WOOD] >= 140 && army.filter((u) => u.kind === Kind.RAM).length < 1 + Math.floor(army.length / 6)) this.cmd({ type: 'train', building: ws.id, utype: U('ram') });
+    if (d.heavyUnits && ws && ws.queue === 0 && stock[Res.WOOD] >= 140 && army.filter((u) => u.kind === Kind.RAM).length < 1 + Math.floor(army.length / 6)) this.cmd({ type: 'train', building: ws.id, utype: U('ram') });
     // gather idle soldiers just in front of home
     const idle = army.filter((u) => u.task === Task.IDLE && this.dist(u.tile, home, w) > 6);
     if (idle.length >= 3) { const [x, y] = BotView.fp(home + 3 * w + 2, w); this.cmd({ type: 'move', ids: idle.map((u) => u.id), x, y }); }

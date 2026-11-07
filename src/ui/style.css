@@ -238,3 +238,4 @@ details.more > * + * { margin-top: 0.5rem; }
 .room-code { font: 700 2rem/1 ui-monospace, 'Cascadia Mono', Consolas, monospace; letter-spacing: 0.35em; padding: 0.35rem 0.5rem 0.35rem 0.85rem; color: #ffd98a; background: rgba(0, 0, 0, 0.35); border: 1px dashed rgba(255, 217, 138, 0.55); cursor: copy; }
 .room-code:hover { background: rgba(255, 217, 138, 0.12); }
 .code-inp { font: 700 1.3rem ui-monospace, 'Cascadia Mono', Consolas, monospace !important; letter-spacing: 0.3em; text-transform: uppercase; }
+.res.peace { color: #bfe8c4; border-color: rgba(120, 200, 140, 0.45); background: rgba(40, 90, 55, 0.35); }

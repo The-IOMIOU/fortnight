@@ -79,6 +79,8 @@ export interface GameState {
   /** Phase 9 tutorial step (−1 = off). */
   tutorial: number;
   opts: number;
+  /** Ticks of peace at the start left. */
+  peaceLeft: number;
 }
 
 type Listener = () => void;
@@ -89,7 +91,7 @@ export class Store {
     speed: 'normal', paused: false, pendingOrders: 0, selected: 0, selection: { units: {}, building: null, unit: null },
     ownerOverlay: true, showPerf: false, showStats: false, settingsOpen: false,
     perf: { fps: 0, p95Ms: 0, simMs: 0, tps: 0, drawCalls: 0, triangles: 0, entities: 0, dropped: 0 },
-    stats: null, feed: [], placing: null, winner: -1, players: 1, toast: '', error: '', box: null, settings: loadSettings(), formation: 'box', spectating: false, keysOpen: false, winnerTeam: -1, myTeam: 0, bots: [], showBots: false, impossibleBonusOn: false, modified: false, opts: 0, me: null, techOpen: false, dip: null, dipOpen: false, covertAct: null, muted: [], net: null, netOpen: false, invites: [], netAnswer: '', room: null, joinRoom: '', blocked: [], tutorial: -1,
+    stats: null, feed: [], placing: null, winner: -1, players: 1, toast: '', error: '', box: null, settings: loadSettings(), formation: 'box', spectating: false, keysOpen: false, winnerTeam: -1, myTeam: 0, bots: [], showBots: false, impossibleBonusOn: false, modified: false, opts: 0, peaceLeft: 0, me: null, techOpen: false, dip: null, dipOpen: false, covertAct: null, muted: [], net: null, netOpen: false, invites: [], netAnswer: '', room: null, joinRoom: '', blocked: [], tutorial: -1,
   };
   private listeners = new Set<Listener>();
   set(patch: Partial<GameState>): void { this.state = { ...this.state, ...patch }; for (const l of this.listeners) l(); }

@@ -63,6 +63,8 @@ Source of truth is [src/data/tuning.json](src/data/tuning.json). `npm run check`
 | `map.seaWidths.1` | 10 | Medium sea, used for about 30 % of non-partner pairs on maps with 6+ continents in `mixed` mode. |
 | `map.seaWidths.2` | 30 | Open ocean between continent clusters (`mixed`) and between all pairs (`far`). The 192-wide Medium map can't fit 30 everywhere, so measured farthest gaps there are 15+. |
 | `map.globeSeamOcean` | 14 | Globe world (F-195): tiles of forced ocean on each side of the east–west seam, so only ships cross it and no continent is cut in two. |
+| `map.allyStartMin` | 14 | Allies (same team) start near their team leader: at least this many tiles away… |
+| `map.allyStartMax` | 32 | …and at most this many, on the same continent (owner 2026-11-06: co-op players started "100 km apart"). Players without allies keep the map's spread-out starts. |
 | `map.globePolarOceanPct` | 12 | Globe maps: the top and bottom 12 % of rows stay ocean (under the ice caps). In the 3D globe view these rows pinch together at the poles, so no land or towns should be there. |
 | `map.straitReach` | 16 | Next to a narrow strait the continent's edge falloff fades out over this many tiles, so both coasts actually reach the strait instead of leaving a wide gap. |
 | `map.partnerDistPct` | 145 | Partner continent centres are placed at 145/200 of their summed radii, so their falloffs overlap and only the forced strait separates them. |
@@ -159,6 +161,7 @@ Rates are integers per minute; the sim converts them with exact integer accumula
 
 | Constant | Value | Why |
 |---|---|---|
+| `economy.regatherRadius` | 18 | When a tree or rock runs out, a worker looks this far for the next one of the same kind before stopping (was 8, which left workers idle as forests shrank). |
 | `economy.carryCapacity` | 10 | Units a worker carries before walking back to a drop-off. Drop-off placement matters. |
 | `economy.gatherPerMin.wood` | 24 | Per working worker per minute (measured exactly by tests/economy.test.ts). Rarer resources gather slower. |
 | `economy.gatherPerMin.stone` | 18 | Per working worker per minute (measured exactly by tests/economy.test.ts). Rarer resources gather slower. |
@@ -664,7 +667,12 @@ The same bot code runs at every difficulty; only these numbers change. No diffic
 | `bots.easy.thinkEvery` / `bots.hard.thinkEvery` / `bots.impossible.thinkEvery` | 40 | 10 | 5 | Ticks between decisions (10 = 1 s). Easy reacts every 4 s, Hard every second, Impossible twice a second. |
 | `bots.easy.actionChancePct` / `bots.hard.actionChancePct` / `bots.impossible.actionChancePct` | 55 | 100 | 100 | Chance to act on a decision each think (training, building, settling, fortifying). Easy hesitates almost half the time. |
 | `bots.easy.workerTarget` / `bots.hard.workerTarget` / `bots.impossible.workerTarget` | 11 | 20 | 26 | Workers the bot aims for. More workers = stronger economy. |
-| `bots.easy.armyAttackSize` / `bots.hard.armyAttackSize` / `bots.impossible.armyAttackSize` | 5 | 12 | 16 | Soldiers gathered before a land attack or an invasion wave. |
+| `bots.easy.armyAttackSize` / `bots.hard.armyAttackSize` / `bots.impossible.armyAttackSize` | 10 | 12 | 16 | Soldiers gathered before a land attack or an invasion wave. Easy raised from 5 (2026-11-06, owner: Easy bots attacked too early with tiny armies). |
+| `bots.easy.peaceMin` / `bots.hard.peaceMin` / `bots.impossible.peaceMin` | 20 | 0 | 0 | Default peace at the start when the menu says Auto (the gentlest bot decides). Owner 2026-11-06: on Easy you need time to settle; Hard keeps its pressure. |
+| `bots.easy.maxArmy` / `bots.hard.maxArmy` / `bots.impossible.maxArmy` | 14 | 0 | 0 | Easy bots stop training soldiers at this many (0 = no cap). |
+| `bots.easy.heavyUnits` / `bots.hard.heavyUnits` / `bots.impossible.heavyUnits` | 0 | 1 | 1 | 1 = may build a workshop and rams and train its people's special heavy units (golems, mammoths, war beasts…). Owner 2026-11-06: Easy had "tanks" before you had a barracks. |
+| `bots.easy.researchFromMin` / `bots.hard.researchFromMin` / `bots.impossible.researchFromMin` | 12 | 3 | 2 | Game minute from which the bot starts researching. |
+| `bots.easy.gear` / `bots.hard.gear` / `bots.impossible.gear` | 0 | 1 | 1 | 1 = crafts and hands out tools, weapons and armour. |
 | `bots.easy.maxBarracks` / `bots.hard.maxBarracks` / `bots.impossible.maxBarracks` | 1 | 2 | 3 | Barracks the bot builds (production rate of soldiers). |
 | `bots.easy.useDefences` / `bots.hard.useDefences` / `bots.impossible.useDefences` | 0 | 1 | 1 | 1 = builds towers and walls when its goal is defense (only personalities with defences ≥ 0.5). |
 | `bots.easy.sizeWaves` / `bots.hard.sizeWaves` / `bots.impossible.sizeWaves` | 0 | 1 | 1 | 1 = counts visible defenders around the target and sends invasion waves big enough to beat them. |

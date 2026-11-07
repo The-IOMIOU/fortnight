@@ -51,6 +51,8 @@ export interface NewGameOptions {
   wildlifePct?: number;
   dayLengthTicks?: number;
   popLimit?: number;
+  /** Peace at the start in ticks (0 = none). */
+  peaceTicks?: number;
   /** Test options for you (player 0) from the start; the run counts as modified. */
   testOptions?: number;
   // ---- Phase 5 ----
@@ -136,6 +138,7 @@ export class Game {
       if (o.wildlifePct !== undefined && o.wildlifePct !== 100) settings.wildlifePct = o.wildlifePct;
       if (o.dayLengthTicks && o.dayLengthTicks !== TUNING.dayNight.dayLengthTicks) settings.dayLengthTicks = o.dayLengthTicks;
       if (o.popLimit) settings.popLimit = o.popLimit;
+      if (o.peaceTicks) settings.peaceTicks = o.peaceTicks;
       if (o.races && o.races.some((r) => r !== 'baseline')) settings.races = o.races;
       if (o.testOptions) settings.testOptions = [o.testOptions];
       this.send({ type: 'init', settings, viewer: this.viewer, speed: o.speed, paused: false, bots: o.bots ?? [] });
@@ -262,7 +265,7 @@ export class Game {
     const perf = store.state.perf;
     store.set({
       tick: s.tick, isNight: s.isNight, dayPhase: s.dayPhase, dayLength: s.dayLength, speed: s.speed, paused: s.paused,
-      pendingOrders: s.pending.length, stats: s.stats, winner: s.winner, winnerTeam: s.winnerTeam, bots: s.bots, modified: s.modified, opts: s.opts, me: s.me, dip: s.dip, net: s.net,
+      pendingOrders: s.pending.length, stats: s.stats, winner: s.winner, winnerTeam: s.winnerTeam, bots: s.bots, modified: s.modified, opts: s.opts, peaceLeft: s.peaceLeft, me: s.me, dip: s.dip, net: s.net,
       perf: { ...perf, simMs: s.simMsPerTick, tps: s.ticksPerSec, dropped: s.droppedTicks, entities: s.ents.length / 9 },
     });
   }
@@ -280,6 +283,8 @@ export class Game {
       case 'deposit': text = `${RES_LABELS[a ?? 0]} deposit discovered`; sfx.discovery(); break;
       case 'depleted': text = `A ${RES_LABELS[a ?? 0].toLowerCase()} source ran out`; break;
       case 'housing': text = 'Not enough housing: build houses'; kind = 'warn'; sfx.warning(); break;
+      case 'nothingNear': text = `A worker ran out of ${RES_LABELS[a ?? 1].toLowerCase()} nearby and is waiting: send them to a new spot`; kind = 'warn'; break;
+      case 'peaceOver': text = 'Peace is over: rivals can attack now'; kind = 'warn'; sfx.warning(); break;
       case 'starving': text = 'Your people are starving! Work halves and training stops'; kind = 'warn'; sfx.warning(); break;
       case 'fed': text = 'Food supply restored'; kind = 'good'; break;
       case 'cantPlace': text = `Can't build ${bn(a).toLowerCase()} there`; kind = 'warn'; break;

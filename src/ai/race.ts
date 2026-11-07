@@ -20,6 +20,8 @@ export function researchOrder(race: RaceDef): string[] {
 export interface RaceCtx {
   v: BotView; home: number; workers: UnitInfo[]; army: UnitInfo[]; scouts: UnitInfo[]; stock: number[];
   wantArmy: boolean; minutes: number;
+  /** Difficulty limits: research start, special heavy units, gear (Easy has none of the last two). */
+  researchFromMin: number; heavyUnits: boolean; gear: boolean;
   cmd: (c: CommandBody) => void; pick: (workers: UnitInfo[], near: number) => number; spot: (bt: BuildingTypeName, near: number, minR: number, maxR: number) => number;
   dist: (a: number, b: number) => number; roll: (n: number) => number;
 }
@@ -31,7 +33,7 @@ export function racePlan(c: RaceCtx): void {
   const race = raceById(v.race);
   const done = (id: string): boolean => v.researched.includes(id);
   // 1. research (from minute 3, keeping a reserve so the economy keeps running)
-  if (!v.researching && c.minutes >= 3) {
+  if (!v.researching && c.minutes >= c.researchFromMin) {
     for (const id of researchOrder(race)) {
       if (done(id)) continue;
       const n = sharedTech(id) ?? raceNode(race, id);
@@ -53,7 +55,7 @@ export function racePlan(c: RaceCtx): void {
   }
   // 3. own troops: the capstone when affordable, else the first unlocked unique unit
   const own = v.myBuildings.find((b) => b.btype === race.unique_building && b.complete && b.queue < 2);
-  if (own && c.wantArmy && v.stats.pop + 2 <= v.stats.housing) {
+  if (own && c.heavyUnits && c.wantArmy && v.stats.pop + 2 <= v.stats.housing) {
     const opts = race.unique_units.filter((u) => unlockedU(u as UnitTypeName)).map((u) => u as UnitTypeName).reverse();
     for (const u of opts) {
       const d = unitDef(u);
@@ -61,7 +63,7 @@ export function racePlan(c: RaceCtx): void {
     }
   }
   // 4. gear: keep the forge busy and hand gear out at home
-  const forge = v.myBuildings.find((b) => b.btype === 'forge' && b.complete);
+  const forge = c.gear ? v.myBuildings.find((b) => b.btype === 'forge' && b.complete) : undefined;
   if (forge && forge.queue === 0) {
     const want: GearId[] = [];
     if (done('alloys')) { if (v.gear[gi('alloy')] < 2 && stock[Res.CARBON] >= 4 && stock[Res.ADAMITE] >= 2) want.push('alloy'); else want.push(c.roll(2) ? 'alloyWeapons' : 'alloyArmor'); }

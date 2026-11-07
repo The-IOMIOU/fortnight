@@ -115,7 +115,7 @@ function snapshot(): void {
     ents, fog, owner, tiles, pending, stats: viewer >= 0 ? computeStats(sim, viewer) : spectating ? computeStats(sim, 0) : null, events: ev, buildings: buildingInfo(sim),
     bots: bots ? bots.debug().map((d) => ({ player: d.player, personality: d.personality, difficulty: d.difficulty, goal: d.goal, scores: d.scores, naval: d.naval })) : [], winnerTeam: sim.winnerTeam,
     shots: shotsArr, fires: E < 0 ? sim.burningList.slice() : sim.burningList.filter((t) => sim!.fog[E].data[t] === FOG_VISIBLE), spectating,
-    modified: sim.modified, opts: viewer >= 0 ? sim.ps[viewer].opts : 0, me: viewer >= 0 ? meOf(sim, viewer) : null, dip: viewer >= 0 ? dipOf(sim, viewer) : null, net: netOf(),
+    modified: sim.modified, opts: viewer >= 0 ? sim.ps[viewer].opts : 0, peaceLeft: sim.peaceLeft, me: viewer >= 0 ? meOf(sim, viewer) : null, dip: viewer >= 0 ? dipOf(sim, viewer) : null, net: netOf(),
     winner: sim.winner, simMsPerTick: stepMsAvg, ticksPerSec: sched.paused ? 0 : tps,
     droppedTicks: sched.droppedTicks, paused: sched.paused, speed: speedName,
   }, transfer);
@@ -172,7 +172,7 @@ function loop(): void {
 function sendMap(s: Sim): void {
   const map = s.map;
   post({
-    type: 'map', players: s.players, viewer, startTile: map.starts[Math.max(0, viewer)],
+    type: 'map', players: s.players, viewer, startTile: s.startTiles[Math.max(0, viewer)] ?? map.starts[0],
     map: { seed: map.seed, size: map.size, w: map.w, h: map.h, hash: map.hash, height: map.height.slice(), biome: map.biome.slice(),
       temp: map.temp.slice(), starts: map.starts.slice(), resType: s.res.type.slice(), continent: map.continent.slice(),
       riverCount: map.riverCount, lakeCount: map.lakeCount, wrap: map.wrap },

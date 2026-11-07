@@ -58,6 +58,8 @@ export interface Snapshot {
   /** A test option was used in this run (F-198), and the viewer's active test options. */
   modified: boolean;
   opts: number;
+  /** Ticks of peace at the start left (0 = fighting allowed). */
+  peaceLeft: number;
   events: SimEvent[];
   buildings: BuildingInfo[];
   /** Ranged shots since the last snapshot the viewer can see: [ax, ay, tx, ty] fixed-point quads. */

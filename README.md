@@ -55,6 +55,8 @@ Last updated: 2026-11-06.
 
 - **Room-code invites** (owner: "do the invite system like this repo from my friend", sxrg1u/cracked-globe-play): `src/net/rooms.ts` (PeerJS 1.5.5: open a room with a 5-character code, join by code, public PeerJS TURN relay), `src/net/session.ts` (rooms for host and guest; manual invites kept), `src/net/peer.ts` (the message wire works over either kind of connection), Online panel shows the code + copy link, Multiplayer → Join takes code or link, `?room=` links join directly. PLAN amendment 16, ledger F-162, P-005 adopted. Tests: multiplayer project 4/4 over the real PeerJS server (room join, `?room=` link, wrong-code message, old manual flows); F-006 offline still passes; unit 139/139 (the timing benchmark failed once under load, passes alone at 1.09 ms). Not verified: the TURN relay with the direct path blocked.
 
+- **Owner playtest fixes (PLAN amendment 17, ledger F-200–F-203):** peace at the start (no attacks for N minutes; Auto = Easy 20 min, Hard/Impossible none; HUD countdown; menu setting), Easy bots nerfed (no rams/heavy units, army ≤ 14, waves of 10, research from minute 12, no gear; all bots grow during peace), co-op allies start 14–32 tiles from their team leader, workers look 18 tiles (was 8) for the next tree/rock and say so if they must stop. Tests: tests/peace.test.ts 4/4, unit 143/143, checks 5/5.
+
 ### State
 - Commits: `8750cb1 Phase 4: bots …` (approved), `7ba7d3d Phase 4b (WIP)`, `074b66c Phase 4b: …`, `6698256 Phase 5 (WIP)`, then the "Phase 5: …" commit.
 - **Next step for whoever continues:** wait for the owner's review of 4b and 5 (open questions: globe interpretation, Short-mode length, PLAN amendment 11). Then Phase 6 (diplomacy and chat), or the Phase 5 leftovers below.

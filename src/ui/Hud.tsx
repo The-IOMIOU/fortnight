@@ -69,6 +69,7 @@ function TopBar({ game, onQuit, onSave }: { game: Game; onQuit: () => void; onSa
   const bonusOn = useStore((st) => st.impossibleBonusOn);
   const modified = useStore((st) => st.modified);
   const opts = useStore((st) => st.opts);
+  const peaceLeft = useStore((st) => st.peaceLeft);
   const s = useStore((st) => ({ tick: st.tick, paused: st.paused, speed: st.speed, isNight: st.isNight, pending: st.pendingOrders, stats: st.stats, seed: st.seed, size: st.size, owners: st.ownerOverlay }));
   const st = s.stats;
   return (
@@ -93,6 +94,7 @@ function TopBar({ game, onQuit, onSave }: { game: Game; onQuit: () => void; onSa
       )}
       {s.paused && <div class="paused-tag">PAUSED{s.pending > 0 ? ` · ${s.pending} order${s.pending > 1 ? 's' : ''} queued` : ''}</div>}
       <div class="spacer" />
+      {peaceLeft > 0 && <span class="res peace" title="Peace at the start: nobody can attack anybody yet. Grow your town: farms, houses, workers." data-testid="peace-timer">☮ Peace {fmtTime(peaceLeft)}</span>}
       {modified && <span class="res warn" title="Test options were used in this run" data-testid="modified-badge">Modified run</span>}
       {bonusOn && <span class="res warn" title="Impossible bots receive extra income" data-testid="bonus-badge">Impossible bonus +{TUNING.bots.impossibleIncomeBonusPct} %</span>}
       <TechButton />

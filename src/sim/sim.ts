@@ -45,6 +45,8 @@ export interface SimSettings {
   popLimit?: number;
   /** Test options switched on from the start, per player (bit mask of TestOpt). */
   testOptions?: number[];
+  /** Peace at the start (owner request 2026-11-06): nobody can attack anybody for this many ticks. */
+  peaceTicks?: number;
   // ---- Phase 5 (F-090–F-112) ----
   /** Race id per player (default: the Baseline reference race). */
   races?: string[];
@@ -209,11 +211,48 @@ export class Sim {
 
   // ------------------------------------------------------------------ setup
 
+  /** Start tile per player: the map's spread-out starts, except that allies start near their team leader. */
+  get startTiles(): number[] { return this._starts ??= this.computeStarts(); }
+  private _starts: number[] | null = null;
+  private computeStarts(): number[] {
+    const m = this.map, { w, h } = m, out = Array.from(m.starts.slice(0, this.players));
+    const teams = this.settings.teams;
+    if (!teams) return out;
+    const taken: number[] = [];
+    const leaderOf = new Map<number, number>();
+    for (let p = 0; p < this.players; p++) { const t = teams[p] ?? p; if (!leaderOf.has(t)) { leaderOf.set(t, p); taken.push(out[p]); } }
+    const near = (a: number, b: number, r: number): boolean => {
+      let dx = Math.abs((a % w) - (b % w)); if (this.wrap) dx = Math.min(dx, w - dx);
+      return Math.max(dx, Math.abs(Math.floor(a / w) - Math.floor(b / w))) < r;
+    };
+    const { allyStartMin: rMin, allyStartMax: rMax } = TUNING.map;
+    for (let p = 0; p < this.players; p++) {
+      const lead: number = leaderOf.get(teams[p] ?? p) ?? p;
+      if (lead === p) continue;
+      const c: number = out[lead], cx: number = c % w, cy: number = (c - cx) / w, cont = m.continent[c];
+      let best = -1;
+      for (let r = rMin; r <= rMax && best < 0; r++) for (let dy = -r; dy <= r && best < 0; dy++) for (let dx = -r; dx <= r; dx++) {
+        if (Math.max(Math.abs(dx), Math.abs(dy)) !== r) continue;
+        let x: number = cx + dx; const y: number = cy + dy;
+        if (y < 2 || y >= h - 2) continue;
+        if (x < 1 || x >= w - 1) { if (!this.wrap) continue; x = (x + w) % w; }
+        const t = y * w + x;
+        if (m.continent[t] !== cont || taken.some((q) => near(q, t, rMin))) continue;
+        let ok = true; // 3×3 of buildable dry land for the capital
+        for (let k = 0; k < 9 && ok; k++) { const q = (y + Math.floor(k / 3) - 1) * w + ((x + (k % 3) - 1 + w) % w); const b = m.biome[q]; if (isWaterBiome(b) || !BUILDABLE[b]) ok = false; }
+        if (ok) { best = t; break; }
+      }
+      if (best >= 0) out[p] = best;
+      taken.push(out[p]);
+    }
+    return out;
+  }
+
   private setupStart(): void {
     const { w } = this.map;
     for (let p = 0; p < this.players; p++) {
       const race = raceById(this.ps[p].race);
-      const s = this.map.starts[p], sx = s % w, sy = (s - sx) / w;
+      const s = this.startTiles[p], sx = s % w, sy = (s - sx) / w;
       // make sure the capital footprint is solid buildable ground
       for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) {
         const t = (sy + dy) * w + (sx + dx);
@@ -964,6 +1003,7 @@ export class Sim {
 
   step(): void {
     if (this.winner >= 0) return; // match over
+    if (this.tick > 0 && this.tick === this.settings.peaceTicks) for (let p = 0; p < this.players; p++) this.emit(p, 'peaceOver');
     let n = 0;
     while (n < this.pending.length && this.pending[n].tick === this.tick) n++;
     const now = this.pending.splice(0, n);
@@ -1012,7 +1052,9 @@ export class Sim {
   teamOf(p: number): number { return this.settings.teams?.[p] ?? p; }
   allied(p: number, q: number): boolean { return p === q || (p < this.players && q < this.players && (this.teamOf(p) === this.teamOf(q) || (!!this.dip && this.dip.treatyAllied(p, q)))); }
   /** Units fight on their own only between players at war (Phase 6 diplomacy; everyone starts at war). */
-  hostile(p: number, q: number): boolean { return p < this.players && q < this.players && !this.allied(p, q) && this.dip.atWar(p, q); }
+  hostile(p: number, q: number): boolean { return p < this.players && q < this.players && !this.allied(p, q) && this.tick >= (this.settings.peaceTicks ?? 0) && this.dip.atWar(p, q); }
+  /** Ticks of peace left (0 = fighting allowed). */
+  get peaceLeft(): number { return Math.max(0, (this.settings.peaceTicks ?? 0) - this.tick); }
   victoryEnabled(kind: 'domination' | 'conquest'): boolean { return this.settings.victory?.[kind] ?? true; }
 
   private addIncome(p: number, r: number, amt: number): void {
@@ -1087,9 +1129,9 @@ export class Sim {
   /** Current source exhausted: find the next tile of the same type nearby, else return cargo / idle. */
   private afterSourceGone(id: number): void {
     const e = this.ents, type = e.carryType[id], t = e.taskTile[id];
-    const next = t >= 0 && type !== Res.FOOD ? this.findNearbyResource(t, type, 8) : -1;
+    const next = t >= 0 && type !== Res.FOOD ? this.findNearbyResource(t, type, ECO.regatherRadius) : -1;
     if (e.carryAmt[id] > 0) { e.taskTile[id] = next; e.srcEnt[id] = -1; this.startReturn(id); return; }
-    if (next >= 0) this.startGather(id, next); else this.stop(id);
+    if (next >= 0) this.startGather(id, next); else { this.stop(id); if (t >= 0 && type !== Res.FOOD) this.emit(e.owner[id], 'nothingNear', type, id); }
   }
 
   /** Nearest walkable tile not in `used` (formation slots). */
@@ -1160,7 +1202,7 @@ export class Sim {
     const t = e.taskTile[id], src = e.srcEnt[id];
     if (src >= 0 && e.alive[src] && e.kind[src] === Kind.CARCASS) this.startGatherCarcass(id, src);
     else if (t >= 0 && this.res.amount[t] > 0) this.startGather(id, t);
-    else if (t >= 0) { const n = this.findNearbyResource(t, e.carryType[id], 8); if (n >= 0) this.startGather(id, n); else this.stop(id); }
+    else if (t >= 0) { const n = this.findNearbyResource(t, e.carryType[id], ECO.regatherRadius); if (n >= 0) this.startGather(id, n); else { this.stop(id); this.emit(p, 'nothingNear', e.carryType[id], id); } }
     else this.stop(id);
   }
 

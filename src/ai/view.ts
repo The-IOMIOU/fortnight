@@ -33,6 +33,9 @@ export class BotView {
   readonly wrap: boolean;
   /** A player switched on the 'peaceful bots' test option: bots never start fights (F-197). */
   readonly peaceful: boolean;
+  /** Ticks of peace at the start left (public: everyone sees the countdown). */
+  readonly peaceLeft: number;
+  readonly peaceTicks: number;
   readonly stats: PlayerStats;
   readonly myUnits: UnitInfo[] = [];
   readonly myBuildings: BuildingInfo[] = [];
@@ -56,6 +59,8 @@ export class BotView {
     const m = sim.map;
     this.w = m.w; this.h = m.h; this.tick = sim.tick; this.wrap = sim.wrap;
     this.peaceful = sim.ps.some((ps) => (ps.opts & TestOpt.PEACEFUL_BOTS) !== 0);
+    this.peaceLeft = sim.peaceLeft;
+    this.peaceTicks = sim.settings.peaceTicks ?? 0;
     const me = sim.ps[player];
     this.race = me.race; this.researched = me.researched.slice(); this.researching = me.researching; this.gear = me.gear.slice(); this.isNight = sim.isNight;
     // refresh memory from what is visible right now

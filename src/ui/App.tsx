@@ -189,7 +189,7 @@ export function App() {
 interface MenuPrefs {
   mode: ModeId; size: MapSize; speed: SpeedName; rivals: number; difficulty: Difficulty; pers: string; allies: number; conquest: boolean; domination: boolean; domPct: number; bonus: boolean;
   globe: boolean; continents: number; sea: SeaWidth; wildlife: number; dayLen: number; popLimit: number; perBot: boolean; botRows: { difficulty: Difficulty; personality: string }[]; testOpts: number;
-  race: string; botRace: string; vTech: boolean; vEcon: boolean;
+  race: string; botRace: string; vTech: boolean; vEcon: boolean; peace: string;
 }
 const MENU_KEY = 'fortnight.menu.v1';
 function loadMenuPrefs(): Partial<MenuPrefs> { try { return JSON.parse(localStorage.getItem(MENU_KEY) ?? '{}') as Partial<MenuPrefs>; } catch { return {}; } }
@@ -226,6 +226,7 @@ function Menu({ initial, onStart, onBack, hostOnline = false }: { initial: Parti
   const [wildlife, setWildlife] = useState(saved.wildlife ?? 100);
   const [dayLen, setDayLen] = useState(saved.dayLen ?? TUNING.dayNight.dayLengthTicks);
   const [popLimit, setPopLimit] = useState(saved.popLimit ?? 0);
+  const [peace, setPeace] = useState<string>(saved.peace ?? 'auto');
   const [perBot, setPerBot] = useState(saved.perBot ?? false);
   const [botRows, setBotRows] = useState<MenuPrefs['botRows']>(saved.botRows ?? []);
   const [testOpts, setTestOpts] = useState(saved.testOpts ?? 0);
@@ -263,7 +264,7 @@ function Menu({ initial, onStart, onBack, hostOnline = false }: { initial: Parti
   const chosen = RACES.find((r) => r.id === race) ?? RACES[0];
   const start = (): void => {
     store.set({ error: '' });
-    saveMenuPrefs({ mode, size, speed, rivals, difficulty, pers, allies, conquest, domination, domPct, bonus, globe, continents, sea, wildlife, dayLen, popLimit, perBot, botRows: rows, testOpts, race, botRace, vTech, vEcon });
+    saveMenuPrefs({ mode, size, speed, rivals, difficulty, pers, allies, conquest, domination, domPct, bonus, globe, continents, sea, wildlife, dayLen, popLimit, perBot, botRows: rows, testOpts, race, botRace, vTech, vEcon, peace });
     const m = makeMatch(seed.trim(), size, rivals, difficulty, pers, Math.min(allies, Math.max(0, rivals - 1)));
     // online: the first `seats` rival slots are for human guests (no bot), co-op puts every human on your team
     const nSeats = online ? Math.max(1, Math.min(seats, rivals, TUNING.multiplayer.maxHumans - 1)) : 0;
@@ -272,6 +273,8 @@ function Menu({ initial, onStart, onBack, hostOnline = false }: { initial: Parti
     onStart({ kind: 'new', opts: {
       seed: seed.trim(), size, speed, ...m, victory: { conquest, domination, dominationPct: domPct, tech: vTech, economic: vEcon }, impossibleBonus: bonus && (m.bots ?? []).some((b) => b.difficulty === 'impossible'),
       world: { globe, sea, continents }, wildlifePct: wildlife, dayLengthTicks: dayLen, popLimit, testOptions: testOpts, mode,
+      // peace at the start: 'auto' = the gentlest bot's setting (Easy 20 min, Hard/Impossible none)
+      peaceTicks: 600 * (peace === 'auto' ? Math.max(0, ...(m.bots ?? []).map((b) => TUNING.bots[b.difficulty].peaceMin)) : +peace),
       races: matchRaces(seed.trim(), race, botRace, m.players),
       online: nSeats ? { seats: Array.from({ length: nSeats }, (_, k) => k + 1), pauseMode: voteP ? 'vote' : 'host' } : undefined,
     } });
@@ -399,6 +402,12 @@ function Menu({ initial, onStart, onBack, hostOnline = false }: { initial: Parti
               </select>
             </label>
           </div>
+          <label>Peace at the start (nobody can attack)
+            <select value={peace} onChange={(e) => setPeace((e.target as HTMLSelectElement).value)} data-testid="peace">
+              <option value="auto">Auto: {TUNING.bots[difficulty].peaceMin ? `${TUNING.bots[difficulty].peaceMin} min on ${difficulty[0].toUpperCase() + difficulty.slice(1)}` : `none on ${difficulty[0].toUpperCase() + difficulty.slice(1)}`}</option>
+              <option value="0">None</option><option value="5">5 min</option><option value="10">10 min</option><option value="20">20 min</option><option value="30">30 min</option><option value="45">45 min</option>
+            </select>
+          </label>
           <label>Allied bots (co-op: you + allies vs the rest): {Math.min(allies, Math.max(0, rivals - 1))}
             <input type="range" min="0" max={Math.max(0, rivals - 1)} value={Math.min(allies, Math.max(0, rivals - 1))} onInput={(e) => setAllies(+(e.target as HTMLInputElement).value)} data-testid="allies" />
           </label>
